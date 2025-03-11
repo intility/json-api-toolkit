@@ -35,15 +35,15 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
         source-url: https://nuget.pkg.github.com/Intility/index.json
       env:
-        NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }}
     
     - name: Build and Pack
       run: |
@@ -53,4 +53,4 @@ jobs:
         dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -p:PackageVersion=$VERSION -c Release
     
     - name: Publish to GitHub Packages
-      run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }}
+      run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_AUTH_TOKEN }}
