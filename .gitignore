@@ -411,3 +411,5 @@ docs/markdown-cheat-sheet.md
 
 # DocFX
 _site
+toc.yml
+index.yml
