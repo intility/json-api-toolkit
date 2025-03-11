@@ -1,7 +1,6 @@
-using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Querying.Filtering;
 
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Querying;
 
 /// <summary>
 /// Represents JSON:API query parameters for pagination, filtering, sorting, and including related resources.

@@ -1,6 +1,6 @@
 using JsonApiToolkit.Extensions.Querying;
-using JsonApiToolkit.Models;
 using JsonApiToolkit.Models.Querying;
+using JsonApiToolkit.Models.Querying.Filtering;
 
 namespace JsonApiToolkit.Extensions;
 
