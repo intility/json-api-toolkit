@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: 'intility/Intility.JsonApiToolkit'
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -37,6 +39,10 @@ jobs:
 
       - name: Build Documentation
         run: docfx docfx.json
+      
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
