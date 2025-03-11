@@ -32,11 +32,10 @@ public static class JsonApiMapper
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        var type = typeof(T);
+        Type type = typeof(T);
 
-        // Get ID property (cached)
-        var idProperty = GetIdProperty(type);
-        var id =
+        PropertyInfo? idProperty = GetIdProperty(type);
+        string id =
             idProperty?.GetValue(entity)?.ToString()
             ?? throw new InvalidOperationException("Entity Id cannot be null");
 
@@ -47,31 +46,27 @@ public static class JsonApiMapper
             Attributes = [],
         };
 
-        // Map properties to attributes
-        foreach (var prop in GetAttributeProperties(type))
+        foreach (PropertyInfo prop in GetAttributeProperties(type))
         {
-            var value = prop.GetValue(entity);
+            object? value = prop.GetValue(entity);
             if (value != null)
             {
                 resourceObject.Attributes![prop.Name.ToCamelCase()] = value;
             }
         }
 
-        // Map relationships if includedRelationships is not null or empty
         if (includedRelationships?.Count > 0)
         {
             // Map relationships if any
-            var relationshipProperties = GetRelationshipProperties(type);
+            List<PropertyInfo> relationshipProperties = GetRelationshipProperties(type);
             if (relationshipProperties.Count > 0)
             {
                 resourceObject.Relationships = [];
 
-                foreach (var relationshipProp in relationshipProperties)
+                foreach (PropertyInfo relationshipProp in relationshipProperties)
                 {
-                    var relationshipName = relationshipProp.Name;
+                    string relationshipName = relationshipProp.Name;
 
-                    // Only include this relationship if it's in the requested includes
-                    // Case-insensitive comparison
                     if (
                         !includedRelationships.Any(include =>
                             string.Equals(
@@ -84,7 +79,7 @@ public static class JsonApiMapper
                     {
                         continue;
                     }
-                    var relValue = relationshipProp.GetValue(entity);
+                    object? relValue = relationshipProp.GetValue(entity);
                     var relationship = new Relationship();
 
                     if (relValue == null)
@@ -93,26 +88,25 @@ public static class JsonApiMapper
                     }
                     else
                     {
-                        var relType = relationshipProp.PropertyType;
-                        var isCollection =
+                        Type relType = relationshipProp.PropertyType;
+                        bool isCollection =
                             typeof(IEnumerable).IsAssignableFrom(relType)
                             && relType != typeof(string);
 
                         if (isCollection)
                         {
-                            // Collection relationship (to-many)
                             var relData = new List<ResourceIdentifier>();
-                            foreach (var item in (IEnumerable)relValue)
+                            foreach (object? item in (IEnumerable)relValue)
                             {
                                 if (item == null)
                                     continue;
 
-                                var itemType = item.GetType();
-                                var itemIdProp = GetIdProperty(itemType);
+                                Type itemType = item.GetType();
+                                PropertyInfo? itemIdProp = GetIdProperty(itemType);
                                 if (itemIdProp == null)
                                     continue;
 
-                                var itemId = itemIdProp.GetValue(item)?.ToString();
+                                string? itemId = itemIdProp.GetValue(item)?.ToString();
                                 if (itemId == null)
                                     continue;
 
@@ -128,12 +122,11 @@ public static class JsonApiMapper
                         }
                         else
                         {
-                            // Single relationship (to-one)
-                            var relItemType = relValue.GetType(); // Use actual type
-                            var relItemIdProp = GetIdProperty(relItemType);
+                            Type relItemType = relValue.GetType();
+                            PropertyInfo? relItemIdProp = GetIdProperty(relItemType);
                             if (relItemIdProp != null)
                             {
-                                var relItemId = relItemIdProp.GetValue(relValue)?.ToString();
+                                string? relItemId = relItemIdProp.GetValue(relValue)?.ToString();
                                 if (relItemId != null)
                                 {
                                     relationship.Data = new ResourceIdentifier
@@ -148,14 +141,11 @@ public static class JsonApiMapper
 
                     resourceObject.Relationships[relationshipName.ToCamelCase()] = relationship;
                 }
-                // If no relationships were added, set to null to exclude from response
+
                 if (resourceObject.Relationships.Count == 0)
-                {
                     resourceObject.Relationships = null;
-                }
             }
         }
-
         return resourceObject;
     }
 
@@ -176,8 +166,7 @@ public static class JsonApiMapper
     )
         where T : class
     {
-        // Pass includedRelationships to ToResourceObject
-        var resource = ToResourceObject(entity, resourceType, includedRelationships);
+        ResourceObject resource = ToResourceObject(entity, resourceType, includedRelationships);
         resource.Links = new Links { Self = selfLink };
 
         var document = new JsonApiDocument<ResourceObject>
@@ -186,7 +175,6 @@ public static class JsonApiMapper
             Links = new Links { Self = selfLink },
         };
 
-        // Add included resources if needed
         if (includedRelationships?.Count > 0)
         {
             var included = new List<ResourceObject>();
@@ -224,8 +212,7 @@ public static class JsonApiMapper
         var resources = entities
             .Select(e =>
             {
-                // Pass includedRelationships to ToResourceObject
-                var resource = ToResourceObject(e, resourceType, includedRelationships);
+                ResourceObject resource = ToResourceObject(e, resourceType, includedRelationships);
                 resource.Links = new Links { Self = $"{baseUrl}/{resource.Id}" };
                 return resource;
             })
@@ -237,10 +224,8 @@ public static class JsonApiMapper
             Links = new Links { Self = selfLink },
         };
 
-        // Add pagination links if metadata is provided
         if (paginationMeta != null)
         {
-            // Add pagination metadata
             document.Meta = new Dictionary<string, object>
             {
                 ["pagination"] = new
@@ -252,8 +237,7 @@ public static class JsonApiMapper
                 },
             };
 
-            // Add pagination links
-            var pageSize = paginationMeta.PageSize;
+            int pageSize = paginationMeta.PageSize;
 
             document.Links.First = $"{baseUrl}?page[number]=1&page[size]={pageSize}";
             document.Links.Last =
@@ -272,24 +256,20 @@ public static class JsonApiMapper
             }
         }
 
-        // Add included resources if needed
         if (includedRelationships?.Count > 0)
         {
             var included = new List<ResourceObject>();
-            foreach (var entity in entities)
+            foreach (T entity in entities)
             {
                 AddIncludedResources(entity, includedRelationships, included);
             }
 
             if (included.Count > 0)
             {
-                // Remove duplicates by ID and type
-                var uniqueIncluded = included
+                document.Included = included
                     .GroupBy(r => new { r.Type, r.Id })
                     .Select(g => g.First())
                     .ToList();
-
-                document.Included = uniqueIncluded;
             }
         }
 
@@ -298,12 +278,9 @@ public static class JsonApiMapper
 
     private static PropertyInfo? GetIdProperty(Type type)
     {
-        if (s_idPropertyCache.TryGetValue(type, out var idProperty))
-        {
+        if (s_idPropertyCache.TryGetValue(type, out PropertyInfo? idProperty))
             return idProperty;
-        }
 
-        // Try to find an Id property (Id, EntityId, EntityTypeId)
         idProperty =
             type.GetProperty("Id")
             ?? type.GetProperty($"{type.Name}Id")
@@ -315,34 +292,22 @@ public static class JsonApiMapper
 
     private static List<PropertyInfo> GetAttributeProperties(Type type)
     {
-        if (s_attributePropertyCache.TryGetValue(type, out var props))
-        {
+        if (s_attributePropertyCache.TryGetValue(type, out List<PropertyInfo>? props))
             return props;
-        }
 
-        // Get relationship properties first so we can exclude them from attributes
-        var relationshipProps = GetRelationshipProperties(type);
+        List<PropertyInfo> relationshipProps = GetRelationshipProperties(type);
         var relationshipNames = relationshipProps.Select(p => p.Name).ToHashSet();
 
         props = type.GetProperties()
             .Where(p =>
-                // Skip Id properties
                 !p.Name.EndsWith("Id")
                 && p.Name != "Id"
-                &&
-                // Skip relationship properties
-                !relationshipNames.Contains(p.Name)
-                &&
-                // Only include readable properties
-                p.CanRead
+                && !relationshipNames.Contains(p.Name)
+                && p.CanRead
                 && p.GetMethod?.IsPublic == true
-                &&
-                // Include string properties
-                (
+                && (
                     p.PropertyType == typeof(string)
-                    ||
-                    // Skip collections except strings
-                    (
+                    || (
                         !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
                         || p.PropertyType == typeof(string)
                     )
@@ -356,25 +321,19 @@ public static class JsonApiMapper
 
     private static List<PropertyInfo> GetRelationshipProperties(Type type)
     {
-        if (s_relationshipPropertyCache.TryGetValue(type, out var props))
-        {
+        if (s_relationshipPropertyCache.TryGetValue(type, out List<PropertyInfo>? props))
             return props;
-        }
 
-        // First identify all navigation properties
         props = type.GetProperties()
             .Where(p =>
                 p.CanRead
                 && p.GetMethod?.IsPublic == true
                 && (
-                    // Collections (except strings)
                     (
                         typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
                         && p.PropertyType != typeof(string)
                     )
-                    ||
-                    // Reference navigation properties
-                    (
+                    || (
                         !p.PropertyType.IsPrimitive
                         && !p.PropertyType.IsValueType
                         && p.PropertyType != typeof(string)
@@ -402,12 +361,11 @@ public static class JsonApiMapper
         if (entity == null)
             return;
 
-        // Initialize tracking set to prevent circular processing
         processedEntities ??= [];
 
-        foreach (var includePath in includePaths)
+        foreach (string includePath in includePaths)
         {
-            var pathParts = includePath.Split('.');
+            string[] pathParts = includePath.Split('.');
             AddIncludedResourcesRecursive(entity, pathParts, 0, included, processedEntities);
         }
     }
@@ -424,8 +382,8 @@ public static class JsonApiMapper
         if (entity == null || depth >= pathParts.Length)
             return;
 
-        var propertyName = pathParts[depth];
-        var property = typeof(T)
+        string propertyName = pathParts[depth];
+        PropertyInfo? property = typeof(T)
             .GetProperties()
             .FirstOrDefault(p =>
                 string.Equals(p.Name, propertyName, StringComparison.OrdinalIgnoreCase)
@@ -434,7 +392,7 @@ public static class JsonApiMapper
         if (property == null)
             return;
 
-        var value = property.GetValue(entity);
+        object? value = property.GetValue(entity);
         if (value == null)
             return;
 
@@ -443,34 +401,29 @@ public static class JsonApiMapper
             && property.PropertyType != typeof(string)
         )
         {
-            // Collection relationship
-            foreach (var item in (IEnumerable)value)
+            foreach (object? item in (IEnumerable)value)
             {
                 if (item == null)
                     continue;
 
-                var itemType = item.GetType();
-                var idProperty = GetIdProperty(itemType);
+                Type itemType = item.GetType();
+                PropertyInfo? idProperty = GetIdProperty(itemType);
                 if (idProperty == null)
                     continue;
 
-                var itemId = idProperty.GetValue(item)?.ToString();
+                string? itemId = idProperty.GetValue(item)?.ToString();
                 if (itemId == null)
                     continue;
 
-                // Create a unique identifier for this entity
-                var entityKey = $"{itemType.Name}:{itemId}";
+                string entityKey = $"{itemType.Name}:{itemId}";
 
-                // Skip if we've already processed this entity
                 if (processedEntities.Contains(entityKey))
                     continue;
 
-                // Mark this entity as processed
                 processedEntities.Add(entityKey);
 
                 try
                 {
-                    // Create a complete resource object for the included entity
                     var resourceObject = new ResourceObject
                     {
                         Id = itemId,
@@ -479,18 +432,15 @@ public static class JsonApiMapper
                     };
 
                     // Add all attributes
-                    foreach (var prop in GetAttributeProperties(itemType))
+                    foreach (PropertyInfo prop in GetAttributeProperties(itemType))
                     {
-                        var propValue = prop.GetValue(item);
+                        object? propValue = prop.GetValue(item);
                         if (propValue != null)
-                        {
                             resourceObject.Attributes[prop.Name.ToCamelCase()] = propValue;
-                        }
                     }
 
                     included.Add(resourceObject);
 
-                    // Process nested includes if there are more path parts
                     if (depth + 1 < pathParts.Length)
                     {
                         AddIncludedResourcesRecursive(
@@ -510,29 +460,24 @@ public static class JsonApiMapper
         }
         else
         {
-            // Single relationship
-            var relType = value.GetType();
-            var idProperty = GetIdProperty(relType);
+            Type relType = value.GetType();
+            PropertyInfo? idProperty = GetIdProperty(relType);
             if (idProperty == null)
                 return;
 
-            var relId = idProperty.GetValue(value)?.ToString();
+            string? relId = idProperty.GetValue(value)?.ToString();
             if (relId == null)
                 return;
 
-            // Create a unique identifier for this entity
-            var entityKey = $"{relType.Name}:{relId}";
+            string entityKey = $"{relType.Name}:{relId}";
 
-            // Skip if we've already processed this entity
             if (processedEntities.Contains(entityKey))
                 return;
 
-            // Mark this entity as processed
             processedEntities.Add(entityKey);
 
             try
             {
-                // Create a complete resource object for the included entity
                 var resourceObject = new ResourceObject
                 {
                     Id = relId,
@@ -540,10 +485,9 @@ public static class JsonApiMapper
                     Attributes = [],
                 };
 
-                // Add all attributes
-                foreach (var prop in GetAttributeProperties(relType))
+                foreach (PropertyInfo prop in GetAttributeProperties(relType))
                 {
-                    var propValue = prop.GetValue(value);
+                    object? propValue = prop.GetValue(value);
                     if (propValue != null)
                     {
                         resourceObject.Attributes[prop.Name.ToCamelCase()] = propValue;
@@ -552,7 +496,6 @@ public static class JsonApiMapper
 
                 included.Add(resourceObject);
 
-                // Process nested includes if there are more path parts
                 if (depth + 1 < pathParts.Length)
                 {
                     AddIncludedResourcesRecursive(
@@ -571,13 +514,9 @@ public static class JsonApiMapper
         }
     }
 
-    // Add this helper method to consistently generate resource types
     private static string GetResourceType(Type type)
     {
-        // Convert from PascalCase to kebab-case (e.g., "TodoItem" -> "todo-item")
         string name = type.Name;
-
-        // Just convert to camelCase for now as it's more consistent with your existing code
         return name.ToCamelCase();
     }
 }

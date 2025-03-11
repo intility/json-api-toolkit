@@ -28,27 +28,16 @@ public static class QueryableExtensions
         if (parameters == null)
             return query;
 
-        // Apply filters
         if (parameters.Filter != null)
-        {
             query = query.ApplyFilters(parameters.Filter);
-        }
 
-        // Apply sorting
         if (parameters.Sort?.Count > 0)
-        {
             query = query.ApplySorting(parameters.Sort);
-        }
         else
-        {
             query = query.ApplySorting([new SortParameter { Field = "Id", IsDescending = false }]);
-        }
 
-        // Apply pagination (but don't execute the query yet)
         if (parameters.Pagination != null)
-        {
             query = query.ApplyPagination(parameters.Pagination);
-        }
 
         return query;
     }
@@ -70,8 +59,8 @@ public static class QueryableExtensions
             return query;
         }
 
-        var parameter = Expression.Parameter(typeof(T), "x");
-        var expression = BuildFilterExpression<T>(filterGroup, parameter);
+        ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
+        Expression? expression = BuildFilterExpression<T>(filterGroup, parameter);
 
         if (expression != null)
         {
@@ -94,18 +83,18 @@ public static class QueryableExtensions
         List<SortParameter> sortParameters
     )
     {
-        var entityType = typeof(T);
+        Type entityType = typeof(T);
         bool isFirstSort = true;
 
-        foreach (var sortParam in sortParameters)
+        foreach (SortParameter sortParam in sortParameters)
         {
-            var property = GetPropertyByJsonName(entityType, sortParam.Field);
+            PropertyInfo? property = GetPropertyByJsonName(entityType, sortParam.Field);
             if (property == null)
                 continue;
 
-            var parameter = Expression.Parameter(entityType, "x");
-            var propertyAccess = Expression.Property(parameter, property);
-            var lambda = Expression.Lambda(propertyAccess, parameter);
+            ParameterExpression parameter = Expression.Parameter(entityType, "x");
+            MemberExpression propertyAccess = Expression.Property(parameter, property);
+            LambdaExpression lambda = Expression.Lambda(propertyAccess, parameter);
 
             string methodName;
             if (isFirstSort)
@@ -118,7 +107,7 @@ public static class QueryableExtensions
                 methodName = sortParam.IsDescending ? "ThenByDescending" : "ThenBy";
             }
 
-            var orderByMethod = typeof(Queryable)
+            MethodInfo orderByMethod = typeof(Queryable)
                 .GetMethods()
                 .First(m => m.Name == methodName && m.GetParameters().Length == 2)
                 .MakeGenericMethod(entityType, property.PropertyType);
@@ -157,8 +146,8 @@ public static class QueryableExtensions
         PaginationParameters pagination
     )
     {
-        var totalCount = await query.CountAsync();
-        var totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
+        int totalCount = await query.CountAsync();
+        int totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
 
         return new PaginationMeta
         {
@@ -171,33 +160,20 @@ public static class QueryableExtensions
 
     private static PropertyInfo? GetPropertyByJsonName(Type entityType, string jsonPropertyName)
     {
-        // First try exact name match
-        var property = entityType.GetProperty(jsonPropertyName);
+        PropertyInfo? property = entityType.GetProperty(jsonPropertyName);
 
         if (property != null)
             return property;
 
-        // Then try pascal case version
-        var pascalCase = ToPascalCase(jsonPropertyName);
+        string pascalCase = StringExtensions.ToPascalCase(jsonPropertyName);
         property = entityType.GetProperty(pascalCase);
 
-        if (property != null)
-            return property;
-
-        // Finally try case-insensitive match
-        return entityType
-            .GetProperties()
-            .FirstOrDefault(p =>
-                string.Equals(p.Name, jsonPropertyName, StringComparison.OrdinalIgnoreCase)
-            );
-    }
-
-    private static string ToPascalCase(string str)
-    {
-        if (string.IsNullOrEmpty(str))
-            return str;
-
-        return char.ToUpperInvariant(str[0]) + str.Substring(1);
+        return property
+            ?? entityType
+                .GetProperties()
+                .FirstOrDefault(p =>
+                    string.Equals(p.Name, jsonPropertyName, StringComparison.OrdinalIgnoreCase)
+                );
     }
 
     private static object? ConvertToPropertyType(string value, Type targetType)
@@ -249,8 +225,7 @@ public static class QueryableExtensions
     {
         var expressions = new List<Expression>();
 
-        // Add individual filter conditions
-        foreach (var filter in group.Filters)
+        foreach (FilterParameter filter in group.Filters)
         {
             Expression? expr;
             if (filter.Field.Contains('.'))
@@ -259,7 +234,7 @@ public static class QueryableExtensions
             }
             else
             {
-                var property = GetPropertyByJsonName(typeof(T), filter.Field);
+                PropertyInfo? property = GetPropertyByJsonName(typeof(T), filter.Field);
                 if (property == null)
                     continue;
                 expr = BuildSingleFilterExpression(parameter, filter);
@@ -269,10 +244,9 @@ public static class QueryableExtensions
                 expressions.Add(expr);
         }
 
-        // Add nested groups
-        foreach (var nestedGroup in group.Groups)
+        foreach (FilterGroup nestedGroup in group.Groups)
         {
-            var nestedExpr = BuildFilterExpression<T>(nestedGroup, parameter);
+            Expression? nestedExpr = BuildFilterExpression<T>(nestedGroup, parameter);
             if (nestedExpr != null)
                 expressions.Add(nestedExpr);
         }
@@ -283,10 +257,9 @@ public static class QueryableExtensions
         if (expressions.Count == 1)
             return expressions[0];
 
-        // Combine expressions based on logical operator
         Expression? combinedExpression = null;
 
-        foreach (var expr in expressions)
+        foreach (Expression expr in expressions)
         {
             if (combinedExpression == null)
             {
@@ -319,7 +292,7 @@ public static class QueryableExtensions
         }
         else
         {
-            var property = GetPropertyByJsonName(parameter.Type, filter.Field);
+            PropertyInfo? property = GetPropertyByJsonName(parameter.Type, filter.Field);
             if (property == null)
                 return null;
             propertyAccess = Expression.Property(parameter, property);
@@ -336,20 +309,18 @@ public static class QueryableExtensions
             return Expression.NotEqual(propertyAccess, Expression.Constant(null));
         }
 
-        var targetType = (propertyAccess as MemberExpression)!.Type;
+        Type targetType = (propertyAccess as MemberExpression)!.Type;
 
-        // --- Handle In/NotIn for nullable types ---
         if (filter.Operator == FilterOperator.In)
         {
-            var underlying = Nullable.GetUnderlyingType(targetType);
+            Type? underlying = Nullable.GetUnderlyingType(targetType);
             if (underlying != null)
             {
-                // Build: x.Property != null && list.Contains(x.Property.Value)
-                var notNullExpr = Expression.NotEqual(
+                BinaryExpression notNullExpr = Expression.NotEqual(
                     propertyAccess,
                     Expression.Constant(null, propertyAccess.Type)
                 );
-                var containsExpr = BuildInExpression(
+                Expression containsExpr = BuildInExpression(
                     Expression.Property(propertyAccess, "Value"),
                     filter.Value,
                     underlying
@@ -363,14 +334,14 @@ public static class QueryableExtensions
         }
         if (filter.Operator == FilterOperator.Nin)
         {
-            var underlying = Nullable.GetUnderlyingType(targetType);
+            Type? underlying = Nullable.GetUnderlyingType(targetType);
             if (underlying != null)
             {
-                var isNullExpr = Expression.Equal(
+                BinaryExpression isNullExpr = Expression.Equal(
                     propertyAccess,
                     Expression.Constant(null, propertyAccess.Type)
                 );
-                var containsExpr = BuildInExpression(
+                Expression containsExpr = BuildInExpression(
                     Expression.Property(propertyAccess, "Value"),
                     filter.Value,
                     underlying
@@ -383,8 +354,7 @@ public static class QueryableExtensions
             }
         }
 
-        // For other operators, convert the filter value and build comparisons.
-        var filterValue = ConvertToPropertyType(filter.Value, targetType);
+        object? filterValue = ConvertToPropertyType(filter.Value, targetType);
         if (
             filterValue == null
             && filter.Operator != FilterOperator.Eq
@@ -393,7 +363,7 @@ public static class QueryableExtensions
         {
             return null;
         }
-        var constant = Expression.Constant(filterValue, targetType);
+        ConstantExpression constant = Expression.Constant(filterValue, targetType);
 
         return filter.Operator switch
         {
@@ -410,17 +380,15 @@ public static class QueryableExtensions
 
     private static Expression BuildLikeExpression(Expression property, string value)
     {
-        // Use Contains method for string properties
         if (property.Type == typeof(string))
         {
-            var method = typeof(string).GetMethod("Contains", [typeof(string)]);
+            MethodInfo? method = typeof(string).GetMethod("Contains", [typeof(string)]);
             return Expression.Call(property, method!, Expression.Constant(value));
         }
 
-        // For non-string properties, use ToString().Contains()
-        var toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
-        var toStringCall = Expression.Call(property, toStringMethod!);
-        var containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
+        MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
+        MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
+        MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
         return Expression.Call(toStringCall, containsMethod!, Expression.Constant(value));
     }
 
@@ -430,22 +398,18 @@ public static class QueryableExtensions
         Type propertyType
     )
     {
-        // Split the comma-separated values and convert them.
-        // Note that ConvertToPropertyType returns object? so the resulting list is List<object>.
         var rawConvertedValues = value
             .Split(',')
             .Select(v => v.Trim())
             .Where(v => !string.IsNullOrEmpty(v))
             .Select(v => ConvertToPropertyType(v, propertyType))
             .Where(v => v != null)
-            .Select(v => v!) // Now rawConvertedValues is a List<object> but its runtime values are, say, Guid.
+            .Select(v => v!)
             .ToList();
 
-        // If there are no valid values, return a constant expression 'false'
         if (rawConvertedValues.Count == 0)
             return Expression.Constant(false);
 
-        // Determine the underlying type if propertyType is nullable (e.g. Guid?)
         Type listElementType = propertyType;
         if (
             propertyType.IsGenericType
@@ -455,27 +419,19 @@ public static class QueryableExtensions
             listElementType = Nullable.GetUnderlyingType(propertyType)!;
         }
 
-        // Create the proper generic list type.
-        var listType = typeof(List<>).MakeGenericType(listElementType);
+        Type listType = typeof(List<>).MakeGenericType(listElementType);
 
-        // Instead of using rawConvertedValues directly (which is List<object>),
-        // create an instance of List<T> and add the converted values.
         var typedList = (IList)Activator.CreateInstance(listType)!;
-        foreach (var item in rawConvertedValues)
-        {
-            // Each 'item' is already a Guid (or another target type) at runtime.
+
+        foreach (object? item in rawConvertedValues)
             typedList.Add(item);
-        }
 
-        // Create a constant expression for the typed list.
-        var listConstant = Expression.Constant(typedList, listType);
+        ConstantExpression listConstant = Expression.Constant(typedList, listType);
 
-        // Get the Contains method that expects a parameter of listElementType.
-        var containsMethod =
+        MethodInfo containsMethod =
             listType.GetMethod("Contains", [listElementType])
             ?? throw new InvalidOperationException("Cannot find 'Contains' method on list type.");
 
-        // If the property is not exactly the element type, convert it.
         if (property.Type != listElementType)
         {
             property = Expression.Convert(property, listElementType);
@@ -489,11 +445,11 @@ public static class QueryableExtensions
         string propertyPath
     )
     {
-        var parts = propertyPath.Split('.');
+        string[] parts = propertyPath.Split('.');
         Expression current = parameter;
-        foreach (var part in parts)
+        foreach (string part in parts)
         {
-            var prop = current.Type.GetProperty(
+            PropertyInfo? prop = current.Type.GetProperty(
                 part,
                 BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance
             );

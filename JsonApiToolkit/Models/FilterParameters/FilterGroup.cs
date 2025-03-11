@@ -13,10 +13,10 @@ public class FilterGroup
     /// <summary>
     /// The filters to apply.
     /// </summary>
-    public List<FilterParameter> Filters { get; set; } = new();
+    public List<FilterParameter> Filters { get; set; } = [];
 
     /// <summary>
     /// The groups of filters to apply.
     /// </summary>
-    public List<FilterGroup> Groups { get; set; } = new();
+    public List<FilterGroup> Groups { get; set; } = [];
 }

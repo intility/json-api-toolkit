@@ -9,8 +9,11 @@ using Microsoft.EntityFrameworkCore;
 namespace JsonApiToolkit.Controllers;
 
 /// <summary>
-/// Base class for JSON:API controllers.
+/// Base class for JSON:API controllers. Provides helper methods for returning JSON:API documents.
 /// </summary>
+/// <remarks>
+/// This class is intended to be used as a base class for JSON:API controllers.
+/// </remarks>
 [Produces("application/vnd.api+json")]
 [Consumes("application/vnd.api+json")]
 [ServiceFilter(typeof(JsonApiExceptionFilter))]
@@ -26,18 +29,24 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a 200 OK response with a JSON:API document.
+    /// Returns a 200 OK response with a JSON:API document. The document will include the entity
+    /// and any included relationships specified in the query parameters.
     /// </summary>
     /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to return.</param>
+    /// <param name="entity">The entity to return. </param>
     /// <param name="resourceType">The type of the resource object.</param>
     /// <returns>The 200 OK response.</returns>
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)
         where T : class
     {
-        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        var queryParams = GetJsonApiQueryParameters();
-        var document = JsonApiMapper.ToDocument(entity, resourceType, baseUrl, queryParams.Include);
+        string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
+        QueryParameters queryParams = GetJsonApiQueryParameters();
+        JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
+            entity,
+            resourceType,
+            baseUrl,
+            queryParams.Include
+        );
         return Ok(document);
     }
 
@@ -56,9 +65,9 @@ public abstract class JsonApiController : ControllerBase
     )
         where T : class
     {
-        var baseUrl = GetFullRequestUrl();
-        var queryParams = GetJsonApiQueryParameters();
-        var document = JsonApiMapper.ToCollectionDocument(
+        string baseUrl = GetFullRequestUrl();
+        QueryParameters queryParams = GetJsonApiQueryParameters();
+        JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             entities,
             resourceType,
             baseUrl,
@@ -81,32 +90,22 @@ public abstract class JsonApiController : ControllerBase
     )
         where T : class
     {
-        var parameters = GetJsonApiQueryParameters();
-        var baseUrl = GetFullRequestUrl();
+        QueryParameters parameters = GetJsonApiQueryParameters();
+        string baseUrl = GetFullRequestUrl();
 
-        // Apply filters and sorting (but not pagination yet)
-        var filteredQuery = queryable;
+        IQueryable<T> filteredQuery = queryable;
 
         if (parameters.Filter != null)
-        {
             filteredQuery = filteredQuery.ApplyFilters(parameters.Filter);
-        }
 
         if (parameters.Sort?.Count > 0)
-        {
             filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
-        }
 
-        // Calculate total count AFTER applying filters
-        var totalCount = await filteredQuery.CountAsync();
+        int totalCount = await filteredQuery.CountAsync();
 
-        // Apply pagination
         if (parameters.Pagination != null)
-        {
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination);
-        }
 
-        // Create pagination metadata
         PaginationMeta? paginationMeta = null;
         if (parameters.Pagination != null)
         {
@@ -119,17 +118,9 @@ public abstract class JsonApiController : ControllerBase
             };
         }
 
-        // var previousColor = Console.ForegroundColor;
-        // Console.ForegroundColor = ConsoleColor.Cyan;
-        // Console.WriteLine("Filtered query:");
-        // Console.WriteLine(filteredQuery.ToQueryString());
-        // Console.ForegroundColor = previousColor;
+        List<T> results = await filteredQuery.ToListAsync();
 
-        // Execute the query and materialize the results
-        var results = await filteredQuery.ToListAsync();
-
-        // Create the document with proper includes
-        var document = JsonApiMapper.ToCollectionDocument(
+        JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             results,
             resourceType,
             baseUrl,
@@ -151,10 +142,15 @@ public abstract class JsonApiController : ControllerBase
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
         where T : class
     {
-        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}{Request.Path}";
-        var selfUrl = $"{baseUrl}/{id}";
-        var queryParams = GetJsonApiQueryParameters();
-        var document = JsonApiMapper.ToDocument(entity, resourceType, selfUrl, queryParams.Include);
+        string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}{Request.Path}";
+        string selfUrl = $"{baseUrl}/{id}";
+        QueryParameters queryParams = GetJsonApiQueryParameters();
+        JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
+            entity,
+            resourceType,
+            selfUrl,
+            queryParams.Include
+        );
         return Created(selfUrl, document);
     }
 

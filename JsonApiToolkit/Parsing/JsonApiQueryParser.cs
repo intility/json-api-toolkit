@@ -1,6 +1,7 @@
 using JsonApiToolkit.Models;
 using JsonApiToolkit.Models.FilterParameters;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 
 namespace JsonApiToolkit.Parsing;
 
@@ -18,26 +19,23 @@ public static class JsonApiQueryParser
     {
         var queryParams = new QueryParameters();
 
-        // Parse pagination
         if (
-            request.Query.TryGetValue("page[number]", out var pageNumber)
-            && request.Query.TryGetValue("page[size]", out var pageSize)
+            request.Query.TryGetValue("page[number]", out StringValues pageNumber)
+            && request.Query.TryGetValue("page[size]", out StringValues pageSize)
         )
         {
             queryParams.Pagination = new PaginationParameters
             {
-                Number = int.TryParse(pageNumber, out var num) ? Math.Max(1, num) : 1,
-                Size = int.TryParse(pageSize, out var size) ? Math.Clamp(size, 1, 100) : 10,
+                Number = int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1,
+                Size = int.TryParse(pageSize, out int size) ? Math.Clamp(size, 1, 100) : 10,
             };
         }
 
-        // Parse filters
         var filterGroup = new FilterGroup();
 
-        // First look for simple filters: filter[field]=value
-        foreach (var key in request.Query.Keys.Where(k => k.StartsWith("filter[")))
+        foreach (string? key in request.Query.Keys.Where(k => k.StartsWith("filter[")))
         {
-            if (key.Contains("][")) // Complex filter like filter[field][operator]
+            if (key.Contains(JsonApiFilterParser.s_separator[0]))
             {
                 JsonApiFilterParser.ParseComplexFilter(
                     key,
@@ -45,9 +43,9 @@ public static class JsonApiQueryParser
                     filterGroup
                 );
             }
-            else // Simple filter like filter[field]
+            else
             {
-                var field = key.Substring(7, key.Length - 8);
+                string field = key.Substring(7, key.Length - 8);
                 filterGroup.Filters.Add(
                     new FilterParameter
                     {
@@ -59,22 +57,17 @@ public static class JsonApiQueryParser
             }
         }
 
-        // Check for OR conditions: filter[or][0][field]=value
         JsonApiFilterParser.ParseLogicalGroup(request, "or", LogicalOperator.Or, filterGroup);
 
-        // Check for NOT conditions: filter[not][0][field]=value
         JsonApiFilterParser.ParseLogicalGroup(request, "not", LogicalOperator.Not, filterGroup);
 
         if (filterGroup.Filters.Count > 0 || filterGroup.Groups.Count > 0)
-        {
             queryParams.Filter = filterGroup;
-        }
 
-        // Parse sort
-        if (request.Query.TryGetValue("sort", out var sortValue))
+        if (request.Query.TryGetValue("sort", out StringValues sortValue))
         {
             var sortParams = new List<SortParameter>();
-            foreach (var field in sortValue.ToString().Split(','))
+            foreach (string field in sortValue.ToString().Split(','))
             {
                 if (string.IsNullOrWhiteSpace(field))
                     continue;
@@ -93,15 +86,14 @@ public static class JsonApiQueryParser
             }
         }
 
-        // Parse include
-        if (request.Query.TryGetValue("include", out var includeValue))
+        if (request.Query.TryGetValue("include", out StringValues includeValue))
         {
             var includes = includeValue
                 .ToString()
                 .Split(',')
                 .Where(i => !string.IsNullOrWhiteSpace(i))
-                .Select(i => i.Trim()) // Trim whitespace
-                .Select(i => char.ToUpper(i[0]) + i.Substring(1)) // Pascal case for property matching
+                .Select(i => i.Trim())
+                .Select(i => char.ToUpper(i[0]) + i.Substring(1))
                 .ToList();
 
             if (includes.Count > 0)

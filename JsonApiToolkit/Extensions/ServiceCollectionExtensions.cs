@@ -49,7 +49,7 @@ public static class ServiceCollectionExtensions
 
         services.Configure<MvcOptions>(options =>
         {
-            var jsonOutputFormatter = options
+            SystemTextJsonOutputFormatter? jsonOutputFormatter = options
                 .OutputFormatters.OfType<SystemTextJsonOutputFormatter>()
                 .FirstOrDefault();
 

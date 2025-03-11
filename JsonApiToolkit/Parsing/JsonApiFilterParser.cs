@@ -9,6 +9,11 @@ namespace JsonApiToolkit.Parsing;
 public static class JsonApiFilterParser
 {
     /// <summary>
+    /// The separator used to split complex filter query parameters.
+    /// </summary>
+    public static readonly string[] s_separator = ["]["];
+
+    /// <summary>
     /// Parses complex filter query parameters into a filter group.
     /// </summary>
     /// <param name="key">The query parameter key.</param>
@@ -16,31 +21,32 @@ public static class JsonApiFilterParser
     /// <param name="group">The filter group to add the filter to.</param>
     public static void ParseComplexFilter(string key, string value, FilterGroup group)
     {
-        // Parse filter[field][operator]=value
-        var keyParts = key.Substring(7, key.Length - 8).Split("][");
+        string[] keyParts = key.Substring(7, key.Length - 8).Split("][");
         if (keyParts.Length != 2)
             return;
 
-        var field = keyParts[0];
-        var operatorStr = keyParts[1].ToLowerInvariant();
+        string field = keyParts[0];
+        string operatorStr = keyParts[1].ToLowerInvariant();
 
-        var parameter = new FilterParameter { Field = field, Value = value };
-
-        // Map operator string to enum
-        parameter.Operator = operatorStr switch
+        var parameter = new FilterParameter
         {
-            "eq" => FilterOperator.Eq,
-            "ne" => FilterOperator.Ne,
-            "gt" => FilterOperator.Gt,
-            "ge" => FilterOperator.Ge,
-            "lt" => FilterOperator.Lt,
-            "le" => FilterOperator.Le,
-            "like" => FilterOperator.Like,
-            "in" => FilterOperator.In,
-            "nin" => FilterOperator.Nin,
-            "isnull" => FilterOperator.IsNull,
-            "isnotnull" => FilterOperator.IsNotNull,
-            _ => FilterOperator.Eq,
+            Field = field,
+            Value = value,
+            Operator = operatorStr switch
+            {
+                "eq" => FilterOperator.Eq,
+                "ne" => FilterOperator.Ne,
+                "gt" => FilterOperator.Gt,
+                "ge" => FilterOperator.Ge,
+                "lt" => FilterOperator.Lt,
+                "le" => FilterOperator.Le,
+                "like" => FilterOperator.Like,
+                "in" => FilterOperator.In,
+                "nin" => FilterOperator.Nin,
+                "isnull" => FilterOperator.IsNull,
+                "isnotnull" => FilterOperator.IsNotNull,
+                _ => FilterOperator.Eq,
+            },
         };
 
         group.Filters.Add(parameter);
@@ -60,7 +66,6 @@ public static class JsonApiFilterParser
         FilterGroup parentGroup
     )
     {
-        // Look for patterns like filter[or][0][field]=value
         var orKeys = request.Query.Keys.Where(k => k.StartsWith($"filter[{groupName}][")).ToList();
 
         if (orKeys.Count == 0)
@@ -68,7 +73,6 @@ public static class JsonApiFilterParser
 
         var newGroup = new FilterGroup { LogicalOperator = op };
 
-        // Group keys by the index in the array
         var indexGroups = orKeys
             .Select(k => new
             {
@@ -83,14 +87,13 @@ public static class JsonApiFilterParser
 
             foreach (var item in indexGroup)
             {
-                // Extract the field and optional operator
-                var restOfKey = item.Key.Substring(
+                string restOfKey = item.Key.Substring(
                     $"filter[{groupName}][{indexGroup.Key}][".Length
                 );
 
-                if (restOfKey.Contains("][")) // Has operator
+                if (restOfKey.Contains(s_separator[0]))
                 {
-                    var parts = restOfKey.Split(new[] { "][" }, StringSplitOptions.None);
+                    string[] parts = restOfKey.Split(s_separator, StringSplitOptions.None);
                     condition.Field = parts[0];
                     condition.Operator = parts[1].TrimEnd(']').ToLowerInvariant() switch
                     {
@@ -108,7 +111,7 @@ public static class JsonApiFilterParser
                         _ => FilterOperator.Eq,
                     };
                 }
-                else // No operator
+                else
                 {
                     condition.Field = restOfKey.TrimEnd(']');
                     condition.Operator = FilterOperator.Eq;
@@ -121,8 +124,6 @@ public static class JsonApiFilterParser
         }
 
         if (newGroup.Filters.Count > 0)
-        {
             parentGroup.Groups.Add(newGroup);
-        }
     }
 }
