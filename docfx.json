@@ -3,18 +3,14 @@
   "metadata": [
     {
       "src": [
-  {
-    "src": "./JsonApiToolkit",
-    "files": [
-      "bin/Release/net9.0/JsonApiToolkit.dll"
-    ]
-  }
-],
-      "dest": "api",
-      "properties": {
-        "TargetFramework": "net9.0",
-        "RoslynLanguageVersion": "9.0"
-      }
+        {
+          "src": "./JsonApiToolkit",
+          "files": [
+            "**/*.csproj"
+          ]
+        }
+      ],
+      "dest": "api"
     }
   ],
   "build": {
