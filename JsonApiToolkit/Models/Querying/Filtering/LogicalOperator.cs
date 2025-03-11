@@ -1,4 +1,4 @@
-namespace JsonApiToolkit.Models.FilterParameters;
+namespace JsonApiToolkit.Models.Querying.Filtering;
 
 /// <summary>
 /// Represents a logical operator for combining filter parameters.

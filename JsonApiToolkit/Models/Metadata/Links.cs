@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Metadata;
 
 /// <summary>
 /// The links object.

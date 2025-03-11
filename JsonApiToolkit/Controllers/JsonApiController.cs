@@ -1,7 +1,11 @@
-using JsonApiToolkit.Extensions;
+using JsonApiToolkit.Extensions.Querying;
 using JsonApiToolkit.Filters;
 using JsonApiToolkit.Mapping;
 using JsonApiToolkit.Models;
+using JsonApiToolkit.Models.Documents;
+using JsonApiToolkit.Models.Errors;
+using JsonApiToolkit.Models.Metadata;
+using JsonApiToolkit.Models.Resources;
 using JsonApiToolkit.Parsing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
+using JsonApiToolkit.Models.Documents;
+using JsonApiToolkit.Models.Metadata;
 
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Resources;
 
 /// <summary>
 /// Represents a JSON:API resource object.

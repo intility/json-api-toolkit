@@ -1,5 +1,6 @@
 using JsonApiToolkit.Models;
-using JsonApiToolkit.Models.FilterParameters;
+using JsonApiToolkit.Models.Querying;
+using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 

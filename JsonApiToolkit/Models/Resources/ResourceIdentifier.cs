@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Resources;
 
 /// <summary>
 /// A JSON:API resource identifier.

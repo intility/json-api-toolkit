@@ -1,4 +1,4 @@
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Metadata;
 
 /// <summary>
 /// Represents pagination metadata.

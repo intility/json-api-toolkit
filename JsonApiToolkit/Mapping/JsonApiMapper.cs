@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Reflection;
 using JsonApiToolkit.Extensions;
-using JsonApiToolkit.Models;
-using ResourceIdentifier = JsonApiToolkit.Models.ResourceIdentifier;
+using JsonApiToolkit.Models.Documents;
+using JsonApiToolkit.Models.Metadata;
+using JsonApiToolkit.Models.Resources;
 
 namespace JsonApiToolkit.Mapping;
 
@@ -11,10 +12,6 @@ namespace JsonApiToolkit.Mapping;
 /// </summary>
 public static class JsonApiMapper
 {
-    private static readonly Dictionary<Type, PropertyInfo?> s_idPropertyCache = [];
-    private static readonly Dictionary<Type, List<PropertyInfo>> s_attributePropertyCache = [];
-    private static readonly Dictionary<Type, List<PropertyInfo>> s_relationshipPropertyCache = [];
-
     /// <summary>
     /// Maps an entity to a JSON:API resource object.
     /// </summary>
@@ -34,7 +31,7 @@ public static class JsonApiMapper
 
         Type type = typeof(T);
 
-        PropertyInfo? idProperty = GetIdProperty(type);
+        PropertyInfo? idProperty = EntityMapper.GetIdProperty(type);
         string id =
             idProperty?.GetValue(entity)?.ToString()
             ?? throw new InvalidOperationException("Entity Id cannot be null");
@@ -46,7 +43,7 @@ public static class JsonApiMapper
             Attributes = [],
         };
 
-        foreach (PropertyInfo prop in GetAttributeProperties(type))
+        foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(type))
         {
             object? value = prop.GetValue(entity);
             if (value != null)
@@ -58,7 +55,8 @@ public static class JsonApiMapper
         if (includedRelationships?.Count > 0)
         {
             // Map relationships if any
-            List<PropertyInfo> relationshipProperties = GetRelationshipProperties(type);
+            List<PropertyInfo> relationshipProperties =
+                RelationshipMapper.GetRelationshipProperties(type);
             if (relationshipProperties.Count > 0)
             {
                 resourceObject.Relationships = [];
@@ -102,7 +100,7 @@ public static class JsonApiMapper
                                     continue;
 
                                 Type itemType = item.GetType();
-                                PropertyInfo? itemIdProp = GetIdProperty(itemType);
+                                PropertyInfo? itemIdProp = EntityMapper.GetIdProperty(itemType);
                                 if (itemIdProp == null)
                                     continue;
 
@@ -114,7 +112,7 @@ public static class JsonApiMapper
                                     new ResourceIdentifier
                                     {
                                         Id = itemId,
-                                        Type = GetResourceType(itemType),
+                                        Type = EntityMapper.GetResourceType(itemType),
                                     }
                                 );
                             }
@@ -123,7 +121,7 @@ public static class JsonApiMapper
                         else
                         {
                             Type relItemType = relValue.GetType();
-                            PropertyInfo? relItemIdProp = GetIdProperty(relItemType);
+                            PropertyInfo? relItemIdProp = EntityMapper.GetIdProperty(relItemType);
                             if (relItemIdProp != null)
                             {
                                 string? relItemId = relItemIdProp.GetValue(relValue)?.ToString();
@@ -132,7 +130,7 @@ public static class JsonApiMapper
                                     relationship.Data = new ResourceIdentifier
                                     {
                                         Id = relItemId,
-                                        Type = GetResourceType(relItemType),
+                                        Type = EntityMapper.GetResourceType(relItemType),
                                     };
                                 }
                             }
@@ -178,7 +176,7 @@ public static class JsonApiMapper
         if (includedRelationships?.Count > 0)
         {
             var included = new List<ResourceObject>();
-            AddIncludedResources(entity, includedRelationships, included);
+            InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
             if (included.Count > 0)
             {
                 document.Included = included;
@@ -261,7 +259,7 @@ public static class JsonApiMapper
             var included = new List<ResourceObject>();
             foreach (T entity in entities)
             {
-                AddIncludedResources(entity, includedRelationships, included);
+                InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
             }
 
             if (included.Count > 0)
@@ -274,249 +272,5 @@ public static class JsonApiMapper
         }
 
         return document;
-    }
-
-    private static PropertyInfo? GetIdProperty(Type type)
-    {
-        if (s_idPropertyCache.TryGetValue(type, out PropertyInfo? idProperty))
-            return idProperty;
-
-        idProperty =
-            type.GetProperty("Id")
-            ?? type.GetProperty($"{type.Name}Id")
-            ?? type.GetProperties().FirstOrDefault(p => p.Name.EndsWith("Id"));
-
-        s_idPropertyCache[type] = idProperty;
-        return idProperty;
-    }
-
-    private static List<PropertyInfo> GetAttributeProperties(Type type)
-    {
-        if (s_attributePropertyCache.TryGetValue(type, out List<PropertyInfo>? props))
-            return props;
-
-        List<PropertyInfo> relationshipProps = GetRelationshipProperties(type);
-        var relationshipNames = relationshipProps.Select(p => p.Name).ToHashSet();
-
-        props = type.GetProperties()
-            .Where(p =>
-                !p.Name.EndsWith("Id")
-                && p.Name != "Id"
-                && !relationshipNames.Contains(p.Name)
-                && p.CanRead
-                && p.GetMethod?.IsPublic == true
-                && (
-                    p.PropertyType == typeof(string)
-                    || (
-                        !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                        || p.PropertyType == typeof(string)
-                    )
-                )
-            )
-            .ToList();
-
-        s_attributePropertyCache[type] = props;
-        return props;
-    }
-
-    private static List<PropertyInfo> GetRelationshipProperties(Type type)
-    {
-        if (s_relationshipPropertyCache.TryGetValue(type, out List<PropertyInfo>? props))
-            return props;
-
-        props = type.GetProperties()
-            .Where(p =>
-                p.CanRead
-                && p.GetMethod?.IsPublic == true
-                && (
-                    (
-                        typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                        && p.PropertyType != typeof(string)
-                    )
-                    || (
-                        !p.PropertyType.IsPrimitive
-                        && !p.PropertyType.IsValueType
-                        && p.PropertyType != typeof(string)
-                        && p.PropertyType != typeof(DateTime)
-                        && p.PropertyType != typeof(DateTime?)
-                        && p.PropertyType != typeof(Guid)
-                        && p.PropertyType != typeof(Guid?)
-                    )
-                )
-            )
-            .ToList();
-
-        s_relationshipPropertyCache[type] = props;
-        return props;
-    }
-
-    private static void AddIncludedResources<T>(
-        T entity,
-        List<string> includePaths,
-        List<ResourceObject> included,
-        HashSet<string>? processedEntities = null
-    )
-        where T : class
-    {
-        if (entity == null)
-            return;
-
-        processedEntities ??= [];
-
-        foreach (string includePath in includePaths)
-        {
-            string[] pathParts = includePath.Split('.');
-            AddIncludedResourcesRecursive(entity, pathParts, 0, included, processedEntities);
-        }
-    }
-
-    private static void AddIncludedResourcesRecursive<T>(
-        T entity,
-        string[] pathParts,
-        int depth,
-        List<ResourceObject> included,
-        HashSet<string> processedEntities
-    )
-        where T : class
-    {
-        if (entity == null || depth >= pathParts.Length)
-            return;
-
-        string propertyName = pathParts[depth];
-        PropertyInfo? property = typeof(T)
-            .GetProperties()
-            .FirstOrDefault(p =>
-                string.Equals(p.Name, propertyName, StringComparison.OrdinalIgnoreCase)
-            );
-
-        if (property == null)
-            return;
-
-        object? value = property.GetValue(entity);
-        if (value == null)
-            return;
-
-        if (
-            typeof(IEnumerable).IsAssignableFrom(property.PropertyType)
-            && property.PropertyType != typeof(string)
-        )
-        {
-            foreach (object? item in (IEnumerable)value)
-            {
-                if (item == null)
-                    continue;
-
-                Type itemType = item.GetType();
-                PropertyInfo? idProperty = GetIdProperty(itemType);
-                if (idProperty == null)
-                    continue;
-
-                string? itemId = idProperty.GetValue(item)?.ToString();
-                if (itemId == null)
-                    continue;
-
-                string entityKey = $"{itemType.Name}:{itemId}";
-
-                if (processedEntities.Contains(entityKey))
-                    continue;
-
-                processedEntities.Add(entityKey);
-
-                try
-                {
-                    var resourceObject = new ResourceObject
-                    {
-                        Id = itemId,
-                        Type = GetResourceType(itemType),
-                        Attributes = [],
-                    };
-
-                    // Add all attributes
-                    foreach (PropertyInfo prop in GetAttributeProperties(itemType))
-                    {
-                        object? propValue = prop.GetValue(item);
-                        if (propValue != null)
-                            resourceObject.Attributes[prop.Name.ToCamelCase()] = propValue;
-                    }
-
-                    included.Add(resourceObject);
-
-                    if (depth + 1 < pathParts.Length)
-                    {
-                        AddIncludedResourcesRecursive(
-                            item,
-                            pathParts,
-                            depth + 1,
-                            included,
-                            processedEntities
-                        );
-                    }
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("Failed to process included resource");
-                }
-            }
-        }
-        else
-        {
-            Type relType = value.GetType();
-            PropertyInfo? idProperty = GetIdProperty(relType);
-            if (idProperty == null)
-                return;
-
-            string? relId = idProperty.GetValue(value)?.ToString();
-            if (relId == null)
-                return;
-
-            string entityKey = $"{relType.Name}:{relId}";
-
-            if (processedEntities.Contains(entityKey))
-                return;
-
-            processedEntities.Add(entityKey);
-
-            try
-            {
-                var resourceObject = new ResourceObject
-                {
-                    Id = relId,
-                    Type = GetResourceType(relType),
-                    Attributes = [],
-                };
-
-                foreach (PropertyInfo prop in GetAttributeProperties(relType))
-                {
-                    object? propValue = prop.GetValue(value);
-                    if (propValue != null)
-                    {
-                        resourceObject.Attributes[prop.Name.ToCamelCase()] = propValue;
-                    }
-                }
-
-                included.Add(resourceObject);
-
-                if (depth + 1 < pathParts.Length)
-                {
-                    AddIncludedResourcesRecursive(
-                        value,
-                        pathParts,
-                        depth + 1,
-                        included,
-                        processedEntities
-                    );
-                }
-            }
-            catch (Exception)
-            {
-                Console.WriteLine("Failed to process included resource");
-            }
-        }
-    }
-
-    private static string GetResourceType(Type type)
-    {
-        string name = type.Name;
-        return name.ToCamelCase();
     }
 }

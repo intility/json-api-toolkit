@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Errors;
 
 /// <summary>
 /// The source object of a JSON:API error.

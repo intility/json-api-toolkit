@@ -1,31 +1,39 @@
 using System.Text.Json.Serialization;
+using JsonApiToolkit.Models.Metadata;
+using JsonApiToolkit.Models.Resources;
 
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Documents;
 
 /// <summary>
-///  A JSON:API document with a collection of resources.
+/// A JSON:API document.
 /// </summary>
 /// <typeparam name="T">The type of the primary data.</typeparam>
-public class JsonApiCollectionDocument<T>
+public class JsonApiDocument<T>
     where T : class
 {
     /// <summary>
-    /// The collection of resources.
+    /// The primary data of the document.
     /// </summary>
     [JsonPropertyName("data")]
-    public IEnumerable<T> Data { get; set; } = [];
+    public T? Data { get; set; }
 
-    /// <inheritdoc cref="JsonApiDocument{T}.Included"/>
+    /// <summary>
+    /// Include related resources in the response. This is optional.
+    /// </summary>
     [JsonPropertyName("included")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IEnumerable<ResourceObject>? Included { get; set; }
 
-    /// <inheritdoc cref="JsonApiDocument{T}.Meta"/>
+    /// <summary>
+    /// Additional information about the document.
+    /// </summary>
     [JsonPropertyName("meta")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? Meta { get; set; }
 
-    /// <inheritdoc cref="JsonApiDocument{T}.Links"/>
+    /// <summary>
+    /// Links related to the primary data.
+    /// </summary>
     [JsonPropertyName("links")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Links? Links { get; set; }

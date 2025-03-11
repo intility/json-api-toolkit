@@ -1,4 +1,4 @@
-using JsonApiToolkit.Models.FilterParameters;
+using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
 
 namespace JsonApiToolkit.Parsing;

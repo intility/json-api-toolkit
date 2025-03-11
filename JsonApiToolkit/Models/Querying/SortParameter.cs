@@ -1,4 +1,4 @@
-namespace JsonApiToolkit.Models;
+namespace JsonApiToolkit.Models.Querying;
 
 /// <summary>
 /// Represents a sort parameter.

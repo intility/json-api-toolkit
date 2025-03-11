@@ -1,4 +1,5 @@
-using JsonApiToolkit.Models.FilterParameters;
+using JsonApiToolkit.Models.Querying;
+using JsonApiToolkit.Models.Querying.Filtering;
 
 namespace JsonApiToolkit.Models;
 
