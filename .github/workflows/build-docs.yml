@@ -1,5 +1,5 @@
-# Your GitHub workflow file under .github/workflows/
-# Trigger the action on push to main
+name: Build Docs
+
 on:
   push:
     branches:
@@ -37,7 +37,6 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        # Upload entire repository
         path: '_site'
     - name: Deploy to GitHub Pages
       id: deployment
