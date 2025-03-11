@@ -1,0 +1,56 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+    
+    - name: Test
+      run: dotnet test --no-build --configuration Release --verbosity normal
+
+  publish:
+    needs: build-and-test
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 9.0.x
+        source-url: https://nuget.pkg.github.com/Intility/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Build and Pack
+      run: |
+        VERSION="${{ github.event.release.tag_name }}"
+        # Remove v prefix if present
+        [[ "$VERSION" =~ ^v ]] && VERSION="${VERSION:1}"
+        dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -p:PackageVersion=$VERSION -c Release
+    
+    - name: Publish to GitHub Packages
+      run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,38 @@
+name: ✨ Feature request
+description: Request a new feature or enhancement.
+labels: ['enhancement']
+type: Feature
+projects: ['intility/56']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to request a new feature or enhancement. Please fill out the form below to help us understand your request.
+  - type: textarea
+    id: feature-request
+    attributes:
+      label: Feature request
+      description: Please describe the feature you would like to see.
+      placeholder: I would like to see...
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Please describe the use case for this feature.
+      placeholder: This feature would be useful for...
+    validations:
+      required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Please select the priority of this feature request.
+      options:
+        - Low
+        - Medium
+        - High
+      default: 2
+    validations:
+      required: true
