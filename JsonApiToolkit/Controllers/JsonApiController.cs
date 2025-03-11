@@ -1,3 +1,4 @@
+using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Extensions.Querying;
 using JsonApiToolkit.Filters;
 using JsonApiToolkit.Mapping;

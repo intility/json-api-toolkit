@@ -55,8 +55,9 @@ public static class JsonApiMapper
         if (includedRelationships?.Count > 0)
         {
             // Map relationships if any
-            List<PropertyInfo> relationshipProperties =
-                RelationshipMapper.GetRelationshipProperties(type);
+            List<PropertyInfo> relationshipProperties = EntityMapper.GetRelationshipProperties(
+                type
+            );
             if (relationshipProperties.Count > 0)
             {
                 resourceObject.Relationships = [];
