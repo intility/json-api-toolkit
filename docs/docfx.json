@@ -4,7 +4,7 @@
     {
       "src": [
         {
-          "src": "./JsonApiToolkit",
+          "src": "../JsonApiToolkit",
           "files": [
             "**/*.csproj"
           ]
@@ -37,8 +37,8 @@
       "modern"
     ],
     "globalMetadata": {
-      "_appName": "Intility.JsonApiToolkit",
-      "_appTitle": "Intility.JsonApiToolkit",
+      "_appName": "JsonApiToolkit",
+      "_appTitle": "JsonApiToolkit",
       "_enableSearch": true,
       "pdf": true
     }
