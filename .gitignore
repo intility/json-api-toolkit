@@ -408,3 +408,6 @@ obj
 # Memory dump files
 core_*
 docs/markdown-cheat-sheet.md
+
+# DocFX
+_site
