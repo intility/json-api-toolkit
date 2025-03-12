@@ -75,6 +75,8 @@ public async Task<IActionResult> GetBooks()
 }
 ```
 
+[More examples (WIP)](https://congenial-telegram-prep6vq.pages.github.io/docs/api-controller-examples.html)
+
 ## Documentation
 For complete documentation and detailed usage instructions, please visit our 
 [documentation page.](https://intility.github.io/Intility.JsonApiToolkit/)
