@@ -32,4 +32,4 @@ dotnet add package Intility.JsonApiToolkit
 
 ## Documentation
 For complete documentation and detailed usage instructions, please visit our 
-[documentation page.](https://intility.github.io/Intility.JsonApiToolkit/).
+[documentation page.](https://intility.github.io/Intility.JsonApiToolkit/)
