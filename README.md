@@ -3,7 +3,7 @@
 
 # Intility.JsonApiToolkit
 
-JsonApiToolkit is a lightweight toolkit for implementing the JSON:API specification in .NET applications. 
+JsonApiToolkit is a lightweight toolkit for implementing the [JSON:API specification](https://jsonapi.org/) in .NET applications. 
 
 ## Installation
 
