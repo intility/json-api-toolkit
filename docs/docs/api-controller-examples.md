@@ -3,7 +3,7 @@
 This example demonstrates how to implement a .NET API controller that leverages JsonApiToolkit for standardized JSON:API responses. In this example, we create a `BooksController` that supports common HTTP operations: GET (single and collection), POST, PATCH, and DELETE.
 
 > [!NOTE]
-> This example assumes you have set up [JsonApiToolkit](../README.md) in your project and configured your dependency injection accordingly.
+> This example assumes you have set up [JsonApiToolkit](./getting-started.md) in your project and configured your dependency injection accordingly.
 
 ---
 
