@@ -30,6 +30,48 @@ Then install the package via NuGet:
 dotnet add package Intility.JsonApiToolkit
 ```
 
+## Setup
+
+1. **Register services:**
+   In your `Program.cs` or `Startup.cs`, add the toolkit services to your dependency injection container:
+
+   ```csharp
+   builder.Services.AddJsonApiToolkit();
+   ```
+
+2. **Inheritance:**
+   Derive your API controllers from the provided `JsonApiController` to leverage helper methods that return JSON:API compliant responses.
+
+   ```csharp
+   public class BooksController : JsonApiController
+   {
+       // Your endpoint implementations here
+   }
+   ```
+
+3. **Configuration:**
+    The toolkit automatically configures JSON serialization settings (camelCase properties, ignoring nulls, etc.) and adds the JSON:API media type to the supported output formatters.
+
+
+## Endpoint Example
+
+```csharp   
+// GET: api/books
+[HttpGet]
+public async Task<IActionResult> GetBooks()
+{
+    // Retrieve JSON:API query parameters
+    QueryParameters queryParams = GetJsonApiQueryParameters();
+    // Retrieves an IQueryable of books and applies JSON:API query parameters
+    IQueryable<Book> query = _dbContext.Books;
+    // Apply includes to the query if requested
+    if (queryParams.Include?.Count > 0)
+        query = query.ApplyJsonApiIncludes(queryParams.Include);
+    // JsonApiOkAsync applies filtering, sorting, and pagination automatically.
+    return await JsonApiOkAsync(query, ResourceType);
+}
+```
+
 ## Documentation
 For complete documentation and detailed usage instructions, please visit our 
 [documentation page.](https://intility.github.io/Intility.JsonApiToolkit/)
