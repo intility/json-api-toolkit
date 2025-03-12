@@ -6,17 +6,27 @@ using JsonApiToolkit.Models.Querying.Filtering;
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Helper class for building filter expressions.
+/// Builds LINQ expressions for applying JSON:API filter parameters to entity queries.
 /// </summary>
+/// <remarks>
+/// This utility class converts JSON:API filter syntax into strongly-typed LINQ expressions
+/// that can be used with Entity Framework or other LINQ providers.
+/// </remarks>
 public static class FilterExpressionBuilder
 {
     /// <summary>
-    /// Builds a filter expression for a group of filters.
+    /// Builds a composite filter expression from a group of filter conditions.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="group">The filter group to build the expression for.</param>
-    /// <param name="parameter">The parameter expression for the entity.</param>
-    /// <returns>The filter expression.</returns>
+    /// <typeparam name="T">The entity type being filtered</typeparam>
+    /// <param name="group">The filter group containing conditions and nested groups</param>
+    /// <param name="parameter">The parameter expression representing the entity in the LINQ expression</param>
+    /// <returns>
+    /// A composite Expression that can be used in a LINQ Where clause, or null if no valid filters exist
+    /// </returns>
+    /// <remarks>
+    /// Handles both simple filters and complex nested filter groups with different logical operators.
+    /// For nested properties, supports dot notation (e.g., "user.address.city").
+    /// </remarks>
     public static Expression? BuildFilterExpression<T>(
         FilterGroup group,
         ParameterExpression parameter

@@ -1,15 +1,22 @@
 namespace JsonApiToolkit.Extensions;
 
 /// <summary>
-/// Extension methods for different string operations.
+/// Provides extension methods for string manipulation related to JSON:API implementation.
 /// </summary>
+/// <remarks>
+/// Contains utilities for case conversion between JSON and C# naming conventions.
+/// </remarks>
 public static class StringExtensions
 {
     /// <summary>
-    /// Converts a string to camel case.
+    /// Converts a string from PascalCase to camelCase format.
     /// </summary>
-    /// <param name="str">The string to convert.</param>
-    /// <returns>The string in camel case.</returns>
+    /// <param name="str">The string to convert</param>
+    /// <returns>The camelCase version of the input string</returns>
+    /// <remarks>
+    /// Used for converting C# property names (PascalCase) to JSON property names (camelCase).
+    /// Returns the original string if it's null, empty, or already in camelCase format.
+    /// </remarks>
     public static string ToCamelCase(this string str)
     {
         if (string.IsNullOrEmpty(str) || !char.IsUpper(str[0]))
@@ -19,10 +26,14 @@ public static class StringExtensions
     }
 
     /// <summary>
-    /// Converts a string to pascal case.
+    /// Converts a string from camelCase to PascalCase format.
     /// </summary>
-    /// <param name="str">The string to convert.</param>
-    /// <returns>The string in pascal case.</returns>
+    /// <param name="str">The string to convert</param>
+    /// <returns>The PascalCase version of the input string</returns>
+    /// <remarks>
+    /// Used for converting JSON property names (camelCase) to C# property names (PascalCase).
+    /// Returns the original string if it's null or empty.
+    /// </remarks>
     public static string ToPascalCase(string str)
     {
         if (string.IsNullOrEmpty(str))

@@ -2,3 +2,7 @@
   href: introduction.md
 - name: Getting Started
   href: getting-started.md
+- name: Querying
+  href: querying.md
+- name: Use Cases
+  href: use-cases.md

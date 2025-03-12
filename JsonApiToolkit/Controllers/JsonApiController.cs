@@ -13,10 +13,12 @@ using Microsoft.EntityFrameworkCore;
 namespace JsonApiToolkit.Controllers;
 
 /// <summary>
-/// Base class for JSON:API controllers. Provides helper methods for returning JSON:API documents.
+/// Base controller class that implements JSON:API specification-compliant responses and request handling.
+/// Provides standardized methods for returning JSON:API document structures with proper content negotiation.
 /// </summary>
 /// <remarks>
-/// This class is intended to be used as a base class for JSON:API controllers.
+/// Automatically configures content type handling for "application/vnd.api+json" and applies the JsonApiExceptionFilter.
+/// Use this as the base class for all controllers that need to return JSON:API compliant responses.
 /// </remarks>
 [Produces("application/vnd.api+json")]
 [Consumes("application/vnd.api+json")]
@@ -24,22 +26,42 @@ namespace JsonApiToolkit.Controllers;
 public abstract class JsonApiController : ControllerBase
 {
     /// <summary>
-    /// Parses the JSON:API query parameters from the current request.
+    /// Extracts and parses JSON:API query parameters from the current HTTP request.
     /// </summary>
-    /// <returns>The parsed JSON:API query parameters.</returns>
+    /// <returns>A QueryParameters object containing parsed filter, sort, pagination, and include parameters.</returns>
+    /// <remarks>
+    /// Handles standard JSON:API query parameter formats including:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <description><c>filter[fieldName]=value</c></description>
+    ///   </item>
+    ///   <item>
+    ///     <description><c>sort=field or sort=-descendingField</c></description>
+    ///   </item>
+    ///   <item>
+    ///     <description><c>page[number]=1&amp;page[size]=10</c></description>
+    ///   </item>
+    ///   <item>
+    ///     <description><c>include=relationship1,relationship2</c></description>
+    ///   </item>
+    /// </list>
+    /// </remarks>
     protected QueryParameters GetJsonApiQueryParameters()
     {
         return JsonApiQueryParser.Parse(Request);
     }
 
     /// <summary>
-    /// Returns a 200 OK response with a JSON:API document. The document will include the entity
-    /// and any included relationships specified in the query parameters.
+    /// Creates a 200 OK response containing a single resource as a JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to return. </param>
-    /// <param name="resourceType">The type of the resource object.</param>
-    /// <returns>The 200 OK response.</returns>
+    /// <typeparam name="T">The entity type being returned</typeparam>
+    /// <param name="entity">The entity to serialize into the response</param>
+    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
+    /// <returns>An IActionResult with a properly formatted JSON:API document</returns>
+    /// <remarks>
+    /// Automatically processes any "include" parameters from the request and adds the specified relationships
+    /// to the included section of the response.
+    /// </remarks>
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)
         where T : class
     {
@@ -55,13 +77,18 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a 200 OK response for a collection of entities with a JSON:API document.
+    /// Creates a 200 OK response containing a collection of resources as a JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entities">The entities to return.</param>
-    /// <param name="resourceType">The type of the resource object.</param>
-    /// <param name="paginationMeta">Optional pagination metadata.</param>
-    /// <returns>The 200 OK response.</returns>
+    /// <typeparam name="T">The entity type of the collection items</typeparam>
+    /// <param name="entities">The collection of entities to serialize into the response</param>
+    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
+    /// <param name="paginationMeta">Optional pagination metadata to include in the response</param>
+    /// <returns>An IActionResult with a properly formatted JSON:API collection document</returns>
+    /// <remarks>
+    /// Automatically processes any "include" parameters from the request and adds the specified relationships
+    /// to the included section of the response. When pagination metadata is provided, adds pagination links
+    /// to the response.
+    /// </remarks>
     protected IActionResult JsonApiOk<T>(
         IEnumerable<T> entities,
         string resourceType,
@@ -82,12 +109,30 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a 200 OK response for a queryable collection with JSON:API query parameters applied.
+    /// Creates a 200 OK response for a queryable collection with full JSON:API query parameter support.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="queryable">The queryable collection.</param>
-    /// <param name="resourceType">The type of the resource object.</param>
-    /// <returns>The 200 OK response.</returns>
+    /// <typeparam name="T">The entity type of the queryable items</typeparam>
+    /// <param name="queryable">The queryable collection to apply filters, sorting, and pagination to</param>
+    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
+    /// <returns>An IActionResult with a properly formatted JSON:API collection document with query parameters applied</returns>
+    /// <remarks>
+    /// This method provides comprehensive support for JSON:API query parameters:
+    /// <list type="bullet">
+    ///   <item>
+    ///     <description>Automatically applies any filter parameters to the queryable</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Applies sorting based on sort parameters</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Handles pagination and generates pagination metadata and links</description>
+    ///   </item>
+    ///   <item>
+    ///     <description>Processes includes to add related resources</description>
+    ///   </item>
+    /// </list>
+    /// This is the recommended method for collection endpoints as it implements the complete JSON:API querying capabilities.
+    /// </remarks>
     protected async Task<IActionResult> JsonApiOkAsync<T>(
         IQueryable<T> queryable,
         string resourceType
@@ -136,13 +181,17 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a 201 Created response with a JSON:API document.
+    /// Creates a 201 Created response containing a newly created resource as a JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to return.</param>
-    /// <param name="resourceType">The type of the resource object.</param>
-    /// <param name="id">The ID of the entity.</param>
-    /// <returns>The 201 Created response.</returns>
+    /// <typeparam name="T">The entity type being returned</typeparam>
+    /// <param name="entity">The newly created entity</param>
+    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
+    /// <param name="id">The ID of the newly created resource</param>
+    /// <returns>An IActionResult with Status201Created and a properly formatted JSON:API document</returns>
+    /// <remarks>
+    /// Sets the Location header to the resource's URL and includes the resource in the response body.
+    /// Automatically processes any "include" parameters from the request to add related resources.
+    /// </remarks>
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
         where T : class
     {
@@ -159,19 +208,25 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a 204 No Content response with no body.
+    /// Creates a 204 No Content response for successful operations that don't return data.
     /// </summary>
-    /// <returns>The 204 No Content response.</returns>
+    /// <returns>An IActionResult with Status204NoContent and an empty response body</returns>
+    /// <remarks>
+    /// Use this method for successful DELETE operations or updates that don't return the modified resource.
+    /// </remarks>
     protected IActionResult JsonApiNoContent()
     {
         return NoContent();
     }
 
     /// <summary>
-    /// Returns a 404 Not Found response with a JSON:API error object.
+    /// Creates a 404 Not Found response with a JSON:API compliant error object.
     /// </summary>
-    /// <param name="detail">The error detail.</param>
-    /// <returns>The 404 Not Found response.</returns>
+    /// <param name="detail">Custom error message explaining what resource was not found</param>
+    /// <returns>An IActionResult with Status404NotFound and a properly formatted JSON:API error document</returns>
+    /// <remarks>
+    /// Use this method when a requested resource doesn't exist to provide a consistent error response format.
+    /// </remarks>
     protected IActionResult JsonApiNotFound(string detail = "Resource not found")
     {
         var error = new JsonApiError
@@ -185,10 +240,13 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a 400 Bad Request response with a JSON:API error object.
+    /// Creates a 400 Bad Request response with a JSON:API compliant error object.
     /// </summary>
-    /// <param name="detail">The error detail.</param>
-    /// <returns>The 400 Bad Request response.</returns>
+    /// <param name="detail">Specific error message explaining the validation or request problem</param>
+    /// <returns>An IActionResult with Status400BadRequest and a properly formatted JSON:API error document</returns>
+    /// <remarks>
+    /// Use this method for validation errors, malformed requests, or other client errors.
+    /// </remarks>
     protected IActionResult JsonApiBadRequest(string detail)
     {
         var error = new JsonApiError
@@ -202,9 +260,12 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the full request URL including query string.
+    /// Constructs the complete URL for the current request including scheme, host, path, and query string.
     /// </summary>
-    /// <returns>The full request URL.</returns>
+    /// <returns>The full URL of the current request as a string</returns>
+    /// <remarks>
+    /// Used internally to generate self links and pagination links in JSON:API responses.
+    /// </remarks>
     protected string GetFullRequestUrl()
     {
         return $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";

@@ -5,17 +5,30 @@ using JsonApiToolkit.Models.Querying;
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Helper class for applying sorting.
+/// Provides extension methods to apply JSON:API sorting parameters to IQueryable sources.
 /// </summary>
+/// <remarks>
+/// Implements the sorting strategy defined in the JSON:API specification, supporting multiple
+/// sort fields and ascending/descending direction.
+/// </remarks>
 public static class SortingHandler
 {
     /// <summary>
-    /// Applies sorting to an IQueryable.
+    /// Applies JSON:API sort parameters to an IQueryable data source.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="query">The IQueryable to apply the sorting to.</param>
-    /// <param name="sortParameters">The sort parameters to apply.</param>
-    /// <returns>The IQueryable with the sorting applied.</returns>
+    /// <typeparam name="T">The entity type of the queryable</typeparam>
+    /// <param name="query">The source IQueryable to sort</param>
+    /// <param name="sortParameters">The list of sort parameters specifying fields and directions</param>
+    /// <returns>A new IQueryable with the specified sorting applied</returns>
+    /// <remarks>
+    /// <para>
+    /// Supports multiple sort fields in priority order. For each field, dynamically creates an OrderBy
+    /// or OrderByDescending expression, followed by ThenBy or ThenByDescending for subsequent fields.
+    /// </para>
+    /// <para>
+    /// Returns the original query if no valid sort parameters are provided.
+    /// </para>
+    /// </remarks>
     public static IQueryable<T> ApplySorting<T>(
         this IQueryable<T> query,
         List<SortParameter> sortParameters

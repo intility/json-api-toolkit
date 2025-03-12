@@ -5,17 +5,35 @@ using JsonApiToolkit.Models.Querying.Filtering;
 namespace JsonApiToolkit.Extensions;
 
 /// <summary>
-/// Extensions for IQueryable to apply JSON:API query parameters.
+/// Provides extension methods for applying JSON:API query parameters to IQueryable data sources.
 /// </summary>
+/// <remarks>
+/// Consolidates the application of filtering, sorting, and pagination in a single convenient extension method.
+/// </remarks>
 public static class QueryableExtensions
 {
     /// <summary>
-    /// Applies JSON:API query parameters to an IQueryable.
+    /// Applies all JSON:API query parameters to an IQueryable data source in the correct order.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="query">The IQueryable to apply the query parameters to.</param>
-    /// <param name="parameters">The JSON:API query parameters.</param>
-    /// <returns>The IQueryable with the query parameters applied.</returns>
+    /// <typeparam name="T">The entity type of the queryable</typeparam>
+    /// <param name="query">The source IQueryable to apply parameters to</param>
+    /// <param name="parameters">The complete set of JSON:API query parameters</param>
+    /// <returns>A new IQueryable with all query parameters applied</returns>
+    /// <remarks>
+    /// Applies parameters in the following order:
+    /// <list type="number">
+    /// <item>
+    /// <description>Filtering - narrows the result set based on field conditions</description>
+    /// </item>
+    /// <item>
+    /// <description>Sorting - orders the results (defaults to Id ascending if not specified)</description>
+    /// </item>
+    /// <item>
+    /// <description>Pagination - limits the number of results and supports paging</description>
+    /// </item>
+    /// </list>
+    /// This is the recommended method for applying all JSON:API query parameters in a single operation.
+    /// </remarks>
     public static IQueryable<T> ApplyJsonApiParameters<T>(
         this IQueryable<T> query,
         QueryParameters parameters

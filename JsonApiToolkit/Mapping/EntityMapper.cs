@@ -6,8 +6,12 @@ using JsonApiToolkit.Extensions;
 namespace JsonApiToolkit.Mapping;
 
 /// <summary>
-/// Helper class for mapping entities.
+/// Provides utilities for mapping between entity models and JSON:API resource objects.
 /// </summary>
+/// <remarks>
+/// This static class contains methods for determining ID properties, attributes, and relationships
+/// for entity mapping purposes. It caches property information to improve performance in repeated mapping operations.
+/// </remarks>
 public static class EntityMapper
 {
     private static readonly ConcurrentDictionary<Type, PropertyInfo?> s_idPropertyCache = new();
@@ -21,10 +25,24 @@ public static class EntityMapper
     > s_relationshipPropertyCache = new();
 
     /// <summary>
-    /// Gets the ID property of a resource object.
+    /// Identifies and retrieves the primary key property for an entity type.
     /// </summary>
-    /// <param name="type">The type of the resource object.</param>
-    /// <returns>The ID property of the resource object.</returns>
+    /// <param name="type">The entity type to analyze</param>
+    /// <returns>The PropertyInfo for the ID property, or null if not found</returns>
+    /// <remarks>
+    /// Uses a cached approach to improve performance over repeated calls. Attempts to find the ID property in the following order:
+    /// <list type="number">
+    /// <item>
+    /// <description>A property named "Id"</description>
+    /// </item>
+    /// <item>
+    /// <description>A property named "{TypeName}Id" (e.g., "PersonId" for a "Person" entity)</description>
+    /// </item>
+    /// <item>
+    /// <description>Any property ending with "Id"</description>
+    /// </item>
+    /// </list>
+    /// </remarks>
     public static PropertyInfo? GetIdProperty(Type type)
     {
         return s_idPropertyCache.GetOrAdd(
@@ -39,10 +57,28 @@ public static class EntityMapper
     }
 
     /// <summary>
-    /// Gets the attribute properties of a resource object.
+    /// Identifies the properties that should be mapped as attributes in a JSON:API resource object.
     /// </summary>
-    /// <param name="type">The type of the resource object.</param>
-    /// <returns>The attribute properties of the resource object.</returns>
+    /// <param name="type">The entity type to analyze</param>
+    /// <returns>A list of PropertyInfo objects representing the attributes</returns>
+    /// <remarks>
+    /// Uses a cached approach to improve performance over repeated calls. Excludes:
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Properties used as IDs (ending with "Id" or named "Id")</description>
+    /// </item>
+    /// <item>
+    /// <description>Properties identified as relationships</description>
+    /// </item>
+    /// <item>
+    /// <description>Properties that can't be read or aren't public</description>
+    /// </item>
+    /// <item>
+    /// <description>Collection properties (except strings)</description>
+    /// </item>
+    /// </list>
+    /// The resulting properties typically represent scalar values of the entity.
+    /// </remarks>
     public static List<PropertyInfo> GetAttributeProperties(Type type)
     {
         return s_attributePropertyCache.GetOrAdd(
@@ -73,10 +109,23 @@ public static class EntityMapper
     }
 
     /// <summary>
-    /// Gets the relationship properties of a resource object.
+    /// Identifies the properties that should be mapped as relationships in a JSON:API resource object.
     /// </summary>
-    /// <param name="type">The type of the resource object.</param>
-    /// <returns>The relationship properties of the resource object.</returns>
+    /// <param name="type">The entity type to analyze</param>
+    /// <returns>A list of PropertyInfo objects representing the relationships</returns>
+    /// <remarks>
+    /// Uses a cached approach to improve performance over repeated calls.
+    /// <para>Identifies two types of relationships:</para>
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Collections (IEnumerable properties that aren't strings) - representing to-many relationships</description>
+    /// </item>
+    /// <item>
+    /// <description>Complex object properties (non-primitive, non-value types) - representing to-one relationships</description>
+    /// </item>
+    /// </list>
+    /// <para>Excludes common value types like string, DateTime, and Guid.</para>
+    /// </remarks>
     public static List<PropertyInfo> GetRelationshipProperties(Type type)
     {
         return s_relationshipPropertyCache.GetOrAdd(
@@ -109,10 +158,14 @@ public static class EntityMapper
     }
 
     /// <summary>
-    /// Gets the type of a resource object.
+    /// Determines the JSON:API resource type name for an entity type.
     /// </summary>
-    /// <param name="type">The type of the resource object.</param>
-    /// <returns>The type of the resource object.</returns>
+    /// <param name="type">The entity type</param>
+    /// <returns>The camelCase resource type name</returns>
+    /// <remarks>
+    /// By convention, uses the entity class name in camelCase as the resource type.
+    /// For example, a "Person" entity class becomes a "person" resource type.
+    /// </remarks>
     public static string GetResourceType(Type type)
     {
         string name = type.Name;

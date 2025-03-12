@@ -8,34 +8,69 @@ using Microsoft.Extensions.DependencyInjection;
 namespace JsonApiToolkit.Extensions;
 
 /// <summary>
-/// Contains extension methods for configuring JSON:API Toolkit services in the application's dependency injection container.
+/// Provides extension methods for integrating JsonApiToolkit into the ASP.NET Core dependency injection system.
 /// </summary>
 /// <remarks>
-/// This class provides helper methods to register and configure components required for JSON:API compliance,
-/// such as exception filters, JSON serialization settings, and media type support for JSON:API responses.
+/// Contains the core setup method for registering and configuring all JsonApiToolkit components
+/// in an ASP.NET Core application.
 /// </remarks>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers JSON:API Toolkit components and configures necessary options for JSON:API compliance.
+    /// Configures all necessary services and options for JsonApiToolkit in an ASP.NET Core application.
     /// </summary>
-    /// <param name="services">The service collection to which the JSON:API Toolkit services will be added.</param>
-    /// <returns>The updated service collection including registered JSON:API Toolkit services.</returns>
+    /// <param name="services">The service collection to add JsonApiToolkit services to</param>
+    /// <returns>The service collection for method chaining</returns>
     /// <remarks>
-    /// This method performs the following actions:
+    /// This method performs the following configuration steps:
+    /// <list type="number">
+    /// <item>
+    /// <description>Configures JSON serialization options:
     /// <list type="bullet">
-    ///   <item>
-    ///     <description>Adds a scoped JSON:API exception filter to handle API-specific exceptions.</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Configures global JSON serialization options to use camel-case property naming and to ignore null values,
-    ///     ensuring consistency with JSON:API formatting requirements.</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Adds the "application/vnd.api+json" media type to the list of supported media types for JSON output formatters,
-    ///     enabling proper content negotiation for JSON:API responses.</description>
-    ///   </item>
+    /// <item>
+    /// <description>Sets camelCase property naming to comply with JSON:API naming conventions</description>
+    /// </item>
+    /// <item>
+    /// <description>Ignores null values to reduce response size</description>
+    /// </item>
+    /// <item>
+    /// <description>Configures reference handling to prevent circular references</description>
+    /// </item>
     /// </list>
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>Adds support for the JSON:API media type:
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Registers "application/vnd.api+json" as a supported media type for JSON formatters</description>
+    /// </item>
+    /// <item>
+    /// <description>Ensures proper content negotiation for JSON:API responses</description>
+    /// </item>
+    /// </list>
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <description>Registers the JSON:API exception filter:
+    /// <list type="bullet">
+    /// <item>
+    /// <description>Provides standardized error handling for unhandled exceptions</description>
+    /// </item>
+    /// <item>
+    /// <description>Formats errors according to the JSON:API specification</description>
+    /// </item>
+    /// </list>
+    /// </description>
+    /// </item>
+    /// </list>
+    /// Call this method in your Startup.ConfigureServices or Program.cs to fully configure JsonApiToolkit.
+    /// <para>
+    /// Example:
+    /// <code>
+    /// builder.Services.AddJsonApiToolkit();
+    /// </code>
+    /// </para>
     /// </remarks>
     public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services)
     {

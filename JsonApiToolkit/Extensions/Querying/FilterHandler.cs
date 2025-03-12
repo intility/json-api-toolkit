@@ -4,17 +4,25 @@ using JsonApiToolkit.Models.Querying.Filtering;
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Helper class for applying filters.
+/// Provides extension methods to apply JSON:API filter conditions to IQueryable sources.
 /// </summary>
+/// <remarks>
+/// This class serves as the bridge between JSON:API filter parameters and queryable data sources,
+/// translating filter specifications into LINQ expressions.
+/// </remarks>
 public static class FilterHandler
 {
     /// <summary>
-    /// Applies filters to an IQueryable.
+    /// Applies a set of JSON:API filter conditions to an IQueryable data source.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="query">The IQueryable to apply the filters to.</param>
-    /// <param name="filterGroup">The filter group to apply.</param>
-    /// <returns>The IQueryable with the filters applied.</returns>
+    /// <typeparam name="T">The entity type of the queryable</typeparam>
+    /// <param name="query">The source IQueryable to filter</param>
+    /// <param name="filterGroup">The filter group defining the conditions to apply</param>
+    /// <returns>A new IQueryable with the filter conditions applied</returns>
+    /// <remarks>
+    /// Supports complex filtering with nested conditions, different operators (eq, ne, gt, lt, etc.),
+    /// and logical combinations (AND, OR, NOT). Returns the original query if no valid filters exist.
+    /// </remarks>
     public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, FilterGroup filterGroup)
     {
         if (

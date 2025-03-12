@@ -8,18 +8,52 @@ using JsonApiToolkit.Models.Resources;
 namespace JsonApiToolkit.Mapping;
 
 /// <summary>
-/// A JSON:API mapper. Maps entities to JSON:API resources.
+/// Core mapper for converting entities and entity collections to JSON:API resource structures.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This static class provides the primary mapping functionality between application entities and
+/// JSON:API document structures. It handles mapping of attributes, relationships, included resources,
+/// pagination, and links.
+/// </para>
+/// <para>
+/// All JSON:API document creation should use these methods to ensure consistency and compliance
+/// with the JSON:API specification.
+/// </para>
+/// </remarks>
 public static class JsonApiMapper
 {
     /// <summary>
-    /// Maps an entity to a JSON:API resource object.
+    /// Maps an entity to a JSON:API resource object with attributes and relationships.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to map.</param>
-    /// <param name="resourceType">The type of the resource object.</param>
-    /// <param name="includedRelationships">Optional list of relationship paths to include.</param>
-    /// <returns>The JSON:API resource object.</returns>
+    /// <typeparam name="T">The entity type</typeparam>
+    /// <param name="entity">The entity to map</param>
+    /// <param name="resourceType">The JSON:API resource type identifier</param>
+    /// <param name="includedRelationships">Optional list of relationships to include in the resource object</param>
+    /// <returns>A fully populated ResourceObject representing the entity</returns>
+    /// <remarks>
+    /// Maps the entity to a JSON:API resource object by:
+    /// <list type="number">
+    /// <item>
+    /// <description>Extracting the entity's ID</description>
+    /// </item>
+    /// <item>
+    /// <description>Mapping primitive properties to attributes</description>
+    /// </item>
+    /// <item>
+    /// <description>Mapping related entities to relationships (both to-one and to-many)</description>
+    /// </item>
+    /// </list>
+    /// <para>
+    /// Only maps relationships that are explicitly included in the includedRelationships parameter.
+    /// Performs smart mapping of different relationship types (to-one vs to-many).
+    /// </para>
+    /// <para>
+    /// This is the core mapping method used by all other document creation methods.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown if the entity parameter is null</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the entity's ID cannot be determined</exception>
     public static ResourceObject ToResourceObject<T>(
         T entity,
         string resourceType,
@@ -54,7 +88,6 @@ public static class JsonApiMapper
 
         if (includedRelationships?.Count > 0)
         {
-            // Map relationships if any
             List<PropertyInfo> relationshipProperties = EntityMapper.GetRelationshipProperties(
                 type
             );
@@ -149,14 +182,31 @@ public static class JsonApiMapper
     }
 
     /// <summary>
-    /// Maps an entity to a JSON:API document.
+    /// Maps an entity to a complete JSON:API document with support for included resources.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to map.</param>
-    /// <param name="resourceType">The type of the resource object.</param>
-    /// <param name="selfLink">The self link of the resource object.</param>
-    /// <param name="includedRelationships">Optional list of relationship paths to include.</param>
-    /// <returns>The JSON:API document.</returns>
+    /// <typeparam name="T">The entity type</typeparam>
+    /// <param name="entity">The entity to map</param>
+    /// <param name="resourceType">The JSON:API resource type identifier</param>
+    /// <param name="selfLink">The self link URL for the resource</param>
+    /// <param name="includedRelationships">Optional list of relationship paths to include</param>
+    /// <returns>A fully populated JSON:API document representing the entity</returns>
+    /// <remarks>
+    /// <para>
+    /// Creates a complete JSON:API document with:
+    /// <list type="number">
+    /// <item>
+    /// <description>The primary resource object (with attributes and relationships)</description>
+    /// </item>
+    /// <item>
+    /// <description>Self links for the document and resource</description>
+    /// </item>
+    /// <item>
+    /// <description>Related resources in the included array (if includedRelationships is specified)</description>
+    /// </item>
+    /// </list>
+    /// Used for single-resource responses (GET on a specific resource, POST creating a resource, etc.).
+    /// </para>
+    /// </remarks>
     public static JsonApiDocument<ResourceObject> ToDocument<T>(
         T entity,
         string resourceType,

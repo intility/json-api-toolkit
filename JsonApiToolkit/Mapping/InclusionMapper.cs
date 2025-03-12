@@ -6,18 +6,32 @@ using JsonApiToolkit.Models.Resources;
 namespace JsonApiToolkit.Mapping;
 
 /// <summary>
-/// Helper class for mapping included resources.
+/// Handles the mapping of included (related) resources in JSON:API responses.
 /// </summary>
+/// <remarks>
+/// Responsible for processing the "include" query parameter and adding the specified related resources
+/// to the "included" section of a JSON:API response. Handles both to-one and to-many relationships,
+/// and supports nested inclusion paths (e.g., "author.comments").
+/// </remarks>
 public static class InclusionMapper
 {
     /// <summary>
-    /// Adds included resources to the list of included resources.
+    /// Processes specified include paths and adds related resources to the included collection.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to add included resources for.</param>
-    /// <param name="includePaths">The include paths to add.</param>
-    /// <param name="included">The list of included resources.</param>
-    /// <param name="processedEntities">The set of processed entities.</param>
+    /// <typeparam name="T">The entity type of the primary resource</typeparam>
+    /// <param name="entity">The primary entity</param>
+    /// <param name="includePaths">List of relationship paths to include (e.g., ["author", "comments.user"])</param>
+    /// <param name="included">Collection to add included resources to</param>
+    /// <param name="processedEntities">Optional set tracking already processed entities to prevent duplicates</param>
+    /// <remarks>
+    /// <para>
+    /// The entry point for inclusion processing. Starts from the primary entity and traverses all specified
+    /// relationship paths, collecting related entities for inclusion in the response.
+    /// </para>
+    /// <para>
+    /// Uses a HashSet to track processed entities and prevent duplicate inclusions.
+    /// </para>
+    /// </remarks>
     public static void AddIncludedResources<T>(
         T entity,
         List<string> includePaths,
@@ -39,14 +53,47 @@ public static class InclusionMapper
     }
 
     /// <summary>
-    /// Adds included resources to the list of included resources.
+    /// Recursively processes a single include path to extract related resources.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="entity">The entity to add included resources for.</param>
-    /// <param name="pathParts">The parts of the include path.</param>
-    /// <param name="depth">The current depth in the path.</param>
-    /// <param name="included">The list of included resources.</param>
-    /// <param name="processedEntities">The set of processed entities.</param>
+    /// <typeparam name="T">The entity type at the current recursion level</typeparam>
+    /// <param name="entity">The entity at the current recursion level</param>
+    /// <param name="pathParts">Array of relationship names forming the include path</param>
+    /// <param name="depth">Current depth in the path</param>
+    /// <param name="included">Collection to add included resources to</param>
+    /// <param name="processedEntities">Set tracking already processed entities to prevent duplicates</param>
+    /// <remarks>
+    /// <para>
+    /// Internal recursive method that handles both to-one and to-many relationships:
+    /// <list type="bullet">
+    /// <item>
+    /// <description>For to-many relationships, iterates through the collection and processes each item</description>
+    /// </item>
+    /// <item>
+    /// <description>For to-one relationships, processes the single related entity</description>
+    /// </item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// For each related entity:
+    /// <list type="number">
+    /// <item>
+    /// <description>Extracts its ID and type to form a unique key</description>
+    /// </item>
+    /// <item>
+    /// <description>Checks if it has already been processed (to avoid duplicates)</description>
+    /// </item>
+    /// <item>
+    /// <description>Adds it to the included collection with all its attributes</description>
+    /// </item>
+    /// <item>
+    /// <description>Recursively processes the next part of the include path if needed</description>
+    /// </item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Handles nested includes (e.g., "author.comments") by recursively calling itself with an incremented depth.
+    /// </para>
+    /// </remarks>
     public static void AddIncludedResourcesRecursive<T>(
         T entity,
         string[] pathParts,
@@ -108,7 +155,6 @@ public static class InclusionMapper
                         Attributes = [],
                     };
 
-                    // Add all attributes
                     foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(itemType))
                     {
                         object? propValue = prop.GetValue(item);

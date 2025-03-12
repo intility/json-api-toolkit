@@ -1,45 +1,12 @@
 namespace JsonApiToolkit.Models.Querying.Filtering;
 
 /// <summary>
-/// Specifies the filter operator used to define comparison operations in filtering expressions.
+/// Defines comparison operators used in JSON:API filter expressions.
 /// </summary>
 /// <remarks>
-/// Enum values include:
-/// <list type="bullet">
-///   <item>
-///     <description><c>Eq</c> - Equal (default).</description>
-///   </item>
-///   <item>
-///     <description><c>Ne</c> - Not equal.</description>
-///   </item>
-///   <item>
-///     <description><c>Gt</c> - Greater than.</description>
-///   </item>
-///   <item>
-///     <description><c>Ge</c> - Greater than or equal.</description>
-///   </item>
-///   <item>
-///     <description><c>Lt</c> - Less than.</description>
-///   </item>
-///   <item>
-///     <description><c>Le</c> - Less than or equal.</description>
-///   </item>
-///   <item>
-///     <description><c>Like</c> - Contains.</description>
-///   </item>
-///   <item>
-///     <description><c>In</c> - In list.</description>
-///   </item>
-///   <item>
-///     <description><c>Nin</c> - Not in list.</description>
-///   </item>
-///   <item>
-///     <description><c>IsNull</c> - Is null.</description>
-///   </item>
-///   <item>
-///     <description><c>IsNotNull</c> - Is not null.</description>
-///   </item>
-/// </list>
+/// These operators map to SQL comparison operators and determine how field values
+/// are compared against filter values. They support a wide range of comparison types
+/// from basic equality to range checks and pattern matching.
 /// </remarks>
 public enum FilterOperator
 {

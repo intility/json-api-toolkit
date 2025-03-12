@@ -5,17 +5,25 @@ using Microsoft.EntityFrameworkCore;
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Helper class for handling pagination.
+/// Provides extension methods for implementing JSON:API pagination on IQueryable data sources.
 /// </summary>
+/// <remarks>
+/// Implements the pagination strategy specified in the JSON:API specification using page-based pagination
+/// with configurable page size and page number.
+/// </remarks>
 public static class PaginationHandler
 {
     /// <summary>
-    /// Applies pagination to an IQueryable.
+    /// Applies pagination parameters to an IQueryable data source.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="query">The IQueryable to apply the pagination to.</param>
-    /// <param name="pagination">The pagination parameters to apply.</param>
-    /// <returns>The IQueryable with the pagination applied.</returns>
+    /// <typeparam name="T">The entity type of the queryable</typeparam>
+    /// <param name="query">The source IQueryable to paginate</param>
+    /// <param name="pagination">The pagination parameters defining page number and size</param>
+    /// <returns>A new IQueryable with pagination applied (Skip/Take)</returns>
+    /// <remarks>
+    /// Translates the page-based pagination model (page number and size) into the offset-based
+    /// pagination used by LINQ (Skip and Take).
+    /// </remarks>
     public static IQueryable<T> ApplyPagination<T>(
         this IQueryable<T> query,
         PaginationParameters pagination
@@ -26,12 +34,16 @@ public static class PaginationHandler
     }
 
     /// <summary>
-    /// Creates pagination metadata for an IQueryable.
+    /// Creates pagination metadata for use in JSON:API responses.
     /// </summary>
-    /// <typeparam name="T">The type of the entity.</typeparam>
-    /// <param name="query">The IQueryable to create the pagination metadata for.</param>
-    /// <param name="pagination">The pagination parameters.</param>
-    /// <returns>The pagination metadata.</returns>
+    /// <typeparam name="T">The entity type of the queryable</typeparam>
+    /// <param name="query">The source IQueryable before pagination was applied</param>
+    /// <param name="pagination">The pagination parameters that were applied</param>
+    /// <returns>A PaginationMeta object containing total counts and pagination information</returns>
+    /// <remarks>
+    /// This method executes a COUNT query on the database to determine the total number of resources
+    /// and calculates total pages based on the page size.
+    /// </remarks>
     public static async Task<PaginationMeta> CreatePaginationMetaAsync<T>(
         this IQueryable<T> query,
         PaginationParameters pagination

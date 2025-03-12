@@ -1,6 +1,9 @@
+[![CI/CD Pipeline](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/ci-cd.yml)
+[![Build Docs](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/build-docs.yml/badge.svg)](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/build-docs.yml)
+
 # Intility.JsonApiToolkit
 
-A toolkit for implementing JSON:API specification in .NET applications.
+JsonApiToolkit is a lightweight toolkit for implementing the JSON:API specification in .NET applications. 
 
 ## Installation
 
@@ -19,3 +22,13 @@ To install this package from Intility's GitHub Packages, add this to your NuGet.
     </github>
   </packageSourceCredentials>
 </configuration>
+```
+
+Then install the package via NuGet:
+
+```bash
+dotnet add package Intility.JsonApiToolkit
+```
+
+## Documentation
+For complete documentation and detailed usage instructions, please visit our [Documentation page.]("https://congenial-telegram-prep6vq.pages.github.io/") 
