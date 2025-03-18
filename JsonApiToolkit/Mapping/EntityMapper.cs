@@ -57,6 +57,15 @@ public static class EntityMapper
     }
 
     /// <summary>
+    /// Tag to be used on Ids that should be included as attributes in a JSON:API resource object.
+    /// </summary>
+    /// <remarks>
+    /// Overrides the default behavior of excluding ID properties from attribute mapping.
+    /// </remarks>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class IncludeAsAttributeAttribute : Attribute;
+
+    /// <summary>
     /// Identifies the properties that should be mapped as attributes in a JSON:API resource object.
     /// </summary>
     /// <param name="type">The entity type to analyze</param>
@@ -90,16 +99,19 @@ public static class EntityMapper
 
                 return t.GetProperties()
                     .Where(p =>
-                        !p.Name.EndsWith("Id")
-                        && p.Name != "Id"
-                        && !relationshipNames.Contains(p.Name)
-                        && p.CanRead
-                        && p.GetMethod?.IsPublic == true
-                        && (
-                            p.PropertyType == typeof(string)
-                            || (
-                                !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                                || p.PropertyType == typeof(string)
+                        p.GetCustomAttribute<IncludeAsAttributeAttribute>() != null
+                        || (
+                            !p.Name.EndsWith("Id")
+                            && p.Name != "Id"
+                            && !relationshipNames.Contains(p.Name)
+                            && p.CanRead
+                            && p.GetMethod?.IsPublic == true
+                            && (
+                                p.PropertyType == typeof(string)
+                                || (
+                                    !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+                                    || p.PropertyType == typeof(string)
+                                )
                             )
                         )
                     )
@@ -134,21 +146,24 @@ public static class EntityMapper
             {
                 return t.GetProperties()
                     .Where(p =>
-                        p.CanRead
-                        && p.GetMethod?.IsPublic == true
-                        && (
-                            (
-                                typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                                && p.PropertyType != typeof(string)
-                            )
-                            || (
-                                !p.PropertyType.IsPrimitive
-                                && !p.PropertyType.IsValueType
-                                && p.PropertyType != typeof(string)
-                                && p.PropertyType != typeof(DateTime)
-                                && p.PropertyType != typeof(DateTime?)
-                                && p.PropertyType != typeof(Guid)
-                                && p.PropertyType != typeof(Guid?)
+                        p.GetCustomAttribute<IncludeAsAttributeAttribute>() != null
+                        || (
+                            p.CanRead
+                            && p.GetMethod?.IsPublic == true
+                            && (
+                                (
+                                    typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+                                    && p.PropertyType != typeof(string)
+                                )
+                                || (
+                                    !p.PropertyType.IsPrimitive
+                                    && !p.PropertyType.IsValueType
+                                    && p.PropertyType != typeof(string)
+                                    && p.PropertyType != typeof(DateTime)
+                                    && p.PropertyType != typeof(DateTime?)
+                                    && p.PropertyType != typeof(Guid)
+                                    && p.PropertyType != typeof(Guid?)
+                                )
                             )
                         )
                     )
