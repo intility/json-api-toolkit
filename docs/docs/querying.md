@@ -46,3 +46,33 @@ With this request, the toolkit will:
 - Sort the results with the newest published books first.
 - Return the first 10 results.
 - Include related author and reviews data in the response.
+
+## Missing Attributes in JSON:API Responses
+
+When using our JSON:API implementation, you might notice that certain properties—such as `CompanyTenantId`—are not included in the API responses. This is because the default attribute mapping logic intentionally excludes any property that ends with "`Id`" (other than the primary `Id`).
+
+### Default Behavior and Rationale
+
+This behavior is deliberate and conforms to JSON:API best practices:
+- **Separation of Identity and Attributes:** The primary identifier is kept separate from the resource’s attributes. The `"id"` field uniquely identifies a resource, while attributes describe its state.
+- **Avoiding Redundancy:** By not duplicating identifier values as attributes, the response remains clean and unambiguous.
+- **Clarifying Relationships:** Properties ending in "`Id`" often indicate foreign keys or relational links. Excluding them from attributes discourages treating these as simple data values.
+
+### How to Circumvent the Default Behavior
+
+If your design requires that additional identifier fields be exposed as attributes—because they carry significant, non-relational context—you can override the default exclusion by using the `[IncludeAsAttribute]` attribute. For example:
+
+```csharp
+using static JsonApiToolkit.Mapping.EntityMapper;
+
+public class Company
+{
+    public Guid Id { get; set; }
+    public string CompanyName { get; set; } = string.Empty;
+    public string CompanyCode { get; set; } = string.Empty;
+    [IncludeAsAttribute]
+    public Guid CompanyTenantId { get; set; }
+}
+```
+
+
