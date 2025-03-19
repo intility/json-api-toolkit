@@ -230,7 +230,10 @@ public static class JsonApiMapper
             InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
             if (included.Count > 0)
             {
-                document.Included = included;
+                document.Included = included
+                    .GroupBy(r => new { r.Type, r.Id })
+                    .Select(g => g.First())
+                    .ToList();
             }
         }
 
