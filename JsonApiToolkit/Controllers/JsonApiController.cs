@@ -187,22 +187,31 @@ public abstract class JsonApiController : ControllerBase
     /// <param name="entity">The newly created entity</param>
     /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
     /// <param name="id">The ID of the newly created resource</param>
+    /// <param name="explicitIncludes">Optional list of relationships to include in the response</param>
     /// <returns>An IActionResult with Status201Created and a properly formatted JSON:API document</returns>
     /// <remarks>
     /// Sets the Location header to the resource's URL and includes the resource in the response body.
     /// Automatically processes any "include" parameters from the request to add related resources.
     /// </remarks>
-    protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
+    protected IActionResult JsonApiCreated<T>(
+        T entity,
+        string resourceType,
+        string id,
+        List<string>? explicitIncludes = null
+    )
         where T : class
     {
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}{Request.Path}";
         string selfUrl = $"{baseUrl}/{id}";
-        QueryParameters queryParams = GetJsonApiQueryParameters();
+
+        // Use explicit includes if provided, otherwise use query params
+        List<string>? includes = explicitIncludes ?? GetJsonApiQueryParameters().Include;
+
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             selfUrl,
-            queryParams.Include
+            includes
         );
         return Created(selfUrl, document);
     }
