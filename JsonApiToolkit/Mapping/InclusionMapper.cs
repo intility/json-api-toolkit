@@ -236,4 +236,37 @@ public static class InclusionMapper
             }
         }
     }
+
+    /// <summary>
+    /// Detects which navigation properties are already loaded for an entity.
+    /// </summary>
+    /// <typeparam name="T">The entity type</typeparam>
+    /// <param name="entity">The entity instance</param>
+    /// <returns>List of navigation property names that are loaded</returns>
+    public static List<string> DetectLoadedRelationships<T>(T entity)
+        where T : class
+    {
+        var loadedRelationships = new List<string>();
+        if (entity == null)
+            return loadedRelationships;
+
+        IEnumerable<PropertyInfo> navigationProperties = typeof(T)
+            .GetProperties()
+            .Where(p =>
+                p.PropertyType.IsClass
+                && p.PropertyType != typeof(string)
+                && !p.PropertyType.IsValueType
+            );
+
+        foreach (PropertyInfo prop in navigationProperties)
+        {
+            object? value = prop.GetValue(entity);
+            if (value != null)
+            {
+                loadedRelationships.Add(prop.Name);
+            }
+        }
+
+        return loadedRelationships;
+    }
 }
