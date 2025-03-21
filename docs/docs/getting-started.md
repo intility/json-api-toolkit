@@ -57,3 +57,19 @@ dotnet add package Intility.JsonApiToolkit
 > [!NOTE]
 > Now your API is ready to return responses that fully comply with the JSON:API specification!  
 
+
+## GitHub Actions
+To get fetch the package in your GitHub Actions workflow, add the following to your workflow file:
+
+```yaml
+- name: Add Intility NuGet Package Source
+  run: |
+    dotnet nuget add source https://nuget.pkg.github.com/Intility/index.json \
+    --name Intility \
+    --username ${{ github.actor }} \
+    --password ${{ secrets.GITHUB_TOKEN }} \
+    --store-password-in-clear-text
+```
+
+> [!IMPORTANT]
+> Your Github token must have the `read:packages` scope to access the package.

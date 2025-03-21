@@ -52,6 +52,21 @@ dotnet add package Intility.JsonApiToolkit
 3. **Configuration:**
     The toolkit automatically configures JSON serialization settings (camelCase properties, ignoring nulls, etc.) and adds the JSON:API media type to the supported output formatters.
 
+## GitHub Actions
+To get fetch the package in your GitHub Actions workflow, add the following to your workflow file:
+
+```yaml
+- name: Add Intility NuGet Package Source
+  run: |
+    dotnet nuget add source https://nuget.pkg.github.com/Intility/index.json \
+    --name Intility \
+    --username ${{ github.actor }} \
+    --password ${{ secrets.GITHUB_TOKEN }} \
+    --store-password-in-clear-text
+```
+
+> [!IMPORTANT]
+> Your Github token must have the `read:packages` scope to access the package.
 
 ## Endpoint Example
 
