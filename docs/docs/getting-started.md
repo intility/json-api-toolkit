@@ -73,3 +73,33 @@ To get fetch the package in your GitHub Actions workflow, add the following to y
 
 > [!IMPORTANT]
 > Your Github token must have the `read:packages` scope to access the package.
+
+## Dependabot
+To enable Dependabot to fetch the package, add the registry to your `dependabot.yml` file. Example:
+
+```yaml
+version: 2
+
+registries:
+  intility:
+    type: "nuget-feed"
+    url: "https://nuget.pkg.github.com/Intility/index.json"
+    username: "x-access-token"
+    password: ${{ secrets.INTILITY_NUGET_DEPENDABOT }}
+
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    registries: "*"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "🤖"
+    labels:
+      - "dependencies"
+```
+
+> [!IMPORTANT]
+> You need to create a token with `read:packages` that you add to
+> your dependabot secrets. 
