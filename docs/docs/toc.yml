@@ -8,3 +8,5 @@
   href: use-cases.md
 - name: API Controller Examples
   href: api-controller-examples.md
+- name: Integrations
+  href: integrations/toc.yml
