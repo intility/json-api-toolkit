@@ -135,6 +135,96 @@ JsonApiToolkit supports rich querying via URL parameters. `jsonapi-react-tools` 
 
     The query builder supports all standard JSON:API operators (`eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `in`, `nin`, `isnull`, `isnotnull`) and logical groupings (`and`, `or`, `not`).
 
+### Working with Relationships (Included Resources)
+
+When your API response includes related resources (using the `include` query parameter), `jsonapi-react-tools` provides type safety for the `included` array. This requires defining a central registry of all your resource types.
+
+1.  **Define Attribute Types for All Resources:** Ensure you have attribute types defined not only for your primary resource (e.g., `CompanyAttributes`) but also for any resources that might appear in the `included` array (e.g., `LocationAttributes`).
+
+    ```ts
+    // types/Company.ts
+    export type CompanyAttributes = {
+      companyName: string;
+      companyCode: string;
+      // ... other fields
+    };
+
+    // types/Location.ts
+    export type LocationAttributes = {
+      address: string;
+      city: string;
+      // ... other fields
+    };
+    ```
+
+2.  **Create Your Application's Type Registry:** Implement the `JsonApiTypeRegistry` interface, mapping the exact `type` string returned by your API to the corresponding attribute interface.
+
+    ```ts
+    // types/Registry.ts
+    import { JsonApiTypeRegistry } from "@intility/jsonapi-react-tools";
+    import { CompanyAttributes } from "./Company";
+    import { LocationAttributes } from "./Location";
+
+    // Add all resource types that can appear in 'data' or 'included'
+    export interface AppTypeRegistry extends JsonApiTypeRegistry {
+      companies: CompanyAttributes; // 'companies' is the type string from the API
+      locations: LocationAttributes; // 'locations' is the type string from the API
+    }
+    ```
+
+3.  **Use the Registry in Your Data Fetching:** Pass your `AppTypeRegistry` as the second generic argument to `JsonApiCollectionDocument` or `JsonApiDocument`.
+
+    ```tsx
+    import { useQuery } from "@tanstack/react-query";
+    import {
+      JsonApiCollectionDocument,
+      isResourceType, // Import the type predicate
+      buildJsonApiQueryString,
+      JsonApiQueryOptions,
+    } from "@intility/jsonapi-react-tools";
+    import { CompanyAttributes } from "~/types/Company.ts";
+    import { AppTypeRegistry } from "~/types/Registry.ts"; // Import your registry
+
+    const queryOptions: JsonApiQueryOptions<CompanyAttributes> = {
+      include: ["locations"], // Request related locations
+    };
+    const queryString = buildJsonApiQueryString(queryOptions);
+
+    export const CompanyListWithLocations = () => {
+      // Use the registry in the useQuery type definition
+      const { data: response, error, isLoading } = useQuery<
+        JsonApiCollectionDocument<CompanyAttributes, AppTypeRegistry> // <--- Pass registry here
+      >({ queryKey: ["api", "companies", queryString] });
+
+      if (isLoading) return <div>Loading...</div>;
+      if (error || !response) return <div>Error</div>;
+
+      // Process included data safely
+      response.included?.forEach((resource) => {
+        // Use the type predicate to check the type and narrow it down
+        if (isResourceType(resource, "locations")) {
+          // TypeScript now knows resource.attributes is LocationAttributes
+          console.log("Included Location City:", resource.attributes.city);
+        }
+        // Add checks for other included types if necessary
+      });
+
+      return (
+        <ul>
+          {response.data.map((company) => (
+            <li key={company.id}>
+              {company.attributes.companyName}
+              {/* You can now safely look up and display related data */}
+            </li>
+          ))}
+        </ul>
+      );
+    };
+    ```
+
+By defining the `AppTypeRegistry` and using the `isResourceType` type predicate, you gain full type safety when working with related resources included in your API responses.
+
+
 ### Further Information
 
 For more details on the package itself, visit the repository:
