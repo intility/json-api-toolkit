@@ -137,93 +137,177 @@ JsonApiToolkit supports rich querying via URL parameters. `jsonapi-react-tools` 
 
 ### Working with Relationships (Included Resources)
 
-When your API response includes related resources (using the `include` query parameter), `jsonapi-react-tools` provides type safety for the `included` array. This requires defining a central registry of all your resource types.
+JsonApiToolkit responses separate primary resource data from related resources, which are returned in an `included` array. The primary resource’s relationships contain only resource identifiers. To work with full resource objects and ensure type safety, you must first define your resource attributes and create a central type registry that maps resource type strings to these attribute interfaces.
 
-1.  **Define Attribute Types for All Resources:** Ensure you have attribute types defined not only for your primary resource (e.g., `CompanyAttributes`) but also for any resources that might appear in the `included` array (e.g., `LocationAttributes`).
+#### Define Resource Attributes & Create a Type Registry
 
-    ```ts
-    // types/Company.ts
-    export type CompanyAttributes = {
-      companyName: string;
-      companyCode: string;
-      // ... other fields
-    };
+First, define interfaces for each resource's attributes:
 
-    // types/Location.ts
-    export type LocationAttributes = {
-      address: string;
-      city: string;
-      // ... other fields
-    };
-    ```
+```ts
+export interface CompanyAttributes {
+  companyName: string;
+  companyCode: string;
+  establishedAt: string;
+}
 
-2.  **Create Your Application's Type Registry:** Implement the `JsonApiTypeRegistry` interface, mapping the exact `type` string returned by your API to the corresponding attribute interface.
+export interface LocationAttributes {
+  address: string;
+  city: string;
+  country: string;
+}
 
-    ```ts
-    // types/Registry.ts
-    import { JsonApiTypeRegistry } from "@intility/jsonapi-react-tools";
-    import { CompanyAttributes } from "./Company";
-    import { LocationAttributes } from "./Location";
+export interface EmployeeAttributes {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+```
 
-    // Add all resource types that can appear in 'data' or 'included'
-    export interface AppTypeRegistry extends JsonApiTypeRegistry {
-      companies: CompanyAttributes; // 'companies' is the type string from the API
-      locations: LocationAttributes; // 'locations' is the type string from the API
-    }
-    ```
+Then, create a registry that maps the resource type strings (as they are returned by your API) to your interfaces:
 
-3.  **Use the Registry in Your Data Fetching:** Pass your `AppTypeRegistry` as the second generic argument to `JsonApiCollectionDocument` or `JsonApiDocument`.
+```ts
+import { JsonApiTypeRegistry } from "@intility/jsonapi-react-tools";
+import { CompanyAttributes } from "./Company";
+import { LocationAttributes } from "./Location";
+import { EmployeeAttributes } from "./Employee";
 
-    ```tsx
-    import { useQuery } from "@tanstack/react-query";
-    import {
-      JsonApiCollectionDocument,
-      isResourceType, // Import the type predicate
-      buildJsonApiQueryString,
-      JsonApiQueryOptions,
-    } from "@intility/jsonapi-react-tools";
-    import { CompanyAttributes } from "~/types/Company.ts";
-    import { AppTypeRegistry } from "~/types/Registry.ts"; // Import your registry
+export interface AppTypeRegistry extends JsonApiTypeRegistry {
+  companies: CompanyAttributes;
+  locations: LocationAttributes;
+  employees: EmployeeAttributes;
+}
+```
 
-    const queryOptions: JsonApiQueryOptions<CompanyAttributes> = {
-      include: ["locations"], // Request related locations
-    };
-    const queryString = buildJsonApiQueryString(queryOptions);
+This registry is used throughout your application to ensure that all JSON:API responses are strongly typed.
 
-    export const CompanyListWithLocations = () => {
-      // Use the registry in the useQuery type definition
-      const { data: response, error, isLoading } = useQuery<
-        JsonApiCollectionDocument<CompanyAttributes, AppTypeRegistry> // <--- Pass registry here
-      >({ queryKey: ["api", "companies", queryString] });
+#### 2. Extracting Related Resources
 
-      if (isLoading) return <div>Loading...</div>;
-      if (error || !response) return <div>Error</div>;
+There are two cases for extracting related resources from a JSON:API response:
 
-      // Process included data safely
-      response.included?.forEach((resource) => {
-        // Use the type predicate to check the type and narrow it down
-        if (isResourceType(resource, "locations")) {
-          // TypeScript now knows resource.attributes is LocationAttributes
-          console.log("Included Location City:", resource.attributes.city);
-        }
-        // Add checks for other included types if necessary
-      });
+**A. Single Resource Responses:**  
+When fetching a single resource (using a `JsonApiDocument`), all related resources are still available in the `included` array. In this case, you can use the built-in `getIncludedOfType` helper to filter the `included` array by resource type. For example:
 
-      return (
+```tsx
+import { getIncludedOfType } from "@intility/jsonapi-react-tools";
+
+export function CompanyDetail({ companyId }: { companyId: string }) {
+  const { data: companyDocument, isLoading } = useCompany(companyId);
+
+  if (isLoading || !companyDocument || !companyDocument.data) {
+    return <div>Loading company details...</div>;
+  }
+
+  // Use getIncludedOfType to extract related locations and employees
+  const locations = getIncludedOfType(companyDocument, "locations");
+  const employees = getIncludedOfType(companyDocument, "employees");
+
+  return (
+    <div>
+      <h2>{companyDocument.data.attributes.companyName}</h2>
+      <p>Code: {companyDocument.data.attributes.companyCode}</p>
+      <p>
+        Established:{" "}
+        <FormatDate date={companyDocument.data.attributes.establishedAt} />
+      </p>
+      <section>
+        <h3>Locations</h3>
         <ul>
-          {response.data.map((company) => (
-            <li key={company.id}>
-              {company.attributes.companyName}
-              {/* You can now safely look up and display related data */}
+          {locations.map((loc) => (
+            <li key={loc.id}>
+              {loc.attributes.address}, {loc.attributes.city},{" "}
+              {loc.attributes.country}
             </li>
           ))}
         </ul>
-      );
-    };
-    ```
+      </section>
+      <section>
+        <h3>Employees</h3>
+        <ul>
+          {employees.map((emp) => (
+            <li key={emp.id}>
+              {emp.attributes.firstName} {emp.attributes.lastName} -{" "}
+              {emp.attributes.email}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+```
 
-By defining the `AppTypeRegistry` and using the `isResourceType` type predicate, you gain full type safety when working with related resources included in your API responses.
+In this example, the company’s related locations and employees are retrieved directly from the `included` array using `getIncludedOfType`.
 
+**B. Collection Responses:**  
+When dealing with collection responses (using a `JsonApiCollectionDocument`), each primary resource defines its relationships with only resource identifiers. To resolve these identifiers into full resource objects, use the `resolveRelationship` helper. For example, in a component listing companies:
+
+```tsx
+import { useCompanies } from "~/hooks/useCompanies";
+import { Table } from "@intility/bifrost-react";
+import { resolveRelationship } from "@intility/jsonapi-react-tools";
+
+export function CompanyList() {
+  const { data: companiesDocument, isLoading } = useCompanies();
+
+  if (isLoading || !companiesDocument) {
+    return <div>Loading companies...</div>;
+  }
+
+  return (
+    <Table>
+        <Table.Header>
+            <Table.Row>
+                <Table.HeaderCell>Company Name</Table.HeaderCell>
+                <Table.HeaderCell>Locations</Table.HeaderCell>
+                <Table.HeaderCell>Employees</Table.HeaderCell>
+            </Table.Row>
+        </Table.Header>
+        <Table.Body>
+            {companiesDocument.data.map((company) => {
+            // Resolve the 'locations' and 'employees' relationships for each company.
+            // Note: The relationship names here (e.g., "locations") must match those
+            // returned by your API.
+            const companyLocations = company.relationships?.locations?.data
+                ? resolveRelationship(
+                    company.relationships.locations.data,
+                    companiesDocument,
+                    "locations"
+                )
+                : [];
+            const companyEmployees = company.relationships?.employees?.data
+                ? resolveRelationship(
+                    company.relationships.employees.data,
+                    companiesDocument,
+                    "employees"
+                )
+                : [];
+
+            return (
+                <Table.Row key={company.id}>
+                    <Table.Cell>{company.attributes.companyName}</Table.Cell>
+                    <Table.Cell>
+                        {companyLocations.map((loc) => loc.attributes.address).join(
+                        ", "
+                        )}
+                    </Table.Cell>
+                    <Table.Cell>
+                        {companyEmployees
+                        .map(
+                            (emp) =>
+                            `${emp.attributes.firstName} ${emp.attributes.lastName}`
+                        )
+                        .join(", ")}
+                    </Table.Cell>
+                </Table.Row>
+            );
+            })}
+        </Table.Body>
+    </Table>
+  );
+}
+```
+
+Here, the `resolveRelationship` helper maps the relationship identifiers (from the primary company resource) to the full location and employee objects from the collection’s `included` array.
 
 ### Further Information
 
