@@ -4,115 +4,151 @@ using JsonApiToolkit.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi.Models;
 
-namespace JsonApiToolkit.Extensions;
-
-/// <summary>
-/// Provides extension methods for integrating JsonApiToolkit into the ASP.NET Core dependency injection system.
-/// </summary>
-/// <remarks>
-/// Contains the core setup method for registering and configuring all JsonApiToolkit components
-/// in an ASP.NET Core application.
-/// </remarks>
-public static class ServiceCollectionExtensions
+namespace JsonApiToolkit.Extensions
 {
     /// <summary>
-    /// Configures all necessary services and options for JsonApiToolkit in an ASP.NET Core application.
+    /// Provides extension methods for integrating JsonApiToolkit into the ASP.NET Core dependency injection system.
     /// </summary>
-    /// <param name="services">The service collection to add JsonApiToolkit services to</param>
-    /// <returns>The service collection for method chaining</returns>
-    /// <remarks>
-    /// This method performs the following configuration steps:
-    /// <list type="number">
-    /// <item>
-    /// <description>Configures JSON serialization options:
-    /// <list type="bullet">
-    /// <item>
-    /// <description>Sets camelCase property naming to comply with JSON:API naming conventions</description>
-    /// </item>
-    /// <item>
-    /// <description>Ignores null values to reduce response size</description>
-    /// </item>
-    /// <item>
-    /// <description>Configures reference handling to prevent circular references</description>
-    /// </item>
-    /// </list>
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <description>Adds support for the JSON:API media type:
-    /// <list type="bullet">
-    /// <item>
-    /// <description>Registers "application/vnd.api+json" as a supported media type for JSON formatters</description>
-    /// </item>
-    /// <item>
-    /// <description>Ensures proper content negotiation for JSON:API responses</description>
-    /// </item>
-    /// </list>
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <description>Registers the JSON:API exception filter:
-    /// <list type="bullet">
-    /// <item>
-    /// <description>Provides standardized error handling for unhandled exceptions</description>
-    /// </item>
-    /// <item>
-    /// <description>Formats errors according to the JSON:API specification</description>
-    /// </item>
-    /// </list>
-    /// </description>
-    /// </item>
-    /// </list>
-    /// Call this method in your Startup.ConfigureServices or Program.cs to fully configure JsonApiToolkit.
-    /// <para>
-    /// Example:
-    /// <code>
-    /// builder.Services.AddJsonApiToolkit();
-    /// </code>
-    /// </para>
-    /// </remarks>
-    public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services)
+    public static class ServiceCollectionExtensions
     {
-        services.Configure<JsonOptions>(options =>
+        /// <summary>
+        /// Configures all necessary services and options for JsonApiToolkit in an ASP.NET Core application.
+        /// Also configures OpenAPI/Swagger to use the correct JSON:API content types for controllers inheriting from JsonApiController.
+        /// </summary>
+        /// <param name="services">The service collection to add JsonApiToolkit services to.</param>
+        /// <returns>The service collection for method chaining.</returns>
+        /// <remarks>
+        /// This method:
+        /// <list type="number">
+        /// <item>
+        /// <description>Configures JSON serialization options for JSON:API.</description>
+        /// </item>
+        /// <item>
+        /// <description>Adds support for the JSON:API media type to input/output formatters.</description>
+        /// </item>
+        /// <item>
+        /// <description>Registers JSON:API exception and content-type filters.</description>
+        /// </item>
+        /// <item>
+        /// <description>Configures OpenAPI/Swagger to use "application/vnd.api+json" for all endpoints inheriting from JsonApiController.</description>
+        /// </item>
+        /// </list>
+        /// </remarks>
+        public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services)
         {
-            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-            options.JsonSerializerOptions.DefaultIgnoreCondition =
-                JsonIgnoreCondition.WhenWritingNull;
-            options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        });
-
-        services.Configure<MvcOptions>(options =>
-        {
-            SystemTextJsonOutputFormatter? jsonOutputFormatter = options
-                .OutputFormatters.OfType<SystemTextJsonOutputFormatter>()
-                .FirstOrDefault();
-
-            if (
-                jsonOutputFormatter?.SupportedMediaTypes.Contains("application/vnd.api+json")
-                == false
-            )
+            // Configure JSON serialization options
+            services.Configure<JsonOptions>(options =>
             {
-                jsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.api+json");
-            }
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                options.JsonSerializerOptions.DefaultIgnoreCondition =
+                    JsonIgnoreCondition.WhenWritingNull;
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            });
 
-            SystemTextJsonInputFormatter? jsonInputFormatter = options
-                .InputFormatters.OfType<SystemTextJsonInputFormatter>()
-                .FirstOrDefault();
-
-            if (
-                jsonInputFormatter?.SupportedMediaTypes.Contains("application/vnd.api+json")
-                == false
-            )
+            // Configure MVC formatters and filters
+            services.Configure<MvcOptions>(options =>
             {
-                jsonInputFormatter.SupportedMediaTypes.Add("application/vnd.api+json");
-            }
-            options.Filters.AddService<JsonApiContentTypeFilter>();
-        });
+                SystemTextJsonOutputFormatter? jsonOutputFormatter = options
+                    .OutputFormatters.OfType<SystemTextJsonOutputFormatter>()
+                    .FirstOrDefault();
 
-        services.AddScoped<JsonApiExceptionFilter>();
-        services.AddScoped<JsonApiContentTypeFilter>();
+                if (
+                    jsonOutputFormatter?.SupportedMediaTypes.Contains("application/vnd.api+json")
+                    == false
+                )
+                {
+                    jsonOutputFormatter.SupportedMediaTypes.Add("application/vnd.api+json");
+                }
 
-        return services;
+                SystemTextJsonInputFormatter? jsonInputFormatter = options
+                    .InputFormatters.OfType<SystemTextJsonInputFormatter>()
+                    .FirstOrDefault();
+
+                if (
+                    jsonInputFormatter?.SupportedMediaTypes.Contains("application/vnd.api+json")
+                    == false
+                )
+                {
+                    jsonInputFormatter.SupportedMediaTypes.Add("application/vnd.api+json");
+                }
+
+                options.Filters.AddService<JsonApiContentTypeFilter>();
+            });
+
+            // Register filters
+            services.AddScoped<JsonApiExceptionFilter>();
+            services.AddScoped<JsonApiContentTypeFilter>();
+
+            // Register OpenAPI document transformer for JSON:API content types
+            services.AddOpenApi(o =>
+            {
+                // OpenAPI document transformer that rewrites request and response content types
+                // to "application/vnd.api+json" for all endpoints tagged as "JsonApi".
+                o.AddDocumentTransformer(
+                    (document, _, _) =>
+                    {
+                        foreach (var path in document.Paths.Values)
+                        {
+                            foreach (var operation in path.Operations.Values)
+                            {
+                                // Only apply to operations tagged as "JsonApi"
+                                if (operation.Tags.Any(t => t.Name == "JsonApi"))
+                                {
+                                    // Rewrite request body content types
+                                    if (operation.RequestBody != null)
+                                    {
+                                        if (
+                                            operation.RequestBody.Content.TryGetValue(
+                                                "application/json",
+                                                out var jsonContent
+                                            )
+                                        )
+                                        {
+                                            operation.RequestBody.Content[
+                                                "application/vnd.api+json"
+                                            ] = jsonContent;
+                                            operation.RequestBody.Content.Remove(
+                                                "application/json"
+                                            );
+                                        }
+                                        else if (
+                                            !operation.RequestBody.Content.ContainsKey(
+                                                "application/vnd.api+json"
+                                            )
+                                        )
+                                        {
+                                            operation.RequestBody.Content[
+                                                "application/vnd.api+json"
+                                            ] = new OpenApiMediaType();
+                                        }
+                                    }
+
+                                    // Rewrite response content types
+                                    foreach (var response in operation.Responses.Values)
+                                    {
+                                        if (
+                                            response.Content.TryGetValue(
+                                                "application/json",
+                                                out var jsonContent
+                                            )
+                                        )
+                                        {
+                                            response.Content["application/vnd.api+json"] =
+                                                jsonContent;
+                                            response.Content.Remove("application/json");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        return Task.CompletedTask;
+                    }
+                );
+            });
+
+            return services;
+        }
     }
 }

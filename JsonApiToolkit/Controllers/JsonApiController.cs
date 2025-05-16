@@ -23,6 +23,7 @@ namespace JsonApiToolkit.Controllers;
 [Produces("application/vnd.api+json")]
 [Consumes("application/vnd.api+json")]
 [ServiceFilter(typeof(JsonApiExceptionFilter))]
+[ApiExplorerSettings(GroupName = "JsonApi")]
 public abstract class JsonApiController : ControllerBase
 {
     /// <summary>
