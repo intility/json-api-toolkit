@@ -15,27 +15,10 @@ namespace JsonApiToolkit.Extensions
     {
         /// <summary>
         /// Configures all necessary services and options for JsonApiToolkit in an ASP.NET Core application.
-        /// Also configures OpenAPI/Swagger to use the correct JSON:API content types for controllers inheriting from JsonApiController.
+        /// Also configures OpenAPI/Swagger to use the correct JSON:API content types for controllers tagged with GroupName = "JsonApi".
         /// </summary>
         /// <param name="services">The service collection to add JsonApiToolkit services to.</param>
         /// <returns>The service collection for method chaining.</returns>
-        /// <remarks>
-        /// This method:
-        /// <list type="number">
-        /// <item>
-        /// <description>Configures JSON serialization options for JSON:API.</description>
-        /// </item>
-        /// <item>
-        /// <description>Adds support for the JSON:API media type to input/output formatters.</description>
-        /// </item>
-        /// <item>
-        /// <description>Registers JSON:API exception and content-type filters.</description>
-        /// </item>
-        /// <item>
-        /// <description>Configures OpenAPI/Swagger to use "application/vnd.api+json" for all endpoints inheriting from JsonApiController.</description>
-        /// </item>
-        /// </list>
-        /// </remarks>
         public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services)
         {
             // Configure JSON serialization options
