@@ -4,7 +4,6 @@ using JsonApiToolkit.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.OpenApi.Models;
 
 namespace JsonApiToolkit.Extensions
 {
@@ -63,73 +62,6 @@ namespace JsonApiToolkit.Extensions
             // Register filters
             services.AddScoped<JsonApiExceptionFilter>();
             services.AddScoped<JsonApiContentTypeFilter>();
-
-            // Register OpenAPI document transformer for JSON:API content types
-            services.AddOpenApi(o =>
-            {
-                // OpenAPI document transformer that rewrites request and response content types
-                // to "application/vnd.api+json" for all endpoints tagged as "JsonApi".
-                o.AddDocumentTransformer(
-                    (document, _, _) =>
-                    {
-                        foreach (var path in document.Paths.Values)
-                        {
-                            foreach (var operation in path.Operations.Values)
-                            {
-                                // Only apply to operations tagged as "JsonApi"
-                                if (operation.Tags.Any(t => t.Name == "JsonApi"))
-                                {
-                                    // Rewrite request body content types
-                                    if (operation.RequestBody != null)
-                                    {
-                                        if (
-                                            operation.RequestBody.Content.TryGetValue(
-                                                "application/json",
-                                                out var jsonContent
-                                            )
-                                        )
-                                        {
-                                            operation.RequestBody.Content[
-                                                "application/vnd.api+json"
-                                            ] = jsonContent;
-                                            operation.RequestBody.Content.Remove(
-                                                "application/json"
-                                            );
-                                        }
-                                        else if (
-                                            !operation.RequestBody.Content.ContainsKey(
-                                                "application/vnd.api+json"
-                                            )
-                                        )
-                                        {
-                                            operation.RequestBody.Content[
-                                                "application/vnd.api+json"
-                                            ] = new OpenApiMediaType();
-                                        }
-                                    }
-
-                                    // Rewrite response content types
-                                    foreach (var response in operation.Responses.Values)
-                                    {
-                                        if (
-                                            response.Content.TryGetValue(
-                                                "application/json",
-                                                out var jsonContent
-                                            )
-                                        )
-                                        {
-                                            response.Content["application/vnd.api+json"] =
-                                                jsonContent;
-                                            response.Content.Remove("application/json");
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        return Task.CompletedTask;
-                    }
-                );
-            });
 
             return services;
         }
