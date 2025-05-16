@@ -107,9 +107,11 @@ public static class ServiceCollectionExtensions
             {
                 jsonInputFormatter.SupportedMediaTypes.Add("application/vnd.api+json");
             }
+            options.Filters.AddService<JsonApiContentTypeFilter>();
         });
 
         services.AddScoped<JsonApiExceptionFilter>();
+        services.AddScoped<JsonApiContentTypeFilter>();
 
         return services;
     }
