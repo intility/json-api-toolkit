@@ -67,3 +67,6 @@ For the same error, your log will show:
 ```
 
 *No stack trace is logged for handled errors like 400, 404, or 409.*
+
+> [!IMPORTANT]
+> If used in a service, ensure the service call is not wrapped in a try-catch block that catches all exceptions. This would prevent the toolkit from handling the error correctly.
