@@ -12,10 +12,10 @@ Throw these exceptions in your code to trigger the corresponding HTTP status and
 | Exception Type                    | HTTP Status | Typical Use Case                      |
 |-----------------------------------|-------------|---------------------------------------|
 | `JsonApiBadRequestException`      | 400         | Validation or malformed input         |
-| `JsonApiNotFoundException`        | 404         | Resource not found                    |
-| `JsonApiConflictException`        | 409         | Unique constraint or conflict         |
 | `JsonApiUnauthorizedException`    | 401         | Not authenticated                     |
 | `JsonApiForbiddenException`       | 403         | Not authorized                        |
+| `JsonApiNotFoundException`        | 404         | Resource not found                    |
+| `JsonApiConflictException`        | 409         | Unique constraint or conflict         |
 
 Any other unhandled exception will result in a 500 Internal Server Error.
 
