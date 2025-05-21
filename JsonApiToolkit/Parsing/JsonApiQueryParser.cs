@@ -169,7 +169,6 @@ public static class JsonApiQueryParser
                 .Split(',')
                 .Where(i => !string.IsNullOrWhiteSpace(i))
                 .Select(i => i.Trim())
-                .Select(i => char.ToUpper(i[0]) + i.Substring(1))
                 .ToList();
 
             if (includes.Count > 0)

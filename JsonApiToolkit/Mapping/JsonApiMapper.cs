@@ -26,7 +26,6 @@ public static class JsonApiMapper
     /// <summary>
     /// Maps an entity to a JSON:API resource object with attributes and relationships.
     /// </summary>
-    /// <typeparam name="T">The entity type</typeparam>
     /// <param name="entity">The entity to map</param>
     /// <param name="resourceType">The JSON:API resource type identifier</param>
     /// <param name="includedRelationships">Optional list of relationships to include in the resource object</param>
@@ -54,21 +53,21 @@ public static class JsonApiMapper
     /// </remarks>
     /// <exception cref="ArgumentNullException">Thrown if the entity parameter is null</exception>
     /// <exception cref="InvalidOperationException">Thrown if the entity's ID cannot be determined</exception>
-    public static ResourceObject ToResourceObject<T>(
-        T entity,
+    public static ResourceObject ToResourceObject(
+        object entity,
         string resourceType,
         List<string>? includedRelationships = null
     )
-        where T : class
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        Type type = typeof(T);
+        Type type = entity.GetType();
 
         PropertyInfo? idProperty = EntityMapper.GetIdProperty(type);
-        string id =
-            idProperty?.GetValue(entity)?.ToString()
+        var idValue =
+            (idProperty?.GetValue(entity))
             ?? throw new InvalidOperationException("Entity Id cannot be null");
+        string id = idValue.ToString()!;
 
         var resourceObject = new ResourceObject
         {
@@ -230,10 +229,7 @@ public static class JsonApiMapper
             InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
             if (included.Count > 0)
             {
-                document.Included = included
-                    .GroupBy(r => new { r.Type, r.Id })
-                    .Select(g => g.First())
-                    .ToList();
+                document.Included = included;
             }
         }
 
@@ -311,17 +307,10 @@ public static class JsonApiMapper
         if (includedRelationships?.Count > 0)
         {
             var included = new List<ResourceObject>();
-            foreach (T entity in entities)
-            {
-                InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
-            }
-
+            InclusionMapper.AddIncludedResources(entities, includedRelationships, included);
             if (included.Count > 0)
             {
-                document.Included = included
-                    .GroupBy(r => new { r.Type, r.Id })
-                    .Select(g => g.First())
-                    .ToList();
+                document.Included = included;
             }
         }
 

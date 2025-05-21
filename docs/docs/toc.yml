@@ -4,8 +4,6 @@
   href: getting-started.md
 - name: Querying
   href: querying.md
-- name: Use Cases
-  href: use-cases.md
 - name: Enhanced Error Handling
   href: enhanced-error-handling.md
 - name: API Controller Examples
