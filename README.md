@@ -75,18 +75,10 @@ To get fetch the package in your GitHub Actions workflow, add the following to y
 [HttpGet]
 public async Task<IActionResult> GetBooks()
 {
-    // Retrieve JSON:API query parameters
-    QueryParameters queryParams = GetJsonApiQueryParameters();
+    var query = _dbContext.Books.AsQueryable();
 
-    // Retrieves an IQueryable of books and applies JSON:API query parameters
-    IQueryable<Book> query = _dbContext.Books;
-
-    // Apply includes to the query if requested
-    if (queryParams.Include?.Count > 0)
-        query = query.ApplyJsonApiIncludes(queryParams.Include);
-
-    // JsonApiOkAsync applies filtering, sorting, and pagination automatically.
-    return await JsonApiOkAsync(query, ResourceType);
+    // JsonApiOkAsync applies filtering, sorting, includes, and pagination automatically.
+    return await JsonApiOkAsync(query, "book");
 }
 ```
 
