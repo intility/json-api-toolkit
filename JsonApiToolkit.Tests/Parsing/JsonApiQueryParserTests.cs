@@ -1,3 +1,4 @@
+using JsonApiToolkit.Helpers;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Querying.Filtering;
 using JsonApiToolkit.Parsing;
@@ -103,29 +104,5 @@ public class JsonApiQueryParserTests
 
         Assert.Equal("age", parameters.Sort[1].Field);
         Assert.True(parameters.Sort[1].IsDescending);
-    }
-
-    [Fact]
-    public void Parse_WithInclude_ReturnsIncludeParameters()
-    {
-        // Arrange
-        var httpContext = new DefaultHttpContext();
-        httpContext.Request.QueryString = new QueryString("?include=relatedEntity,children");
-
-        httpContext.Request.Query = new QueryCollection(
-            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
-            {
-                ["include"] = "relatedEntity,children",
-            }
-        );
-
-        // Act
-        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
-
-        // Assert
-        Assert.NotNull(parameters.Include);
-        Assert.Equal(2, parameters.Include.Count);
-        Assert.Contains("RelatedEntity", parameters.Include);
-        Assert.Contains("Children", parameters.Include);
     }
 }

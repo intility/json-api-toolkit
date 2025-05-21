@@ -1,6 +1,7 @@
 using JsonApiToolkit.Extensions.Querying;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Querying.Filtering;
+using Microsoft.EntityFrameworkCore;
 
 namespace JsonApiToolkit.Extensions;
 
@@ -53,6 +54,29 @@ public static class QueryableExtensions
         if (parameters.Pagination != null)
             query = query.ApplyPagination(parameters.Pagination);
 
+        return query;
+    }
+
+    /// <summary>
+    /// Dynamically applies EF Core Include() calls for each include path (dot notation supported).
+    /// </summary>
+    /// <typeparam name="T">The entity type.</typeparam>
+    /// <param name="query">The source queryable.</param>
+    /// <param name="includePaths">A list of include paths (e.g. "todo", "todo.category").</param>
+    /// <returns>The queryable with all includes applied.</returns>
+    public static IQueryable<T> ApplyIncludes<T>(
+        this IQueryable<T> query,
+        List<string>? includePaths
+    )
+        where T : class
+    {
+        if (includePaths == null || includePaths.Count == 0)
+            return query;
+
+        foreach (string path in includePaths)
+        {
+            query = query.Include(path.Trim());
+        }
         return query;
     }
 }

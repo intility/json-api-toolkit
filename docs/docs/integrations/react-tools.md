@@ -1,143 +1,196 @@
 # Integrations / Frontend Consumption
 
-## jsonapi-react-tools: Consuming APIs in React/TypeScript
+# jsonapi-react-tools
 
-While JsonApiToolkit focuses on building compliant backend APIs, consuming these APIs effectively on the frontend is crucial. The `@intility/jsonapi-react-tools` package provides TypeScript types and utilities specifically designed to make working with JsonApiToolkit responses seamless in React applications.
+**jsonapi-react-tools** is a lightweight, Deno-based TypeScript library designed
+to make working with
+[JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit) responses
+in React applications easier.
 
-It ensures type safety by mirroring the JSON:API structure produced by JsonApiToolkit, allowing you to focus only on defining your resource attributes on the frontend.
+## Features
 
-### Features
+- **Type-safe**: Uses your own TypeScript types for attributes and relationships.
+- **Hydration**: Hydrate your API responses into TypeScript objects.
+- **Query Builder**: Generate query strings for filtering, sorting, pagination,
+  and inclusion.
 
-*   **Strong JSON:API Type Definitions:** Provides generic types like `JsonApiDocument<T>`, `JsonApiCollectionDocument<T>`, `ResourceObject<T>`, etc., where `T` is your specific attribute type.
-*   **Seamless Integration:** Types are tailored for JsonApiToolkit's output, including support for `data`, `links`, `meta` (with `pagination`), `included`, and `errors`.
-*   **Advanced Query Builder:** A type-safe utility to generate complex JSON:API query strings for filtering (including operators and logical groups), sorting, pagination, and inclusion, matching JsonApiToolkit's parsing capabilities.
-*   **Framework Agnostic:** Primarily types and helpers, with no hard dependency on specific data-fetching libraries (though examples often use `react-query`).
+## Prerequisites
+- **JsonApiToolkit**: This library is designed to work with [JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit). Make sure the api you want to interact with is using JsonApiToolkit.
+
+## Getting Started
+
+You can read more about jsonapi-react-tools & JsonApiToolkit [**here**](https://intility.github.io/Intility.JsonApiToolkit/docs/integrations/react-tools.html), or follow the instructions below for a quick start.
 
 ### Installation
-
-Install the package into your **frontend** React project:
 
 ```bash
 npm install @intility/jsonapi-react-tools
 ```
 
-> [!NOTE]
-> This package needs to be fetched via the `npm.intility.com` proxy.
+### Define your types
 
-### Getting Started: Typing Responses
+```ts
+export interface Todo {
+  id: string;
+  type: 'todo';
+  title: string;
+  completed: boolean;
+  dueDate: string;
+  owner: User;
+  tags: Tag[];
+}
 
-1.  **Define Your Attribute Types:** In your frontend project, define a type for the `attributes` of your resource.
+export interface User {
+  id: string;
+  type: 'user';
+  name: string;
+  email: string;
+}
 
-    ```ts
-    export type CompanyAttributes = {
-       companyName: string;
-       companyCode: string;
-       companyTenantId: string;
-       protected: boolean;
-       lastSyncedAt: string; 
-    };
-    ```
+export interface Tag {
+  id: string;
+  type: 'tag';
+  label: string;
+}
+```
 
-2.  **Use Types with Data Fetching:** Use the types from `@intility/jsonapi-react-tools` when fetching data. The package provides types for the full JSON:API envelope. In this example we'll use `react-query`, but you can adapt it to any data-fetching library.
+### Create a hook for hydrated JSON:API responses
+This library has zero dependencies, therefore no hook is provided. You can use any library to fetch data, but here is an example using `react-query`:
 
-    ```tsx
-    import { useQuery } from "@tanstack/react-query";
-    // Import the document type and your attribute type
-    import { JsonApiCollectionDocument } from "@intility/jsonapi-react-tools";
-    import { CompanyAttributes } from "~/types/Company.ts"; // Your local type
+```ts
+import { QueryKey, useQuery, UseQueryOptions } from '@tanstack/react-query';
+import {
+  HydratedQueryResult,
+  hydrateResponse,
+  JsonApiResponse,
+} from '@intility/jsonapi-react-tools';
 
-    // Assuming you have a default query function configured for 'api'
-    // that fetches data and returns the parsed JSON response.
+export function useHydratedQuery<THydrated>(
+  queryKey: QueryKey,
+  options?: Omit<
+    UseQueryOptions<JsonApiResponse, Error, HydratedQueryResult<THydrated>>,
+    'queryKey' | 'select'
+  >,
+) {
+  return useQuery<JsonApiResponse, Error, HydratedQueryResult<THydrated>>({
+    queryKey,
+    select: (data) => hydrateResponse<THydrated>(data),
+    ...options,
+  });
+}
+);
+```
 
-    export const CompanyList = () => {
-      // Provide the specific document type wrapping your attributes type
-      const { data: companyResponse, error, isLoading } = useQuery<
-        JsonApiCollectionDocument<CompanyAttributes>
-      >({ queryKey: ["api", "companies"] });
+Then in your component, you can use the `useHydratedQuery` hook to fetch and automatically hydrate your data. Make sure to pass the correct type for the hydrated data.
 
-      if (isLoading)
-        return <div>Loading companies...</div>;
-      
-      if (error || !companyResponse)
-        return <div>Error loading companies</div>;
+```ts
+const { data, isLoading } = useHydratedQuery<Todo>(
+    [queryKey, 'todos', queryString],
+);
+```
 
-      return (
-        <ul>
-          {companyResponse.data.map((company) => (
-            <li key={company.id}>
-              {company.attributes.companyName} ({company.attributes.companyCode})
-            </li>
-          ))}
-        </ul>
-      );
-    };
-    ```
+> [!IMPORTANT]
+> This example uses a default `queryFn` which is pointed at with the `queryKey`. You can use any `queryFn` you want.
 
-    This approach keeps the original JSON:API structure intact while providing full type safety based on JsonApiToolkit's output.
+Now you can use the `data` object in your component.
 
-### Using the Query Builder
+```tsx
+{isLoading ? <div>Loading…</div> : (
+  <ul>
+    {data.map((todo) => (
+      <li key={todo.id}>
+        <h2>{todo.title}</h2>
+        <p>Due date: {todo.dueDate}</p>
+        <p>Owner: {todo.owner.name}</p>
+        <p>Tags: {todo.tags.map((tag) => tag.label).join(', ')}</p>
+      </li>
+    ))}
+  </ul>
+)}
+```
 
-JsonApiToolkit supports rich querying via URL parameters. `jsonapi-react-tools` includes a type-safe query builder to generate these strings easily.
+### Query builder
+In addition to hydrating your data, you can use the query builder to create query strings for filtering, sorting, pagination, and inclusion. Append 
 
-1.  **Import the Builder:**
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .filter('completed', true)
+  .sort('dueDate')
+  .include('owner', 'tags')
+  .page(1, 10)
+  .build();
+```
 
-    ```ts
-    import { buildJsonApiQueryString, JsonApiQueryOptions } from "@intility/jsonapi-react-tools";
-    import { CompanyAttributes } from "../types/Company.ts"; // Your attribute type
-    ```
+This will create a query string that looks like this:
 
-2.  **Define Query Options:** Create an options object. Field names for `filter` and `sort` are type-checked against your `CompanyAttributes`. Filter operators (`eq`, `ne`, `like`, etc.) have autocompletion.
+```
+?filter[completed]=true&sort=dueDate&page[number]=1&page[size]=10&include=owner,tags
+```
 
-    ```ts
-    const queryOptions: JsonApiQueryOptions<CompanyAttributes> = {
-      filter: {
-        // Field 'companyName' must exist in CompanyAttributes
-        companyName: { like: "Intility" },
-        or: [
-          // Field 'protected' must exist
-          { protected: { eq: true } },
-          // Field 'companyCode' must exist
-          { companyCode: { in: ["AA", "ZZ"] } }
-        ]
-      },
-      sort: [
-        // Field 'companyName' must exist, '-' prefix is allowed
-        "-companyName",
-        // Field 'lastSyncedAt' must exist
-        "lastSyncedAt" 
-      ],
-      page: {
-        number: 1,
-        size: 20
-      },
-      include: ["locations", "employees"] // Relationship names (string array)
-    };
-    ```
+> [!TIP]
+> The query builder supports nested includes using dot notation.
 
-3.  **Generate the Query String:**
 
-    ```typescript
-    const queryString = buildJsonApiQueryString<CompanyAttributes>(queryOptions);
-    ```
-    This will produce a query string like:
+### Kitchen sink example
 
-    `?filter[companyName][like]=Intility&filter[or][0][protected][eq]=true&filter[or][1][companyCode][in]=AA,ZZ&sort=-companyName,lastSyncedAt&page[number]=1&page[size]=20&include=locations,employees`
+**What this query does**
 
-    >*This query would fetch companies with names like "Intility", either protected or with specific company codes, sorted by name and last synced date, paginated to the first 20 results, and including related locations and employees.*
+- Filters for incomplete todos (`completed = false`)
+- Filters for todos due between today and 7 days from now **OR** tagged as "urgent"
+- Filters for todos owned by Alice **or** Bob, **and** where `dueDate` is not null
+- Sorts by `dueDate` ascending, then by `title` descending
+- Includes related `owner`, `tags`, and the owner's `email`
+- Requests page 2, 20 items per page
 
-4.  **Use with Data Fetching:** Append the `queryString` to your API endpoint URL.
+---
 
-    ```tsx
-    const { data: companyResponse, error, isLoading } = useQuery<
-        JsonApiCollectionDocument<CompanyAttributes>
-      >({ queryKey: ["api", "companies", queryString] });
-    ```
+**Query builder code**
 
-    The query builder supports all standard JSON:API operators (`eq`, `ne`, `gt`, `ge`, `lt`, `le`, `like`, `in`, `nin`, `isnull`, `isnotnull`) and logical groupings (`and`, `or`, `not`).
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .filter('completed', 'eq', false)
+  .or(or =>
+    or
+      .filter('dueDate', 'ge', '2025-05-21')
+      .filter('dueDate', 'le', '2025-05-28')
+      .or(or2 =>
+        or2.filter('tags', 'in', ['urgent'])
+      )
+  )
+  .and(and =>
+    and
+      .or(or =>
+        or
+          .filter('owner', 'eq', 'alice-id')
+          .filter('owner', 'eq', 'bob-id')
+      )
+      .not(not =>
+        not.filter('dueDate', 'isnull', true)
+      )
+  )
+  .sort('dueDate', '-title')
+  .include('owner', 'tags', 'owner.email')
+  .paginate(2, 20)
+  .build();
+```
 
-### Working with Relationships (Included Resources)
+---
 
-WIP
+**Output query string**
+
+```
+filter[completed]=false
+&filter[or][0][dueDate][ge]=2025-05-21
+&filter[or][1][dueDate][le]=2025-05-28
+&filter[or][2][or][0][tags][in]=urgent
+&filter[and][0][or][0][owner][eq]=alice-id
+&filter[and][0][or][1][owner][eq]=bob-id
+&filter[and][1][not][0][dueDate][isnull]=true
+&sort=dueDate,-title
+&include=owner,tags,owner.email
+&page[number]=2
+&page[size]=20
+```
 
 ### Further Information
 

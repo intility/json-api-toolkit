@@ -1,5 +1,7 @@
+using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Extensions.Querying;
 using JsonApiToolkit.Filters;
+using JsonApiToolkit.Helpers;
 using JsonApiToolkit.Mapping;
 using JsonApiToolkit.Models.Documents;
 using JsonApiToolkit.Models.Errors;
@@ -67,11 +69,14 @@ public abstract class JsonApiController : ControllerBase
     {
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
         QueryParameters queryParams = GetJsonApiQueryParameters();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            queryParams.Include
+        );
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             baseUrl,
-            queryParams.Include
+            mappedIncludes
         );
         return Ok(document);
     }
@@ -98,12 +103,15 @@ public abstract class JsonApiController : ControllerBase
     {
         string baseUrl = GetFullRequestUrl();
         QueryParameters queryParams = GetJsonApiQueryParameters();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            queryParams.Include
+        );
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             entities,
             resourceType,
             baseUrl,
             paginationMeta,
-            queryParams.Include
+            mappedIncludes
         );
         return Ok(document);
     }
@@ -141,6 +149,10 @@ public abstract class JsonApiController : ControllerBase
     {
         QueryParameters parameters = GetJsonApiQueryParameters();
         string baseUrl = GetFullRequestUrl();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            parameters.Include
+        );
+        queryable = queryable.ApplyIncludes(mappedIncludes);
 
         IQueryable<T> filteredQuery = queryable;
 
@@ -174,7 +186,7 @@ public abstract class JsonApiController : ControllerBase
             resourceType,
             baseUrl,
             paginationMeta,
-            parameters.Include
+            mappedIncludes
         );
 
         return Ok(document);
@@ -198,11 +210,14 @@ public abstract class JsonApiController : ControllerBase
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}{Request.Path}";
         string selfUrl = $"{baseUrl}/{id}";
         QueryParameters queryParams = GetJsonApiQueryParameters();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            queryParams.Include
+        );
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             selfUrl,
-            queryParams.Include
+            mappedIncludes
         );
         return Created(selfUrl, document);
     }

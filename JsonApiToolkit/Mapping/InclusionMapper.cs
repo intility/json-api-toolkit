@@ -18,8 +18,7 @@ public static class InclusionMapper
     /// <summary>
     /// Processes specified include paths and adds related resources to the included collection.
     /// </summary>
-    /// <typeparam name="T">The entity type of the primary resource</typeparam>
-    /// <param name="entity">The primary entity</param>
+    /// <param name="entityOrCollection">The primary entity or collection of entities to process</param>
     /// <param name="includePaths">List of relationship paths to include (e.g., ["author", "comments.user"])</param>
     /// <param name="included">Collection to add included resources to</param>
     /// <param name="processedEntities">Optional set tracking already processed entities to prevent duplicates</param>
@@ -32,23 +31,125 @@ public static class InclusionMapper
     /// Uses a HashSet to track processed entities and prevent duplicate inclusions.
     /// </para>
     /// </remarks>
-    public static void AddIncludedResources<T>(
-        T entity,
+    public static void AddIncludedResources(
+        object entityOrCollection,
         List<string> includePaths,
         List<ResourceObject> included,
         HashSet<string>? processedEntities = null
     )
-        where T : class
     {
-        if (entity == null)
+        if (entityOrCollection == null || includePaths == null || includePaths.Count == 0)
             return;
 
         processedEntities ??= [];
 
-        foreach (string includePath in includePaths)
+        // Group include paths by their first segment
+        IEnumerable<IGrouping<string, string?>> grouped = includePaths
+            .Select(path => path.Split('.', 2))
+            .GroupBy(parts => parts[0], parts => parts.Length > 1 ? parts[1] : null);
+
+        foreach (IGrouping<string, string?> group in grouped)
         {
-            string[] pathParts = includePath.Split('.');
-            AddIncludedResourcesRecursive(entity, pathParts, 0, included, processedEntities);
+            string relationshipName = group.Key;
+            var nestedPaths = group.Where(x => x != null).Select(x => x!).ToList();
+
+            if (entityOrCollection is IEnumerable enumerable and not string)
+            {
+                foreach (object? entity in enumerable)
+                {
+                    AddIncludedForEntity(
+                        entity,
+                        relationshipName,
+                        nestedPaths,
+                        included,
+                        processedEntities
+                    );
+                }
+            }
+            else
+            {
+                AddIncludedForEntity(
+                    entityOrCollection,
+                    relationshipName,
+                    nestedPaths,
+                    included,
+                    processedEntities
+                );
+            }
+        }
+    }
+
+    private static void AddIncludedForEntity(
+        object entity,
+        string relationshipName,
+        List<string> nestedPaths,
+        List<ResourceObject> included,
+        HashSet<string> processedEntities
+    )
+    {
+        if (entity == null)
+            return;
+
+        Type type = entity.GetType();
+        PropertyInfo? relProp = type.GetProperties()
+            .FirstOrDefault(p =>
+                string.Equals(p.Name, relationshipName, StringComparison.OrdinalIgnoreCase)
+            );
+        if (relProp == null)
+            return;
+
+        object? relValue = relProp.GetValue(entity);
+        if (relValue == null)
+            return;
+
+        if (relValue is IEnumerable relCollection && relValue.GetType() != typeof(string))
+        {
+            foreach (object? relEntity in relCollection)
+            {
+                AddSingleIncluded(relEntity, included, processedEntities, nestedPaths);
+            }
+        }
+        else
+        {
+            AddSingleIncluded(relValue, included, processedEntities, nestedPaths);
+        }
+    }
+
+    private static void AddSingleIncluded(
+        object relEntity,
+        List<ResourceObject> included,
+        HashSet<string> processedEntities,
+        List<string> nestedPaths
+    )
+    {
+        if (relEntity == null)
+            return;
+
+        Type type = relEntity.GetType();
+        PropertyInfo? idProp = EntityMapper.GetIdProperty(type);
+        if (idProp == null)
+            return;
+        object? idValue = idProp.GetValue(relEntity);
+        if (idValue == null)
+            return; // <-- Defensive: skip if no ID
+
+        string id = idValue.ToString()!;
+        string key = $"{EntityMapper.GetResourceType(type)}:{id}";
+        if (!processedEntities.Add(key))
+            return; // Already processed
+
+        // Map the related entity to a ResourceObject (attributes + relationships)
+        var resourceObject = JsonApiMapper.ToResourceObject(
+            relEntity,
+            EntityMapper.GetResourceType(type),
+            nestedPaths
+        );
+        included.Add(resourceObject);
+
+        // Recursively process nested include paths
+        if (nestedPaths?.Count > 0)
+        {
+            AddIncludedResources(relEntity, nestedPaths, included, processedEntities);
         }
     }
 
