@@ -56,35 +56,46 @@ public static class QueryHelpers
     /// </summary>
     /// <param name="value">The string value from the query parameter</param>
     /// <param name="targetType">The target property type to convert to</param>
-    /// <returns>The converted value of the appropriate type, or null if conversion fails</returns>
+    /// <returns>
+    /// The converted value, or trows an exception if conversion fails or is not supported
+    /// </returns>
     /// <remarks>
-    /// Handles common primitive types (int, long, decimal, bool, DateTime, Guid) and their nullable variants.
+    /// Handles common primitive types (int, long, decimal, bool, DateTime, Guid, Uri, TimeSpan,
+    /// byte[], etc.) and their nullable variants.
+    /// Also supports enum types, converting the string to the corresponding enum value.
     /// For DateTime values, assumes UTC if no timezone is specified.
-    /// Returns null if conversion fails, allowing for graceful handling of invalid filter values.
     /// </remarks>
     public static object? ConvertToPropertyType(string value, Type targetType)
     {
         try
         {
-            if (targetType == typeof(string))
+            Type nonNullableType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+            if (nonNullableType.IsEnum)
+                return Enum.Parse(nonNullableType, value, ignoreCase: true);
+
+            if (nonNullableType == typeof(string))
                 return value;
 
-            if (targetType == typeof(int) || targetType == typeof(int?))
-                return int.Parse(value);
+            if (nonNullableType == typeof(int))
+                return int.Parse(value, CultureInfo.InvariantCulture);
 
-            if (targetType == typeof(long) || targetType == typeof(long?))
-                return long.Parse(value);
+            if (nonNullableType == typeof(long))
+                return long.Parse(value, CultureInfo.InvariantCulture);
 
-            if (targetType == typeof(decimal) || targetType == typeof(decimal?))
-                return decimal.Parse(value);
+            if (nonNullableType == typeof(decimal))
+                return decimal.Parse(value, CultureInfo.InvariantCulture);
 
-            if (targetType == typeof(double) || targetType == typeof(double?))
-                return double.Parse(value);
+            if (nonNullableType == typeof(double))
+                return double.Parse(value, CultureInfo.InvariantCulture);
 
-            if (targetType == typeof(bool) || targetType == typeof(bool?))
+            if (nonNullableType == typeof(float))
+                return float.Parse(value, CultureInfo.InvariantCulture);
+
+            if (nonNullableType == typeof(bool))
                 return bool.Parse(value);
 
-            if (targetType == typeof(DateTime) || targetType == typeof(DateTime?))
+            if (nonNullableType == typeof(DateTime))
             {
                 return DateTime.Parse(
                     value,
@@ -93,14 +104,37 @@ public static class QueryHelpers
                 );
             }
 
-            if (targetType == typeof(Guid) || targetType == typeof(Guid?))
+            if (nonNullableType == typeof(Guid))
                 return Guid.Parse(value);
 
-            return Convert.ChangeType(value, targetType);
+            if (nonNullableType == typeof(TimeSpan))
+                return TimeSpan.Parse(value, CultureInfo.InvariantCulture);
+
+            if (nonNullableType == typeof(Uri))
+                return new Uri(value, UriKind.RelativeOrAbsolute);
+
+            if (nonNullableType == typeof(byte[]))
+                return Convert.FromBase64String(value);
+
+            // Add more types as needed...
+
+            // If you want to support collections (e.g., int[], List<int>), you can add logic here
+
+            // Fallback: try to use Convert.ChangeType
+            if (typeof(IConvertible).IsAssignableFrom(nonNullableType))
+                return Convert.ChangeType(value, nonNullableType, CultureInfo.InvariantCulture);
+
+            // If you reach here, type is not supported
+            throw new NotSupportedException(
+                $"Conversion for type '{targetType.FullName}' is not supported."
+            );
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            throw new FormatException(
+                $"Failed to convert '{value}' to type '{targetType.FullName}': {ex.Message}",
+                ex
+            );
         }
     }
 }
