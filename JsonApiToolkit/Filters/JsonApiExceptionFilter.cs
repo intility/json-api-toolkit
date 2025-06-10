@@ -35,6 +35,7 @@ public class JsonApiExceptionFilter(ILogger<JsonApiExceptionFilter> logger) : IE
             JsonApiConflictException => (409, "Conflict"),
             JsonApiUnauthorizedException => (401, "Unauthorized"),
             JsonApiForbiddenException => (403, "Forbidden"),
+            JsonApiTooManyRequestsException => (429, "Too Many Requests"),
             _ => (500, "Internal Server Error"),
         };
 

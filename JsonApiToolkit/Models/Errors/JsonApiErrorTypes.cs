@@ -27,3 +27,8 @@ public class JsonApiUnauthorizedException(string message) : Exception(message) {
 /// Exception representing a 403 Forbidden error.
 /// </summary>
 public class JsonApiForbiddenException(string message) : Exception(message) { }
+
+/// <summary>
+/// Exception representing a 429 Too Many Requests error.
+/// </summary>
+public class JsonApiTooManyRequestsException(string message) : Exception(message) { }
