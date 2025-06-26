@@ -262,24 +262,99 @@ public class QueryableExtensionsTests
         var query = GetTestData();
         var pagination = new PaginationParameters { Number = 2, Size = 2 };
 
-        // Mock async behavior for in-memory testing
-        // Note: This is a simplification; for EF Core you'd need proper async testing
-        Task<int> CountAsync() => Task.FromResult(query.Count());
-
         // Act
-        var meta = await new
-        {
-            TotalResources = await CountAsync(),
-            TotalPages = (int)Math.Ceiling(await CountAsync() / (double)pagination.Size),
-            CurrentPage = pagination.Number,
-            PageSize = pagination.Size,
-        }.ToTaskResult();
+        var meta = await query.CreatePaginationMetaAsync(pagination);
 
         // Assert
         Assert.Equal(5, meta.TotalResources);
         Assert.Equal(3, meta.TotalPages);
         Assert.Equal(2, meta.CurrentPage);
         Assert.Equal(2, meta.PageSize);
+    }
+
+    [Fact]
+    public void ApplyPagination_WithInvalidPageNumber_ReturnsLastPage()
+    {
+        // Arrange
+        var query = GetTestData(); // 5 items
+        var pagination = new PaginationParameters { Number = 10, Size = 2 }; // Request page 10, but only 3 pages exist
+
+        // Act
+        var result = query.ApplyPagination(pagination).ToList();
+
+        // Assert - Should return the last page (page 3) which has 1 item (item 5)
+        Assert.Single(result);
+        Assert.Equal(5, result[0].Id);
+        Assert.Equal("Epsilon", result[0].Name);
+    }
+
+    [Fact]
+    public void ApplyPagination_WithPageZero_ReturnsFirstPage()
+    {
+        // Arrange
+        var query = GetTestData();
+        var pagination = new PaginationParameters { Number = 0, Size = 2 }; // Invalid page 0
+
+        // Act
+        var result = query.ApplyPagination(pagination).ToList();
+
+        // Assert - Should return first page
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].Id);
+        Assert.Equal(2, result[1].Id);
+    }
+
+    [Fact]
+    public async Task CreatePaginationMetaAsync_WithInvalidPageNumber_ReturnsLastPageInMetadata()
+    {
+        // Arrange
+        var query = GetTestData(); // 5 items
+        var pagination = new PaginationParameters { Number = 10, Size = 2 }; // Request page 10, but only 3 pages exist
+
+        // Create a simplified test scenario by manually implementing the meta logic
+        var totalCount = query.Count();
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
+        var expectedCurrentPage = Math.Min(Math.Max(pagination.Number, 1), Math.Max(totalPages, 1));
+
+        // Act - for now we'll test the current behavior
+        var meta = await query.CreatePaginationMetaAsync(pagination);
+
+        // Assert
+        Assert.Equal(5, meta.TotalResources);
+        Assert.Equal(3, meta.TotalPages);
+        Assert.Equal(3, meta.CurrentPage); // Should be clamped to last page (3)
+        Assert.Equal(2, meta.PageSize);
+    }
+
+    [Fact]
+    public async Task CreatePaginationMetaAsync_WithPageZero_ReturnsFirstPageInMetadata()
+    {
+        // Arrange
+        var query = GetTestData();
+        var pagination = new PaginationParameters { Number = 0, Size = 2 };
+
+        // Act - for now we'll test the current behavior
+        var meta = await query.CreatePaginationMetaAsync(pagination);
+
+        // Assert
+        Assert.Equal(5, meta.TotalResources);
+        Assert.Equal(3, meta.TotalPages);
+        Assert.Equal(1, meta.CurrentPage); // Should be clamped to first page (1)
+        Assert.Equal(2, meta.PageSize);
+    }
+
+    [Fact]
+    public void ApplyPagination_WithEmptyDataset_ReturnsEmptyResult()
+    {
+        // Arrange
+        var emptyQuery = new List<TestEntity>().AsQueryable();
+        var pagination = new PaginationParameters { Number = 2, Size = 10 };
+
+        // Act
+        var result = emptyQuery.ApplyPagination(pagination).ToList();
+
+        // Assert
+        Assert.Empty(result);
     }
 }
 
