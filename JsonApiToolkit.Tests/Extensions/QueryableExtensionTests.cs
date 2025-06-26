@@ -356,6 +356,30 @@ public class QueryableExtensionsTests
         // Assert
         Assert.Empty(result);
     }
+
+    [Fact]
+    public async Task Issue_Scenario_PageTwoOfOneTotal_ReturnsLastPageData()
+    {
+        // Arrange - exact scenario from the issue: 6 total resources, page size 10, requesting page 2
+        var query = GetTestData(); // 5 items
+        var largePageQuery = query.Take(6).AsQueryable(); // Take 6 to match issue example
+        var pagination = new PaginationParameters { Number = 2, Size = 10 }; // page 2, size 10
+
+        // Act
+        var result = largePageQuery.ApplyPagination(pagination).ToList();
+        var meta = await largePageQuery.CreatePaginationMetaAsync(pagination);
+
+        // Assert - Should return the first page (which is also the last page) with data
+        Assert.Equal(5, result.Count); // All 5 items should be returned (first page = last page)
+        Assert.Equal(5, meta.TotalResources);
+        Assert.Equal(1, meta.TotalPages); // Only 1 page with size 10 for 5 items  
+        Assert.Equal(1, meta.CurrentPage); // Should be clamped to page 1 (the last available page)
+        Assert.Equal(10, meta.PageSize);
+        
+        // Verify we got actual data, not empty results
+        Assert.True(result.Any());
+        Assert.Equal(1, result.First().Id);
+    }
 }
 
 // Helper extension to simulate async for in-memory testing
