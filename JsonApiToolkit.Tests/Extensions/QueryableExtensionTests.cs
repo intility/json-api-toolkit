@@ -18,14 +18,16 @@ public class QueryableExtensionsTests
                 Description = "First",
                 CreatedAt = new DateTime(2023, 1, 1),
                 IsActive = true,
+                Status = TestStatus.Published,
             },
             new TestEntity
             {
                 Id = 2,
                 Name = "Beta",
-                Description = "Second",
+                Description = null,
                 CreatedAt = new DateTime(2023, 2, 1),
                 IsActive = false,
+                Status = TestStatus.Draft,
             },
             new TestEntity
             {
@@ -34,6 +36,7 @@ public class QueryableExtensionsTests
                 Description = "Third",
                 CreatedAt = new DateTime(2023, 3, 1),
                 IsActive = true,
+                Status = TestStatus.Archived,
             },
             new TestEntity
             {
@@ -42,14 +45,16 @@ public class QueryableExtensionsTests
                 Description = "Fourth",
                 CreatedAt = new DateTime(2023, 4, 1),
                 IsActive = false,
+                Status = TestStatus.Published,
             },
             new TestEntity
             {
                 Id = 5,
                 Name = "Epsilon",
-                Description = "Fifth",
+                Description = null,
                 CreatedAt = new DateTime(2023, 5, 1),
                 IsActive = true,
+                Status = TestStatus.Draft,
             },
         }.AsQueryable();
     }
@@ -57,7 +62,6 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyFilters_WithEqualityFilter_FiltersCorrectly()
     {
-        // Arrange
         var query = GetTestData();
         var filterGroup = new FilterGroup
         {
@@ -72,10 +76,8 @@ public class QueryableExtensionsTests
             },
         };
 
-        // Act
         var result = query.ApplyFilters(filterGroup).ToList();
 
-        // Assert
         Assert.Single(result);
         Assert.Equal(2, result[0].Id);
         Assert.Equal("Beta", result[0].Name);
@@ -84,7 +86,6 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyFilters_WithGreaterThanFilter_FiltersCorrectly()
     {
-        // Arrange
         var query = GetTestData();
         var filterGroup = new FilterGroup
         {
@@ -99,10 +100,8 @@ public class QueryableExtensionsTests
             },
         };
 
-        // Act
         var result = query.ApplyFilters(filterGroup).ToList();
 
-        // Assert
         Assert.Equal(2, result.Count);
         Assert.Equal(4, result[0].Id);
         Assert.Equal(5, result[1].Id);
@@ -111,7 +110,6 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyFilters_WithLikeFilter_FiltersCorrectly()
     {
-        // Arrange
         var query = GetTestData();
         var filterGroup = new FilterGroup
         {
@@ -126,11 +124,9 @@ public class QueryableExtensionsTests
             },
         };
 
-        // Act
         var result = query.ApplyFilters(filterGroup).ToList();
 
-        // Assert
-        Assert.Equal(4, result.Count); // changed to 4
+        Assert.Equal(4, result.Count);
         Assert.Contains(result, e => e.Name == "Alpha");
         Assert.Contains(result, e => e.Name == "Gamma");
         Assert.Contains(result, e => e.Name == "Delta");
@@ -140,7 +136,6 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyFilters_WithLogicalAndGroup_FiltersCorrectly()
     {
-        // Arrange
         var query = GetTestData();
         var filterGroup = new FilterGroup
         {
@@ -162,44 +157,18 @@ public class QueryableExtensionsTests
             },
         };
 
-        // Act
         var result = query.ApplyFilters(filterGroup).ToList();
 
-        // Assert
         Assert.Equal(2, result.Count);
         Assert.Equal(3, result[0].Id);
         Assert.Equal(5, result[1].Id);
     }
 
-    // [Fact]
-    // public void ApplySorting_WithSingleSort_SortsCorrectly()
-    // {
-    //     // Arrange
-    //     var query = GetTestData();
-    //     var sortParameters = new List<SortParameter>
-    //     {
-    //         new SortParameter { Field = "Name", IsDescending = true },
-    //     };
-
-    //     // Act
-    //     var result = query.ApplySorting(sortParameters).ToList();
-
-    //     // Assert
-    //     Assert.Equal(5, result.Count);
-    //     Assert.Equal("Epsilon", result[0].Name);
-    //     Assert.Equal("Delta", result[1].Name);
-    //     Assert.Equal("Gamma", result[2].Name);
-    //     Assert.Equal("Beta", result[3].Name);
-    //     Assert.Equal("Alpha", result[4].Name);
-    // }
-
     [Fact]
     public void ApplySorting_WithMultipleSorts_SortsCorrectly()
     {
-        // Arrange
         var query = GetTestData();
 
-        // Modify some data to test secondary sorting
         query = query
             .ToList()
             .Select(e =>
@@ -218,19 +187,15 @@ public class QueryableExtensionsTests
             new SortParameter { Field = "Name", IsDescending = false },
         };
 
-        // Act
         var result = query.ApplySorting(sortParameters).ToList();
 
-        // Assert
         Assert.Equal(5, result.Count);
 
-        // First the active ones (sorted by name)
         Assert.True(result[0].IsActive);
         Assert.True(result[1].IsActive);
         Assert.Equal("Alpha", result[0].Name);
         Assert.Equal("Gamma", result[1].Name);
 
-        // Then the inactive ones (sorted by name)
         Assert.False(result[2].IsActive);
         Assert.False(result[3].IsActive);
         Assert.False(result[4].IsActive);
@@ -242,30 +207,24 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyPagination_PaginatesCorrectly()
     {
-        // Arrange
         var query = GetTestData();
         var pagination = new PaginationParameters { Number = 2, Size = 2 };
 
-        // Act
         var result = query.ApplyPagination(pagination).ToList();
 
-        // Assert
         Assert.Equal(2, result.Count);
         Assert.Equal(3, result[0].Id);
         Assert.Equal(4, result[1].Id);
     }
 
     [Fact]
-    public async Task CreatePaginationMetaAsync_CreatesCorrectMetadata()
+    public async Task CreatePaginationMetaAsync_CreatesCorrectMetadataAsync()
     {
-        // Arrange
         var query = GetTestData();
         var pagination = new PaginationParameters { Number = 2, Size = 2 };
 
-        // Act
         var meta = await query.CreatePaginationMetaAsync(pagination);
 
-        // Assert
         Assert.Equal(5, meta.TotalResources);
         Assert.Equal(3, meta.TotalPages);
         Assert.Equal(2, meta.CurrentPage);
@@ -275,14 +234,10 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyPagination_WithInvalidPageNumber_ReturnsLastPage()
     {
-        // Arrange
-        var query = GetTestData(); // 5 items
-        var pagination = new PaginationParameters { Number = 10, Size = 2 }; // Request page 10, but only 3 pages exist
-
-        // Act
+        var query = GetTestData();
+        var pagination = new PaginationParameters { Number = 10, Size = 2 };
         var result = query.ApplyPagination(pagination).ToList();
 
-        // Assert - Should return the last page (page 3) which has 1 item (item 5)
         Assert.Single(result);
         Assert.Equal(5, result[0].Id);
         Assert.Equal("Epsilon", result[0].Name);
@@ -291,101 +246,261 @@ public class QueryableExtensionsTests
     [Fact]
     public void ApplyPagination_WithPageZero_ReturnsFirstPage()
     {
-        // Arrange
         var query = GetTestData();
         var pagination = new PaginationParameters { Number = 0, Size = 2 }; // Invalid page 0
 
-        // Act
         var result = query.ApplyPagination(pagination).ToList();
 
-        // Assert - Should return first page
         Assert.Equal(2, result.Count);
         Assert.Equal(1, result[0].Id);
         Assert.Equal(2, result[1].Id);
     }
 
     [Fact]
-    public async Task CreatePaginationMetaAsync_WithInvalidPageNumber_ReturnsLastPageInMetadata()
+    public async Task CreatePaginationMetaAsync_WithInvalidPageNumber_ReturnsLastPageInMetadataAsync()
     {
-        // Arrange
-        var query = GetTestData(); // 5 items
-        var pagination = new PaginationParameters { Number = 10, Size = 2 }; // Request page 10, but only 3 pages exist
-
-        // Create a simplified test scenario by manually implementing the meta logic
+        var query = GetTestData();
+        var pagination = new PaginationParameters { Number = 10, Size = 2 };
         var totalCount = query.Count();
         var totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
         var expectedCurrentPage = Math.Min(Math.Max(pagination.Number, 1), Math.Max(totalPages, 1));
 
-        // Act - for now we'll test the current behavior
         var meta = await query.CreatePaginationMetaAsync(pagination);
 
-        // Assert
         Assert.Equal(5, meta.TotalResources);
         Assert.Equal(3, meta.TotalPages);
-        Assert.Equal(3, meta.CurrentPage); // Should be clamped to last page (3)
+        Assert.Equal(3, meta.CurrentPage);
         Assert.Equal(2, meta.PageSize);
     }
 
     [Fact]
-    public async Task CreatePaginationMetaAsync_WithPageZero_ReturnsFirstPageInMetadata()
+    public async Task CreatePaginationMetaAsync_WithPageZero_ReturnsFirstPageInMetadataAsync()
     {
-        // Arrange
         var query = GetTestData();
         var pagination = new PaginationParameters { Number = 0, Size = 2 };
 
-        // Act - for now we'll test the current behavior
         var meta = await query.CreatePaginationMetaAsync(pagination);
 
-        // Assert
         Assert.Equal(5, meta.TotalResources);
         Assert.Equal(3, meta.TotalPages);
-        Assert.Equal(1, meta.CurrentPage); // Should be clamped to first page (1)
+        Assert.Equal(1, meta.CurrentPage);
         Assert.Equal(2, meta.PageSize);
     }
 
     [Fact]
     public void ApplyPagination_WithEmptyDataset_ReturnsEmptyResult()
     {
-        // Arrange
         var emptyQuery = new List<TestEntity>().AsQueryable();
         var pagination = new PaginationParameters { Number = 2, Size = 10 };
 
-        // Act
         var result = emptyQuery.ApplyPagination(pagination).ToList();
 
-        // Assert
         Assert.Empty(result);
     }
 
     [Fact]
-    public async Task Issue_Scenario_PageTwoOfOneTotal_ReturnsLastPageData()
+    public async Task Issue_Scenario_PageTwoOfOneTotal_ReturnsLastPageDataAsync()
     {
-        // Arrange - exact scenario from the issue: 6 total resources, page size 10, requesting page 2
-        var query = GetTestData(); // 5 items
-        var largePageQuery = query.Take(6).AsQueryable(); // Take 6 to match issue example
-        var pagination = new PaginationParameters { Number = 2, Size = 10 }; // page 2, size 10
+        var query = GetTestData();
+        var largePageQuery = query.Take(6).AsQueryable();
+        var pagination = new PaginationParameters { Number = 2, Size = 10 };
 
-        // Act
         var result = largePageQuery.ApplyPagination(pagination).ToList();
         var meta = await largePageQuery.CreatePaginationMetaAsync(pagination);
 
-        // Assert - Should return the first page (which is also the last page) with data
-        Assert.Equal(5, result.Count); // All 5 items should be returned (first page = last page)
+        Assert.Equal(5, result.Count);
         Assert.Equal(5, meta.TotalResources);
-        Assert.Equal(1, meta.TotalPages); // Only 1 page with size 10 for 5 items  
-        Assert.Equal(1, meta.CurrentPage); // Should be clamped to page 1 (the last available page)
+        Assert.Equal(1, meta.TotalPages);
+        Assert.Equal(1, meta.CurrentPage);
         Assert.Equal(10, meta.PageSize);
-        
-        // Verify we got actual data, not empty results
+
         Assert.True(result.Any());
         Assert.Equal(1, result.First().Id);
     }
+
+    [Fact]
+    public void ApplyFilters_WithInFilter_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Status",
+                    Operator = FilterOperator.In,
+                    Value = "Published,Draft",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(4, result.Count);
+        Assert.All(
+            result,
+            e => Assert.True(e.Status == TestStatus.Published || e.Status == TestStatus.Draft)
+        );
+        Assert.DoesNotContain(result, e => e.Status == TestStatus.Archived);
+    }
+
+    [Fact]
+    public void ApplyFilters_WithNinFilter_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Status",
+                    Operator = FilterOperator.Nin,
+                    Value = "Archived",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(4, result.Count);
+        Assert.All(result, e => Assert.NotEqual(TestStatus.Archived, e.Status));
+    }
+
+    [Fact]
+    public void ApplyFilters_WithIsNullFilter_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Description",
+                    Operator = FilterOperator.IsNull,
+                    Value = "true",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, e => Assert.Null(e.Description));
+        Assert.Contains(result, e => e.Name == "Beta");
+        Assert.Contains(result, e => e.Name == "Epsilon");
+    }
+
+    [Fact]
+    public void ApplyFilters_WithIsNotNullFilter_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Description",
+                    Operator = FilterOperator.IsNotNull,
+                    Value = "true",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(3, result.Count);
+        Assert.All(result, e => Assert.NotNull(e.Description));
+        Assert.Contains(result, e => e.Name == "Alpha");
+        Assert.Contains(result, e => e.Name == "Gamma");
+        Assert.Contains(result, e => e.Name == "Delta");
+    }
+
+    [Fact]
+    public void ApplyFilters_WithNeFilter_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Status",
+                    Operator = FilterOperator.Ne,
+                    Value = "Draft",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(3, result.Count);
+        Assert.All(result, e => Assert.NotEqual(TestStatus.Draft, e.Status));
+    }
+
+    [Fact]
+    public void ApplyFilters_WithLogicalOrGroup_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            LogicalOperator = LogicalOperator.Or,
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Name",
+                    Operator = FilterOperator.Eq,
+                    Value = "Alpha",
+                },
+                new FilterParameter
+                {
+                    Field = "Status",
+                    Operator = FilterOperator.Eq,
+                    Value = "Archived",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, e => e.Name == "Alpha");
+        Assert.Contains(result, e => e.Status == TestStatus.Archived);
+    }
+
+    [Fact]
+    public void ApplyFilters_WithLogicalNotGroup_FiltersCorrectly()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            LogicalOperator = LogicalOperator.Not,
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "IsActive",
+                    Operator = FilterOperator.Eq,
+                    Value = "true",
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(2, result.Count);
+        Assert.All(result, e => Assert.False(e.IsActive));
+    }
 }
 
-// Helper extension to simulate async for in-memory testing
 public static class TaskExtensions
 {
-    public static async Task<T> ToTaskResult<T>(this T result)
+    public static async Task<T> ToTaskResultAsync<T>(this T result)
     {
         await Task.Delay(1); // Simulate async
         return result;

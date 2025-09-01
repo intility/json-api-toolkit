@@ -18,6 +18,30 @@ public static class JsonApiFilterParser
     public static readonly string[] s_separator = ["]["];
 
     /// <summary>
+    /// Parses a filter operator string to the corresponding FilterOperator enum value.
+    /// </summary>
+    /// <param name="operatorStr">The operator string to parse</param>
+    /// <returns>The corresponding FilterOperator enum value, defaults to Eq if not recognized</returns>
+    private static FilterOperator ParseFilterOperator(string operatorStr)
+    {
+        return operatorStr.ToLowerInvariant() switch
+        {
+            "eq" => FilterOperator.Eq,
+            "ne" => FilterOperator.Ne,
+            "gt" => FilterOperator.Gt,
+            "ge" => FilterOperator.Ge,
+            "lt" => FilterOperator.Lt,
+            "le" => FilterOperator.Le,
+            "like" => FilterOperator.Like,
+            "in" => FilterOperator.In,
+            "nin" => FilterOperator.Nin,
+            "isnull" => FilterOperator.IsNull,
+            "isnotnull" => FilterOperator.IsNotNull,
+            _ => FilterOperator.Eq,
+        };
+    }
+
+    /// <summary>
     /// Parses a complex filter query parameter into a structured filter parameter and adds it to a filter group.
     /// </summary>
     /// <param name="key">The query parameter key (e.g., "filter[name][eq]")</param>
@@ -53,21 +77,7 @@ public static class JsonApiFilterParser
         {
             Field = field,
             Value = value,
-            Operator = operatorStr switch
-            {
-                "eq" => FilterOperator.Eq,
-                "ne" => FilterOperator.Ne,
-                "gt" => FilterOperator.Gt,
-                "ge" => FilterOperator.Ge,
-                "lt" => FilterOperator.Lt,
-                "le" => FilterOperator.Le,
-                "like" => FilterOperator.Like,
-                "in" => FilterOperator.In,
-                "nin" => FilterOperator.Nin,
-                "isnull" => FilterOperator.IsNull,
-                "isnotnull" => FilterOperator.IsNotNull,
-                _ => FilterOperator.Eq,
-            },
+            Operator = ParseFilterOperator(operatorStr),
         };
 
         group.Filters.Add(parameter);
@@ -200,21 +210,7 @@ public static class JsonApiFilterParser
                 {
                     string[] parts = restOfKey.Split(s_separator, StringSplitOptions.None);
                     condition.Field = parts[0];
-                    condition.Operator = parts[1].TrimEnd(']').ToLowerInvariant() switch
-                    {
-                        "eq" => FilterOperator.Eq,
-                        "ne" => FilterOperator.Ne,
-                        "gt" => FilterOperator.Gt,
-                        "ge" => FilterOperator.Ge,
-                        "lt" => FilterOperator.Lt,
-                        "le" => FilterOperator.Le,
-                        "like" => FilterOperator.Like,
-                        "in" => FilterOperator.In,
-                        "nin" => FilterOperator.Nin,
-                        "isnull" => FilterOperator.IsNull,
-                        "isnotnull" => FilterOperator.IsNotNull,
-                        _ => FilterOperator.Eq,
-                    };
+                    condition.Operator = ParseFilterOperator(parts[1].TrimEnd(']'));
                 }
                 else
                 {

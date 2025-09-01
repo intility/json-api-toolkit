@@ -34,6 +34,9 @@ namespace JsonApiToolkit.Parsing;
 /// </remarks>
 public static class JsonApiQueryParser
 {
+    private const int DEFAULT_PAGE_SIZE = 10;
+    private const int MIN_PAGE_SIZE = 1;
+    private const int MAX_PAGE_SIZE = 100;
     /// <summary>
     /// Parses all JSON:API query parameters from an HTTP request into a structured QueryParameters object.
     /// </summary>
@@ -103,7 +106,7 @@ public static class JsonApiQueryParser
             queryParams.Pagination = new PaginationParameters
             {
                 Number = int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1,
-                Size = int.TryParse(pageSize, out int size) ? Math.Clamp(size, 1, 100) : 10,
+                Size = int.TryParse(pageSize, out int size) ? Math.Clamp(size, MIN_PAGE_SIZE, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE,
             };
         }
 

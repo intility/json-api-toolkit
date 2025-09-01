@@ -11,14 +11,11 @@ public class JsonApiQueryParserTests
     [Fact]
     public void Parse_WithPagination_ReturnsPaginationParameters()
     {
-        // Arrange
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?page[number]=2&page[size]=25");
 
-        // Act
         QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
 
-        // Assert
         Assert.NotNull(parameters.Pagination);
         Assert.Equal(2, parameters.Pagination.Number);
         Assert.Equal(25, parameters.Pagination.Size);
@@ -27,27 +24,22 @@ public class JsonApiQueryParserTests
     [Fact]
     public void Parse_WithInvalidPagination_UsesDefaultValues()
     {
-        // Arrange
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?page[number]=-5&page[size]=1000");
 
-        // Act
         QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
 
-        // Assert
         Assert.NotNull(parameters.Pagination);
-        Assert.Equal(1, parameters.Pagination.Number); // Should use minimum value of 1
-        Assert.Equal(100, parameters.Pagination.Size); // Should be clamped to max value of 100
+        Assert.Equal(1, parameters.Pagination.Number);
+        Assert.Equal(100, parameters.Pagination.Size);
     }
 
     [Fact]
     public void Parse_WithFilters_ReturnsFilterParameters()
     {
-        // Arrange
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?filter[name]=Test&filter[age][gt]=18");
 
-        // Simulate request.Query dictionary population
         httpContext.Request.Query = new QueryCollection(
             new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
             {
@@ -56,10 +48,8 @@ public class JsonApiQueryParserTests
             }
         );
 
-        // Act
         QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
 
-        // Assert
         Assert.NotNull(parameters.Filter);
         Assert.Equal(2, parameters.Filter.Filters.Count);
 
@@ -81,7 +71,6 @@ public class JsonApiQueryParserTests
     [Fact]
     public void Parse_WithSort_ReturnsSortParameters()
     {
-        // Arrange
         var httpContext = new DefaultHttpContext();
         httpContext.Request.QueryString = new QueryString("?sort=name,-age");
 
@@ -92,10 +81,8 @@ public class JsonApiQueryParserTests
             }
         );
 
-        // Act
         QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
 
-        // Assert
         Assert.NotNull(parameters.Sort);
         Assert.Equal(2, parameters.Sort.Count);
 

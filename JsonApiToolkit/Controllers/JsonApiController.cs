@@ -162,7 +162,7 @@ public abstract class JsonApiController : ControllerBase
         if (parameters.Sort?.Count > 0)
             filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
 
-        int totalCount = await filteredQuery.CountAsync();
+        int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
 
         if (parameters.Pagination != null)
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination);
@@ -179,7 +179,7 @@ public abstract class JsonApiController : ControllerBase
             };
         }
 
-        List<T> results = await filteredQuery.ToListAsync();
+        List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
 
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             results,

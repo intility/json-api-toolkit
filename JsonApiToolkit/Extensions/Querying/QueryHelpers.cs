@@ -57,7 +57,7 @@ public static class QueryHelpers
     /// <param name="value">The string value from the query parameter</param>
     /// <param name="targetType">The target property type to convert to</param>
     /// <returns>
-    /// The converted value, or trows an exception if conversion fails or is not supported
+    /// /// The converted value, or trows an exception if conversion fails or is not supported
     /// </returns>
     /// <remarks>
     /// Handles common primitive types (int, long, decimal, bool, DateTime, Guid, Uri, TimeSpan,
@@ -72,7 +72,13 @@ public static class QueryHelpers
             Type nonNullableType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
             if (nonNullableType.IsEnum)
-                return Enum.Parse(nonNullableType, value, ignoreCase: true);
+            {
+                if (Enum.TryParse(nonNullableType, value, ignoreCase: true, out object? result))
+                    return result;
+                throw new ArgumentException(
+                    $"Invalid enum value '{value}' for type '{nonNullableType.Name}'"
+                );
+            }
 
             if (nonNullableType == typeof(string))
                 return value;

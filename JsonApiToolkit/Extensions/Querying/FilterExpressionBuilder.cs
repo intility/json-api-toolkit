@@ -67,7 +67,14 @@ public static class FilterExpressionBuilder
             return null;
 
         if (expressions.Count == 1)
-            return expressions[0];
+        {
+            Expression singleExpression = expressions[0];
+            if (group.LogicalOperator == LogicalOperator.Not)
+            {
+                return Expression.Not(singleExpression);
+            }
+            return singleExpression;
+        }
 
         Expression? combinedExpression = null;
 
@@ -83,10 +90,15 @@ public static class FilterExpressionBuilder
                 {
                     LogicalOperator.And => Expression.AndAlso(combinedExpression, expr),
                     LogicalOperator.Or => Expression.OrElse(combinedExpression, expr),
-                    LogicalOperator.Not => Expression.Not(expr),
+                    LogicalOperator.Not => Expression.AndAlso(combinedExpression, expr),
                     _ => Expression.AndAlso(combinedExpression, expr),
                 };
             }
+        }
+
+        if (group.LogicalOperator == LogicalOperator.Not && combinedExpression != null)
+        {
+            combinedExpression = Expression.Not(combinedExpression);
         }
 
         return combinedExpression;
@@ -97,10 +109,9 @@ public static class FilterExpressionBuilder
         FilterParameter filter
     )
     {
-        Expression? propertyAccess;
         if (filter.Field.Contains('.'))
         {
-            propertyAccess = GetNestedPropertyExpression(parameter, filter.Field);
+            return BuildSafeNestedFilterExpression(parameter, filter);
         }
         else
         {
@@ -110,10 +121,129 @@ public static class FilterExpressionBuilder
             );
             if (property == null)
                 return null;
-            propertyAccess = Expression.Property(parameter, property);
+            Expression propertyAccess = Expression.Property(parameter, property);
+            return BuildPropertyFilterExpression(propertyAccess, filter);
         }
-        if (propertyAccess == null)
+    }
+
+    private static Expression BuildLikeExpression(Expression property, string value)
+    {
+        if (property.Type == typeof(string))
+        {
+            MethodInfo? method = typeof(string).GetMethod("Contains", [typeof(string)]);
+            return Expression.Call(property, method!, Expression.Constant(value));
+        }
+
+        MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
+        MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
+        MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
+        return Expression.Call(toStringCall, containsMethod!, Expression.Constant(value));
+    }
+
+    private static Expression BuildInExpression(
+        Expression property,
+        string value,
+        Type propertyType
+    )
+    {
+        var rawConvertedValues = value
+            .Split(',')
+            .Select(v => v.Trim())
+            .Where(v => !string.IsNullOrEmpty(v))
+            .Select(v => QueryHelpers.ConvertToPropertyType(v, propertyType))
+            .Where(v => v != null)
+            .Select(v => v!)
+            .ToList();
+
+        if (rawConvertedValues.Count == 0)
+            return Expression.Constant(false);
+
+        Type listElementType = propertyType;
+        if (
+            propertyType.IsGenericType
+            && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>)
+        )
+        {
+            listElementType = Nullable.GetUnderlyingType(propertyType)!;
+        }
+
+        Type listType = typeof(List<>).MakeGenericType(listElementType);
+
+        var typedList = (IList)Activator.CreateInstance(listType)!;
+
+        foreach (object? item in rawConvertedValues)
+            typedList.Add(item);
+
+        ConstantExpression listConstant = Expression.Constant(typedList, listType);
+
+        MethodInfo containsMethod =
+            listType.GetMethod("Contains", [listElementType])
+            ?? throw new InvalidOperationException("Cannot find 'Contains' method on list type.");
+
+        if (property.Type != listElementType)
+        {
+            property = Expression.Convert(property, listElementType);
+        }
+
+        return Expression.Call(listConstant, containsMethod, property);
+    }
+
+    private static Expression? BuildSafeNestedFilterExpression(
+        ParameterExpression parameter,
+        FilterParameter filter
+    )
+    {
+        string[] parts = filter.Field.Split('.');
+        Expression current = parameter;
+        var nullChecks = new List<Expression>();
+
+        // Build null-safe navigation for all but the last property
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            PropertyInfo? prop = QueryHelpers.GetPropertyByJsonName(current.Type, parts[i]);
+            if (prop == null)
+                return null;
+
+            current = Expression.Property(current, prop);
+
+            // Add null check for reference types
+            if (
+                !prop.PropertyType.IsValueType
+                || Nullable.GetUnderlyingType(prop.PropertyType) != null
+            )
+            {
+                nullChecks.Add(Expression.NotEqual(current, Expression.Constant(null)));
+            }
+        }
+
+        // Get the final property
+        PropertyInfo? finalProp = QueryHelpers.GetPropertyByJsonName(current.Type, parts[^1]);
+        if (finalProp == null)
             return null;
+
+        Expression finalProperty = Expression.Property(current, finalProp);
+
+        // Build the actual filter expression
+        Expression? filterExpression = BuildPropertyFilterExpression(finalProperty, filter);
+        if (filterExpression == null)
+            return null;
+
+        // Combine null checks with the filter expression
+        Expression result = filterExpression;
+        foreach (Expression nullCheck in nullChecks)
+        {
+            result = Expression.AndAlso(nullCheck, result);
+        }
+
+        return result;
+    }
+
+    private static Expression? BuildPropertyFilterExpression(
+        Expression propertyAccess,
+        FilterParameter filter
+    )
+    {
+        Type targetType = propertyAccess.Type;
 
         if (filter.Operator == FilterOperator.IsNull)
         {
@@ -123,8 +253,6 @@ public static class FilterExpressionBuilder
         {
             return Expression.NotEqual(propertyAccess, Expression.Constant(null));
         }
-
-        Type targetType = (propertyAccess as MemberExpression)!.Type;
 
         if (filter.Operator == FilterOperator.In)
         {
@@ -191,87 +319,5 @@ public static class FilterExpressionBuilder
             FilterOperator.Like => BuildLikeExpression(propertyAccess, filter.Value),
             _ => Expression.Equal(propertyAccess, constant),
         };
-    }
-
-    private static Expression BuildLikeExpression(Expression property, string value)
-    {
-        if (property.Type == typeof(string))
-        {
-            MethodInfo? method = typeof(string).GetMethod("Contains", [typeof(string)]);
-            return Expression.Call(property, method!, Expression.Constant(value));
-        }
-
-        MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
-        MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
-        MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
-        return Expression.Call(toStringCall, containsMethod!, Expression.Constant(value));
-    }
-
-    private static Expression BuildInExpression(
-        Expression property,
-        string value,
-        Type propertyType
-    )
-    {
-        var rawConvertedValues = value
-            .Split(',')
-            .Select(v => v.Trim())
-            .Where(v => !string.IsNullOrEmpty(v))
-            .Select(v => QueryHelpers.ConvertToPropertyType(v, propertyType))
-            .Where(v => v != null)
-            .Select(v => v!)
-            .ToList();
-
-        if (rawConvertedValues.Count == 0)
-            return Expression.Constant(false);
-
-        Type listElementType = propertyType;
-        if (
-            propertyType.IsGenericType
-            && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>)
-        )
-        {
-            listElementType = Nullable.GetUnderlyingType(propertyType)!;
-        }
-
-        Type listType = typeof(List<>).MakeGenericType(listElementType);
-
-        var typedList = (IList)Activator.CreateInstance(listType)!;
-
-        foreach (object? item in rawConvertedValues)
-            typedList.Add(item);
-
-        ConstantExpression listConstant = Expression.Constant(typedList, listType);
-
-        MethodInfo containsMethod =
-            listType.GetMethod("Contains", [listElementType])
-            ?? throw new InvalidOperationException("Cannot find 'Contains' method on list type.");
-
-        if (property.Type != listElementType)
-        {
-            property = Expression.Convert(property, listElementType);
-        }
-
-        return Expression.Call(listConstant, containsMethod, property);
-    }
-
-    private static MemberExpression? GetNestedPropertyExpression(
-        Expression parameter,
-        string propertyPath
-    )
-    {
-        string[] parts = propertyPath.Split('.');
-        Expression current = parameter;
-        foreach (string part in parts)
-        {
-            PropertyInfo? prop = current.Type.GetProperty(
-                part,
-                BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance
-            );
-            if (prop == null)
-                return null;
-            current = Expression.Property(current, prop);
-        }
-        return current as MemberExpression;
     }
 }

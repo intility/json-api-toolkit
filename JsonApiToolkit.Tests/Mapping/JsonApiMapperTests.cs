@@ -11,7 +11,6 @@ public class JsonApiMapperTests
     [Fact]
     public void ToResourceObject_MapsEntityCorrectly()
     {
-        // Arrange
         var entity = new TestEntity
         {
             Id = 1,
@@ -21,10 +20,8 @@ public class JsonApiMapperTests
             IsActive = true,
         };
 
-        // Act
         var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities");
 
-        // Assert
         Assert.Equal("1", resourceObject.Id);
         Assert.Equal("testEntities", resourceObject.Type);
         Assert.NotNull(resourceObject.Attributes);
@@ -37,7 +34,6 @@ public class JsonApiMapperTests
     [Fact]
     public void ToResourceObject_WithRelationships_MapsRelationshipsCorrectly()
     {
-        // Arrange
         var relatedEntity = new TestRelatedEntity { Id = 2, Name = "Related Entity" };
 
         var entity = new TestEntity
@@ -48,14 +44,12 @@ public class JsonApiMapperTests
             RelatedEntityId = 2,
         };
 
-        // Act
         var resourceObject = JsonApiMapper.ToResourceObject(
             entity,
             "testEntities",
             ["RelatedEntity"]
         );
 
-        // Assert
         Assert.NotNull(resourceObject.Relationships);
         Assert.True(resourceObject.Relationships.ContainsKey("relatedEntity"));
 
@@ -70,7 +64,6 @@ public class JsonApiMapperTests
     [Fact]
     public void ToResourceObject_WithCollectionRelationship_MapsCollectionCorrectly()
     {
-        // Arrange
         var entity = new TestEntity
         {
             Id = 1,
@@ -78,10 +71,8 @@ public class JsonApiMapperTests
             Children = [new() { Id = 10, Name = "Child 1" }, new() { Id = 11, Name = "Child 2" }],
         };
 
-        // Act
         var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities", ["Children"]);
 
-        // Assert
         Assert.NotNull(resourceObject.Relationships);
         Assert.True(resourceObject.Relationships.ContainsKey("children"));
 
@@ -98,7 +89,6 @@ public class JsonApiMapperTests
     [Fact]
     public void ToDocument_IncludesRelatedResources()
     {
-        // Arrange
         var relatedEntity = new TestRelatedEntity { Id = 2, Name = "Related Entity" };
 
         var entity = new TestEntity
@@ -109,7 +99,6 @@ public class JsonApiMapperTests
             RelatedEntityId = 2,
         };
 
-        // Act
         JsonApiToolkit.Models.Documents.JsonApiDocument<ResourceObject> document =
             JsonApiMapper.ToDocument(
                 entity,
@@ -118,7 +107,6 @@ public class JsonApiMapperTests
                 ["RelatedEntity"]
             );
 
-        // Assert
         Assert.NotNull(document.Included);
         Assert.Single(document.Included);
 
@@ -131,7 +119,6 @@ public class JsonApiMapperTests
     [Fact]
     public void ToCollectionDocument_WithPagination_IncludesCorrectLinks()
     {
-        // Arrange
         var entities = new List<TestEntity>
         {
             new() { Id = 1, Name = "Entity 1" },
@@ -146,7 +133,6 @@ public class JsonApiMapperTests
             PageSize = 2,
         };
 
-        // Act
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             entities,
             "testEntities",
@@ -154,7 +140,6 @@ public class JsonApiMapperTests
             paginationMeta
         );
 
-        // Assert
         Assert.NotNull(document.Links);
         Assert.Equal("https://api.example.com/test-entities", document.Links.Self);
         Assert.Equal(

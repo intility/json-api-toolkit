@@ -78,7 +78,6 @@ export function useHydratedQuery<THydrated>(
     ...options,
   });
 }
-);
 ```
 
 Then in your component, you can use the `useHydratedQuery` hook to fetch and automatically hydrate your data. Make sure to pass the correct type for the hydrated data.

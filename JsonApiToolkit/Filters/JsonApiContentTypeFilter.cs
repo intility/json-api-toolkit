@@ -9,15 +9,12 @@ namespace JsonApiToolkit.Filters;
 /// </summary>
 public class JsonApiContentTypeFilter : IActionFilter
 {
-    private const string JsonApiMediaType = "application/vnd.api+json";
+    private const string s_jsonApiMediaType = "application/vnd.api+json";
 
     /// <summary>
     /// Does nothing before the action executes.
     /// </summary>
-    public void OnActionExecuting(ActionExecutingContext context)
-    {
-        // No action needed before executing the action
-    }
+    public void OnActionExecuting(ActionExecutingContext context) { }
 
     /// <summary>
     /// Sets the content type of the response to "application/vnd.api+json"
@@ -28,11 +25,11 @@ public class JsonApiContentTypeFilter : IActionFilter
         if (context.Result is ObjectResult objectResult)
         {
             objectResult.ContentTypes.Clear();
-            objectResult.ContentTypes.Add(JsonApiMediaType);
+            objectResult.ContentTypes.Add(s_jsonApiMediaType);
         }
         else if (context.Result is StatusCodeResult)
         {
-            context.HttpContext.Response.ContentType = JsonApiMediaType;
+            context.HttpContext.Response.ContentType = s_jsonApiMediaType;
         }
     }
 }

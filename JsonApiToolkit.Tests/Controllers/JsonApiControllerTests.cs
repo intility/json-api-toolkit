@@ -15,9 +15,9 @@ public class TestJsonApiController : JsonApiController
         return JsonApiOk(entity, "testEntities");
     }
 
-    public IActionResult TestJsonApiOkCollection(List<TestEntity> entities, string v)
+    public IActionResult TestJsonApiOkCollection(List<TestEntity> entities)
     {
-        return JsonApiOk(entities, "testEntities");
+        return JsonApiOk(entities, "testEntities", null);
     }
 
     public IActionResult TestJsonApiCreated(TestEntity entity)
@@ -44,7 +44,6 @@ public class JsonApiControllerTests
     {
         _controller = new TestJsonApiController();
 
-        // Set up controller context
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";
         httpContext.Request.Host = new HostString("api.example.com");
@@ -56,7 +55,6 @@ public class JsonApiControllerTests
     [Fact]
     public void JsonApiOk_WithSingleEntity_ReturnsCorrectResponse()
     {
-        // Arrange
         var entity = new TestEntity
         {
             Id = 1,
@@ -64,10 +62,8 @@ public class JsonApiControllerTests
             Description = "Test Description",
         };
 
-        // Act
         var result = _controller.TestJsonApiOk(entity);
 
-        // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var document = Assert.IsType<JsonApiDocument<ResourceObject>>(okResult.Value);
 
@@ -78,41 +74,35 @@ public class JsonApiControllerTests
         Assert.Equal("Test Entity", document.Data.Attributes["name"]);
     }
 
-    // [Fact]
-    // public void JsonApiOk_WithCollection_ReturnsCorrectResponse()
-    // {
-    //     // Arrange
-    //     var entities = new List<TestEntity>
-    //     {
-    //         new TestEntity { Id = 1, Name = "Entity 1" },
-    //         new TestEntity { Id = 2, Name = "Entity 2" },
-    //     };
+    [Fact]
+    public void JsonApiOk_WithCollection_ReturnsCorrectResponse()
+    {
+        var entities = new List<TestEntity>
+        {
+            new TestEntity { Id = 1, Name = "Entity 1" },
+            new TestEntity { Id = 2, Name = "Entity 2" },
+        };
 
-    //     // Act
-    //     var result = _controller.TestJsonApiOkCollection(entities, "testEntities");
+        var result = _controller.TestJsonApiOkCollection(entities);
 
-    //     // Assert
-    //     var okResult = Assert.IsType<OkObjectResult>(result);
-    //     var document = Assert.IsType<JsonApiCollectionDocument<ResourceObject>>(okResult.Value);
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var document = Assert.IsType<JsonApiCollectionDocument<ResourceObject>>(okResult.Value);
 
-    //     Assert.NotNull(document.Data);
-    //     Assert.Equal(2, document.Data.Count());
+        Assert.NotNull(document.Data);
+        Assert.Equal(2, document.Data.Count());
 
-    //     var firstResource = document.Data.First();
-    //     Assert.Equal("1", firstResource.Id);
-    //     Assert.Equal("testEntities", firstResource.Type);
-    // }
+        var firstResource = document.Data.First();
+        Assert.Equal("1", firstResource.Id);
+        Assert.Equal("testEntities", firstResource.Type);
+    }
 
     [Fact]
     public void JsonApiCreated_ReturnsCorrectResponse()
     {
-        // Arrange
         var entity = new TestEntity { Id = 1, Name = "Test Entity" };
 
-        // Act
         var result = _controller.TestJsonApiCreated(entity);
 
-        // Assert
         var createdResult = Assert.IsType<CreatedResult>(result);
         Assert.Equal("https://api.example.com/test-entities/1", createdResult.Location);
 
@@ -124,10 +114,8 @@ public class JsonApiControllerTests
     [Fact]
     public void JsonApiNotFound_ReturnsCorrectResponse()
     {
-        // Act
         var result = _controller.TestJsonApiNotFound();
 
-        // Assert
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(notFoundResult.Value);
 
@@ -140,10 +128,8 @@ public class JsonApiControllerTests
     [Fact]
     public void JsonApiBadRequest_ReturnsCorrectResponse()
     {
-        // Act
         var result = _controller.TestJsonApiBadRequest();
 
-        // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(badRequestResult.Value);
 

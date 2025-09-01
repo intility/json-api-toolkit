@@ -6,9 +6,27 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
 
 - **Filtering (`filter`):**  
   Use the `filter` parameter to narrow down results. You can specify simple filters or advanced filters with operators.  
-  Example:
-  - Simple filter: `GET /api/books?filter[title]=The Hobbit`
-  - Advanced filter: `GET /api/books?filter[price][gt]=10`
+  
+  **Simple Filters:**
+  - `GET /api/books?filter[title]=The Hobbit`
+  
+  **Advanced Filters with Operators:**
+  - `eq` (equal): `GET /api/books?filter[price][eq]=10`
+  - `ne` (not equal): `GET /api/books?filter[status][ne]=archived`
+  - `gt` (greater than): `GET /api/books?filter[price][gt]=10`
+  - `ge` (greater than or equal): `GET /api/books?filter[price][ge]=10`
+  - `lt` (less than): `GET /api/books?filter[price][lt]=50`
+  - `le` (less than or equal): `GET /api/books?filter[price][le]=50`
+  - `like` (contains): `GET /api/books?filter[title][like]=Hobbit`
+  - `in` (in list): `GET /api/books?filter[genre][in]=fiction,fantasy,mystery`
+  - `nin` (not in list): `GET /api/books?filter[status][nin]=archived,deleted`
+  - `isnull` (is null): `GET /api/books?filter[description][isnull]=true`
+  - `isnotnull` (is not null): `GET /api/books?filter[description][isnotnull]=true`
+  
+  **Logical Groups:**
+  - AND groups: `GET /api/books?filter[and][0][price][gt]=10&filter[and][1][genre]=fiction`
+  - OR groups: `GET /api/books?filter[or][0][title][like]=Hobbit&filter[or][1][author]=Tolkien`
+  - NOT groups: `GET /api/books?filter[not][0][status]=archived`
 
 - **Sorting (`sort`):**  
   The `sort` parameter allows multiple sort criteria. Prefixing a field with a minus (`-`) indicates descending order.
