@@ -65,6 +65,12 @@ With this request, the toolkit will:
 - Return the first 10 results.
 - Include related author and reviews data in the response.
 
+**Note:** Filtering applies only to the main resource type (books in this example). The `include` parameter controls which related resources are loaded in the response, but does not affect which main resources are returned by the filters.
+
+## Limitations
+
+- **Filtering on included resources**: Filters only apply to the main resource type. To filter based on related entity properties, structure your query at the main entity level or use custom controller logic.
+
 ## Missing Attributes in JSON:API Responses
 
 When using our JSON:API implementation, you might notice that certain properties—such as `CompanyTenantId`—are not included in the API responses. This is because the default attribute mapping logic intentionally excludes any property that ends with "`Id`" (other than the primary `Id`).

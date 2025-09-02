@@ -55,7 +55,7 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
    - Base controller for JSON:API endpoints
    - Provides methods: `JsonApiOk()`, `JsonApiOkAsync()`, `JsonApiCreated()`, `JsonApiNotFound()`, etc.
    - Handles query parameter parsing and response formatting
-   - Automatically applies filtering, sorting, pagination, and includes (relationships are auto-applied based on query parameters)
+   - Automatically applies filtering, sorting, pagination, and includes (filtering applies to main entity; includes load related resources)
 
 2. **JsonApiMapper** (`Mapping/JsonApiMapper.cs`)
    - Core mapper for converting entities to JSON:API resource structures
