@@ -119,6 +119,7 @@ public static class EntityMapper
     /// </list>
     /// <para>Excludes common value types like string, DateTime, and Guid.</para>
     /// <para>Collections of entities without ID properties (e.g., EF Core owned entities stored as JSON) are excluded and treated as attributes instead.</para>
+    /// <para>Single complex objects without ID properties (e.g., EF Core owned entities stored as JSON) are excluded and treated as attributes instead.</para>
     /// </remarks>
     public static List<PropertyInfo> GetRelationshipProperties(Type type)
     {
@@ -145,6 +146,7 @@ public static class EntityMapper
                                 && p.PropertyType != typeof(Guid)
                                 && p.PropertyType != typeof(Guid?)
                                 && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType) // Exclude collections from complex object relationships
+                                && HasIdProperty(p.PropertyType) // Only include single objects that have ID properties as relationships
                             )
                         )
                     )

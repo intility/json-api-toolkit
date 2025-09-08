@@ -15,6 +15,9 @@ public class JsonColumnMappingTests
         public ICollection<ExploitationReport> ExploitationReports { get; set; } =
             new List<ExploitationReport>();
 
+        // Single object with no ID property, simulating EF Core owned entity stored as JSON
+        public ComplexJsonData ComplexData { get; set; } = new();
+
         // This has an ID property, so should be a relationship
         public List<RelatedEntity> RelatedEntities { get; set; } = new();
     }
@@ -31,6 +34,14 @@ public class JsonColumnMappingTests
     {
         public string Description { get; set; } = string.Empty;
         public string Severity { get; set; } = string.Empty;
+        // No Id property - this is owned entity stored as JSON
+    }
+
+    public class ComplexJsonData
+    {
+        public string Category { get; set; } = string.Empty;
+        public List<string> Tags { get; set; } = new();
+        public Dictionary<string, object> Properties { get; set; } = new();
         // No Id property - this is owned entity stored as JSON
     }
 
@@ -54,6 +65,7 @@ public class JsonColumnMappingTests
         Assert.Contains("Name", attributeNames);
         Assert.Contains("JsonDataList", attributeNames); // Should be included as attribute (no IDs)
         Assert.Contains("ExploitationReports", attributeNames); // Should be included as attribute (no IDs)
+        Assert.Contains("ComplexData", attributeNames); // Should be included as attribute (single object with no ID)
         Assert.DoesNotContain("RelatedEntities", attributeNames); // Should NOT be attribute (has IDs)
     }
 
@@ -70,6 +82,7 @@ public class JsonColumnMappingTests
         // Assert
         Assert.DoesNotContain("JsonDataList", relationshipNames); // Should NOT be relationship (no IDs)
         Assert.DoesNotContain("ExploitationReports", relationshipNames); // Should NOT be relationship (no IDs)
+        Assert.DoesNotContain("ComplexData", relationshipNames); // Should NOT be relationship (single object with no ID)
         Assert.Contains("RelatedEntities", relationshipNames); // Should be relationship (has IDs)
     }
 
@@ -100,6 +113,12 @@ public class JsonColumnMappingTests
             {
                 new() { Description = "CVE-2024-1234", Severity = "High" },
             },
+            ComplexData = new ComplexJsonData
+            {
+                Category = "Security",
+                Tags = new List<string> { "vulnerability", "critical" },
+                Properties = new Dictionary<string, object> { { "score", 9.5 } },
+            },
             RelatedEntities = new List<RelatedEntity>
             {
                 new() { Id = 10, Name = "Related 1" },
@@ -116,6 +135,7 @@ public class JsonColumnMappingTests
         // JSON columns should be in attributes
         Assert.True(resource.Attributes.ContainsKey("jsonDataList"));
         Assert.True(resource.Attributes.ContainsKey("exploitationReports"));
+        Assert.True(resource.Attributes.ContainsKey("complexData"));
 
         // Verify the JSON data is preserved
         var jsonDataList = resource.Attributes["jsonDataList"] as List<JsonData>;
@@ -126,6 +146,12 @@ public class JsonColumnMappingTests
             resource.Attributes["exploitationReports"] as ICollection<ExploitationReport>;
         Assert.NotNull(exploitationReports);
         Assert.Single(exploitationReports);
+
+        var complexData = resource.Attributes["complexData"] as ComplexJsonData;
+        Assert.NotNull(complexData);
+        Assert.Equal("Security", complexData.Category);
+        Assert.Equal(2, complexData.Tags.Count);
+        Assert.True(complexData.Properties.ContainsKey("score"));
 
         // RelatedEntities should NOT be in attributes (it's a relationship)
         Assert.False(resource.Attributes.ContainsKey("relatedEntities"));
