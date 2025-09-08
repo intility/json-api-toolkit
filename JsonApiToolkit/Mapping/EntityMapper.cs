@@ -56,7 +56,6 @@ public static class EntityMapper
         );
     }
 
-
     /// <summary>
     /// Identifies the properties that should be mapped as attributes in a JSON:API resource object.
     /// </summary>
@@ -93,16 +92,9 @@ public static class EntityMapper
                 return t.GetProperties()
                     .Where(p =>
                         p != idProperty // Exclude only the primary ID
-                        && !relationshipNames.Contains(p.Name)
+                        && !relationshipNames.Contains(p.Name) // Exclude properties identified as relationships
                         && p.CanRead
                         && p.GetMethod?.IsPublic == true
-                        && (
-                            p.PropertyType == typeof(string)
-                            || (
-                                !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                                || p.PropertyType == typeof(string)
-                            )
-                        )
                     )
                     .ToList();
             }
@@ -126,6 +118,7 @@ public static class EntityMapper
     /// </item>
     /// </list>
     /// <para>Excludes common value types like string, DateTime, and Guid.</para>
+    /// <para>Collections of entities without ID properties (e.g., EF Core owned entities stored as JSON) are excluded and treated as attributes instead.</para>
     /// </remarks>
     public static List<PropertyInfo> GetRelationshipProperties(Type type)
     {
@@ -141,6 +134,7 @@ public static class EntityMapper
                             (
                                 typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
                                 && p.PropertyType != typeof(string)
+                                && HasIdProperty(GetCollectionElementType(p.PropertyType)) // Only include collections where items have IDs
                             )
                             || (
                                 !p.PropertyType.IsPrimitive
@@ -150,6 +144,7 @@ public static class EntityMapper
                                 && p.PropertyType != typeof(DateTime?)
                                 && p.PropertyType != typeof(Guid)
                                 && p.PropertyType != typeof(Guid?)
+                                && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType) // Exclude collections from complex object relationships
                             )
                         )
                     )
@@ -171,5 +166,56 @@ public static class EntityMapper
     {
         string name = type.Name;
         return name.ToCamelCase();
+    }
+
+    /// <summary>
+    /// Checks if a type has an ID property.
+    /// </summary>
+    /// <param name="type">The type to check</param>
+    /// <returns>True if the type has an ID property, false otherwise</returns>
+    private static bool HasIdProperty(Type? type)
+    {
+        if (type == null)
+            return false;
+        return GetIdProperty(type) != null;
+    }
+
+    /// <summary>
+    /// Gets the element type of a collection.
+    /// </summary>
+    /// <param name="collectionType">The collection type</param>
+    /// <returns>The element type, or null if not a collection</returns>
+    private static Type? GetCollectionElementType(Type collectionType)
+    {
+        // String is not considered a collection for our purposes
+        if (collectionType == typeof(string))
+        {
+            return null;
+        }
+
+        // Check if it's a generic collection
+        if (collectionType.IsGenericType)
+        {
+            Type[] genericArgs = collectionType.GetGenericArguments();
+            if (genericArgs.Length == 1)
+            {
+                return genericArgs[0];
+            }
+        }
+
+        // Check if it implements IEnumerable<T>
+        Type? enumerable = collectionType
+            .GetInterfaces()
+            .FirstOrDefault(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+            );
+
+        if (enumerable != null)
+        {
+            return enumerable.GetGenericArguments()[0];
+        }
+
+        // For non-generic collections, we can't determine the element type
+        return null;
     }
 }
