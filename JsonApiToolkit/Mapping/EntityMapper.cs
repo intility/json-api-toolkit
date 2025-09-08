@@ -56,14 +56,6 @@ public static class EntityMapper
         );
     }
 
-    /// <summary>
-    /// Tag to be used on Ids that should be included as attributes in a JSON:API resource object.
-    /// </summary>
-    /// <remarks>
-    /// Overrides the default behavior of excluding ID properties from attribute mapping.
-    /// </remarks>
-    [AttributeUsage(AttributeTargets.Property)]
-    public class IncludeAsAttributeAttribute : Attribute;
 
     /// <summary>
     /// Identifies the properties that should be mapped as attributes in a JSON:API resource object.
@@ -74,7 +66,7 @@ public static class EntityMapper
     /// Uses a cached approach to improve performance over repeated calls. Excludes:
     /// <list type="bullet">
     /// <item>
-    /// <description>Properties used as IDs (ending with "Id" or named "Id")</description>
+    /// <description>The primary ID property (to avoid duplication with the resource's id field)</description>
     /// </item>
     /// <item>
     /// <description>Properties identified as relationships</description>
@@ -86,7 +78,7 @@ public static class EntityMapper
     /// <description>Collection properties (except strings)</description>
     /// </item>
     /// </list>
-    /// The resulting properties typically represent scalar values of the entity.
+    /// The resulting properties typically represent scalar values of the entity, including foreign key IDs.
     /// </remarks>
     public static List<PropertyInfo> GetAttributeProperties(Type type)
     {
@@ -94,24 +86,21 @@ public static class EntityMapper
             type,
             t =>
             {
+                PropertyInfo? idProperty = GetIdProperty(t);
                 List<PropertyInfo> relationshipProps = GetRelationshipProperties(t);
                 var relationshipNames = relationshipProps.Select(p => p.Name).ToHashSet();
 
                 return t.GetProperties()
                     .Where(p =>
-                        p.GetCustomAttribute<IncludeAsAttributeAttribute>() != null
-                        || (
-                            !p.Name.EndsWith("Id")
-                            && p.Name != "Id"
-                            && !relationshipNames.Contains(p.Name)
-                            && p.CanRead
-                            && p.GetMethod?.IsPublic == true
-                            && (
-                                p.PropertyType == typeof(string)
-                                || (
-                                    !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                                    || p.PropertyType == typeof(string)
-                                )
+                        p != idProperty // Exclude only the primary ID
+                        && !relationshipNames.Contains(p.Name)
+                        && p.CanRead
+                        && p.GetMethod?.IsPublic == true
+                        && (
+                            p.PropertyType == typeof(string)
+                            || (
+                                !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+                                || p.PropertyType == typeof(string)
                             )
                         )
                     )
@@ -146,24 +135,21 @@ public static class EntityMapper
             {
                 return t.GetProperties()
                     .Where(p =>
-                        p.GetCustomAttribute<IncludeAsAttributeAttribute>() != null
-                        || (
-                            p.CanRead
-                            && p.GetMethod?.IsPublic == true
-                            && (
-                                (
-                                    typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                                    && p.PropertyType != typeof(string)
-                                )
-                                || (
-                                    !p.PropertyType.IsPrimitive
-                                    && !p.PropertyType.IsValueType
-                                    && p.PropertyType != typeof(string)
-                                    && p.PropertyType != typeof(DateTime)
-                                    && p.PropertyType != typeof(DateTime?)
-                                    && p.PropertyType != typeof(Guid)
-                                    && p.PropertyType != typeof(Guid?)
-                                )
+                        p.CanRead
+                        && p.GetMethod?.IsPublic == true
+                        && (
+                            (
+                                typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+                                && p.PropertyType != typeof(string)
+                            )
+                            || (
+                                !p.PropertyType.IsPrimitive
+                                && !p.PropertyType.IsValueType
+                                && p.PropertyType != typeof(string)
+                                && p.PropertyType != typeof(DateTime)
+                                && p.PropertyType != typeof(DateTime?)
+                                && p.PropertyType != typeof(Guid)
+                                && p.PropertyType != typeof(Guid?)
                             )
                         )
                     )

@@ -32,6 +32,24 @@ public class JsonApiMapperTests
     }
 
     [Fact]
+    public void ToResourceObject_IncludesForeignKeyIdsInAttributes()
+    {
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            RelatedEntityId = 42,
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities");
+
+        // Foreign key IDs should be included in attributes
+        Assert.NotNull(resourceObject.Attributes);
+        Assert.True(resourceObject.Attributes.ContainsKey("relatedEntityId"));
+        Assert.Equal(42, resourceObject.Attributes["relatedEntityId"]);
+    }
+
+    [Fact]
     public void ToResourceObject_WithRelationships_MapsRelationshipsCorrectly()
     {
         var relatedEntity = new TestRelatedEntity { Id = 2, Name = "Related Entity" };
