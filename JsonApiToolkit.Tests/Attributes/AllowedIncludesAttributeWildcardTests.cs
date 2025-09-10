@@ -132,10 +132,9 @@ public class AllowedIncludesAttributeWildcardTests
         Assert.Equal(403, objectResult.StatusCode);
 
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(objectResult.Value);
-        var errorWithMeta = errorResponse.Errors[0] as JsonApiErrorWithMeta;
-        Assert.NotNull(errorWithMeta);
+        var error = errorResponse.Errors[0];
 
-        var forbiddenIncludes = errorWithMeta.Meta?["forbiddenIncludes"] as List<string>;
+        var forbiddenIncludes = error.Meta?["forbiddenIncludes"] as List<string>;
         Assert.NotNull(forbiddenIncludes);
         Assert.Single(forbiddenIncludes);
         Assert.Contains("tags", forbiddenIncludes);

@@ -72,7 +72,12 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
         // Empty array means no includes allowed
         if (_allowedIncludes.Length == 0)
         {
-            ThrowForbiddenException(queryParams.Include, [], _allowedIncludes, context);
+            ThrowForbiddenException(
+                queryParams.Include,
+                queryParams.Include,
+                _allowedIncludes,
+                context
+            );
             return;
         }
 
@@ -120,7 +125,7 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
                 ? $"The requested include '{forbiddenIncludes[0]}' is not allowed for this endpoint"
                 : $"The requested includes '{string.Join(", ", forbiddenIncludes)}' are not allowed for this endpoint";
 
-        var error = new JsonApiErrorWithMeta
+        var error = new JsonApiError
         {
             Status = "403",
             Title = "Forbidden Include",

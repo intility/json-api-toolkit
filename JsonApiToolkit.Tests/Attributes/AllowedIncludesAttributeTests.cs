@@ -232,9 +232,8 @@ public class AllowedIncludesAttributeTests
         var objectResult = Assert.IsType<ObjectResult>(context.Result);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(objectResult.Value);
 
-        var errorWithMeta = errorResponse.Errors[0] as JsonApiErrorWithMeta;
-        Assert.NotNull(errorWithMeta);
-        var meta = errorWithMeta.Meta;
+        var error = errorResponse.Errors[0];
+        var meta = error.Meta;
         Assert.NotNull(meta);
 
         var forbiddenIncludes = meta["forbiddenIncludes"] as List<string>;
@@ -257,9 +256,8 @@ public class AllowedIncludesAttributeTests
         var objectResult = Assert.IsType<ObjectResult>(context.Result);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(objectResult.Value);
 
-        var errorWithMeta = errorResponse.Errors[0] as JsonApiErrorWithMeta;
-        Assert.NotNull(errorWithMeta);
-        var meta = errorWithMeta.Meta;
+        var error = errorResponse.Errors[0];
+        var meta = error.Meta;
         Assert.NotNull(meta);
 
         var requestedIncludes = meta["requestedIncludes"] as List<string>;

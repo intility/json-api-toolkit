@@ -77,4 +77,11 @@ public class JsonApiError
     [JsonPropertyName("source")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ErrorSource? Source { get; set; }
+
+    /// <summary>
+    /// A meta object containing non-standard meta-information about the error.
+    /// </summary>
+    [JsonPropertyName("meta")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, object>? Meta { get; set; }
 }

@@ -111,6 +111,38 @@ public class AllowedIncludesIntegrationTests : IDisposable
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task ForbiddenInclude_ContainsMetaInformationAsync()
+    {
+        var response = await _client.GetAsync("/api/test/with-allowed?include=forbidden,author");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Verify meta information is present
+        Assert.Contains("\"meta\":", content);
+        Assert.Contains("requestedIncludes", content);
+        Assert.Contains("forbiddenIncludes", content);
+        Assert.Contains("allowedIncludes", content);
+        Assert.Contains("forbidden", content);
+        Assert.Contains("author", content);
+    }
+
+    [Fact]
+    public async Task EmptyAllowedIncludes_ShowsCorrectErrorDetailAsync()
+    {
+        var response = await _client.GetAsync("/api/test/with-empty?include=something");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Error should mention the actual requested include, not empty string
+        Assert.Contains("something", content);
+        Assert.DoesNotContain("''", content);
+    }
+
     public void Dispose()
     {
         _client?.Dispose();
