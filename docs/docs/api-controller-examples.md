@@ -207,10 +207,43 @@ public class Book
 }
 ```
 
+## Security with AllowedIncludes
+
+Control which relationships can be included to prevent exposure of sensitive data:
+
+```csharp
+[HttpGet("users")]
+[AllowedIncludes("profile", "posts.*", "settings")]
+public async Task<IActionResult> GetUsers()
+{
+    return await JsonApiOkAsync(_context.Users, "user");
+}
+
+[HttpGet("sensitive-data")]
+[AllowedIncludes("publicInfo")]
+public async Task<IActionResult> GetSensitiveData()
+{
+    return await JsonApiOkAsync(_context.SensitiveEntities, "sensitiveEntity");
+}
+
+[HttpGet("public-only")]
+[AllowedIncludes()] // No includes allowed
+public async Task<IActionResult> GetPublicOnly()
+{
+    return await JsonApiOkAsync(_context.PublicData, "publicData");
+}
+```
+
+**Supported requests:**
+- `GET /api/users?include=profile` ✅ Allowed
+- `GET /api/users?include=posts.comments` ✅ Allowed (wildcard)
+- `GET /api/users?include=posts.comments.author` ❌ Forbidden (too deep)
+- `GET /api/sensitive-data?include=secrets` ❌ Forbidden
+
 ## Pro Tips
 
 1. **Always use exception types** instead of returning error ActionResults - the filter handles conversion automatically
 2. **Use JsonApiOkAsync for collections** - it provides full query parameter support
 3. **Use JsonApiOk for single resources** - simpler and faster for individual entities
-4. **Include relationships judiciously** - only expose what clients actually need
+4. **Use AllowedIncludes** - restrict relationship access for security and performance
 

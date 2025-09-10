@@ -1,9 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JsonApiToolkit.Filters;
+using JsonApiToolkit.Validation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace JsonApiToolkit.Extensions
 {
@@ -62,6 +65,11 @@ namespace JsonApiToolkit.Extensions
             // Register filters
             services.AddScoped<JsonApiExceptionFilter>();
             services.AddScoped<JsonApiContentTypeFilter>();
+
+            // Register include pattern validator for startup validation
+            services.TryAddEnumerable(
+                ServiceDescriptor.Transient<IApplicationModelProvider, IncludePatternValidator>()
+            );
 
             return services;
         }
