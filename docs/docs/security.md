@@ -54,7 +54,7 @@ When forbidden includes are requested, a 403 Forbidden response is returned:
   "errors": [{
     "status": "403",
     "title": "Forbidden Include",
-    "detail": "The requested include 'sensitive' is not allowed for this endpoint",
+    "detail": "The requested include 'sensitive' was not found",
     "meta": {
       "requestedIncludes": ["profile", "sensitive"],
       "forbiddenIncludes": ["sensitive"],
