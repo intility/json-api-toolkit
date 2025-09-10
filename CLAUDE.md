@@ -80,6 +80,8 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 - **Async-first**: Main controller method `JsonApiOkAsync()` is async and works with `IQueryable<T>`
 - **Entity Framework integration**: Uses EF Core's `Include()` and query building capabilities
 - **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, and enum support
+- **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
+- **Pagination safety**: Invalid page numbers are automatically clamped to valid ranges (page 1 for negative/zero, last page for overflow)
 
 ### Service Registration
 
@@ -122,7 +124,7 @@ Tests are organized by component:
 
 1. **Query Operations**: Extend `FilterExpressionBuilder` and add corresponding operators to `FilterOperator` enum
 2. **New Controllers**: Inherit from `JsonApiController` and use provided helper methods
-3. **Entity Mapping**: Use `EntityMapper` for custom mapping rules or `IncludeAsAttributeAttribute` for special cases
+3. **Entity Mapping**: Use `EntityMapper` for custom mapping rules and automatic detection of relationships vs attributes
 4. **Testing**: Follow existing patterns with xUnit and Moq, test both success and error scenarios
 
 ### Common Patterns
