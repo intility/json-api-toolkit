@@ -6,6 +6,8 @@
   href: querying.md
 - name: Enhanced Error Handling
   href: enhanced-error-handling.md
+- name: Security
+  href: security.md
 - name: API Controller Examples
   href: api-controller-examples.md
 - name: Integrations
