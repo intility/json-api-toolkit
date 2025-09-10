@@ -122,8 +122,8 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
 
         var errorDetail =
             forbiddenIncludes.Count == 1
-                ? $"The requested include '{forbiddenIncludes[0]}' is not allowed for this endpoint"
-                : $"The requested includes '{string.Join(", ", forbiddenIncludes)}' are not allowed for this endpoint";
+                ? $"The requested include '{forbiddenIncludes[0]}' was not found"
+                : $"The requested includes '{string.Join(", ", forbiddenIncludes)}' were not found";
 
         var error = new JsonApiError
         {
