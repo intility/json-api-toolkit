@@ -30,7 +30,7 @@ public class BooksController : JsonApiController
 [HttpGet]
 public async Task<IActionResult> GetBooks()
 {
-    IQueryable<Book> books = _context.Books;
+    IQueryable<Book> books = _context.Books.AsQueryable();
     return await JsonApiOkAsync(books, "book");
 }
 ```
@@ -124,11 +124,11 @@ public async Task<IActionResult> DeleteBook(int id)
 public async Task<IActionResult> SearchBooks()
 {
     // The filtering is handled automatically by JsonApiOkAsync
-    // But you can also apply custom logic before the standard processing
+    IQueryable<Book> books = _context.Books.AsQueryable();
     
-    var books = _context.Books
-        .Where(b => b.IsPublished); // Custom business logic
-        
+    // But you can also apply custom logic before the standard processing
+    books = books.Where(b => b.IsPublished); // Custom business logic
+
     return await JsonApiOkAsync(books, "book");
 }
 ```
@@ -243,7 +243,7 @@ public async Task<IActionResult> GetPublicOnly()
 ## Pro Tips
 
 1. **Always use exception types** instead of returning error ActionResults - the filter handles conversion automatically
-2. **Use JsonApiOkAsync for collections** - it provides full query parameter support
-3. **Use JsonApiOk for single resources** - simpler and faster for individual entities
+2. **Use JsonApiOkAsync for collections** when you want automatic query processing (filtering, sorting, pagination)
+3. **Use JsonApiOk for already-loaded data** when you've fetched and processed entities yourself
 4. **Use AllowedIncludes** - restrict relationship access for security and performance
 

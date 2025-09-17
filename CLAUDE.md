@@ -73,6 +73,12 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
    - Query parameters: `QueryParameters`, `FilterParameter`, `SortParameter`
    - Errors: `JsonApiError`, `JsonApiErrorResponse`
 
+5. **Attributes** (`Attributes/`)
+   - `AllowedIncludesAttribute`: Restricts which relationships can be included in responses
+   
+6. **Validation** (`Validation/`)
+   - `IncludePatternValidator`: Validates include patterns with wildcard support
+
 ### Key Patterns
 
 - **Convention-based mapping**: Properties are automatically mapped from C# PascalCase to JSON camelCase
@@ -82,6 +88,7 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 - **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, and enum support
 - **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
 - **Pagination safety**: Invalid page numbers are automatically clamped to valid ranges (page 1 for negative/zero, last page for overflow)
+- **Include whitelisting**: Use `AllowedIncludesAttribute` on controller actions to restrict which relationships can be included, preventing unauthorized data exposure
 
 ### Service Registration
 
@@ -124,12 +131,14 @@ Tests are organized by component:
 
 1. **Query Operations**: Extend `FilterExpressionBuilder` and add corresponding operators to `FilterOperator` enum
 2. **New Controllers**: Inherit from `JsonApiController` and use provided helper methods
-3. **Entity Mapping**: Use `EntityMapper` for custom mapping rules and automatic detection of relationships vs attributes
+3. **Entity Mapping**: Use `EntityMapper` for automatic detection of relationships vs attributes based on ID properties
 4. **Testing**: Follow existing patterns with xUnit and Moq, test both success and error scenarios
 
 ### Common Patterns
 
-- Controllers should inherit from `JsonApiController` and use `JsonApiOkAsync(queryable, "resourceType")`
+- Controllers should inherit from `JsonApiController`
+- Use `JsonApiOkAsync(queryable, "resourceType")` for collections with full query processing
+- Use `JsonApiOk(entity, "resourceType")` for already-loaded entities or collections
 - Entity types should have an `Id` property (auto-detected by `EntityMapper.GetIdProperty()`)
 - Use `QueryParameters queryParams = GetJsonApiQueryParameters()` to access parsed query parameters
 - For manual mapping, use `JsonApiMapper.ToDocument()` or `ToCollectionDocument()`

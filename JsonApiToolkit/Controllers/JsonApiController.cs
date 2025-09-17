@@ -57,26 +57,22 @@ public abstract class JsonApiController : ControllerBase
     /// Creates a 200 OK response containing a single resource as a JSON:API document.
     /// </summary>
     /// <typeparam name="T">The entity type being returned</typeparam>
-    /// <param name="entity">The entity to serialize into the response</param>
+    /// <param name="entity">The already-loaded entity to serialize into the response</param>
     /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
     /// <returns>An IActionResult with a properly formatted JSON:API document</returns>
     /// <remarks>
-    /// Automatically processes any "include" parameters from the request and adds the specified relationships
-    /// to the included section of the response.
+    /// Serializes the provided entity into JSON:API format. Any relationships that are already loaded
+    /// on the entity will be included in the response.
     /// </remarks>
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)
         where T : class
     {
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        QueryParameters queryParams = GetJsonApiQueryParameters();
-        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
-            queryParams.Include
-        );
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             baseUrl,
-            mappedIncludes
+            null // No include filtering - serialize all loaded relationships
         );
         return Ok(document);
     }
@@ -85,14 +81,13 @@ public abstract class JsonApiController : ControllerBase
     /// Creates a 200 OK response containing a collection of resources as a JSON:API document.
     /// </summary>
     /// <typeparam name="T">The entity type of the collection items</typeparam>
-    /// <param name="entities">The collection of entities to serialize into the response</param>
+    /// <param name="entities">The already-loaded collection of entities to serialize into the response</param>
     /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
     /// <param name="paginationMeta">Optional pagination metadata to include in the response</param>
     /// <returns>An IActionResult with a properly formatted JSON:API collection document</returns>
     /// <remarks>
-    /// Automatically processes any "include" parameters from the request and adds the specified relationships
-    /// to the included section of the response. When pagination metadata is provided, adds pagination links
-    /// to the response.
+    /// Serializes the provided collection into JSON:API format. Any relationships that are already loaded
+    /// on the entities will be included in the response. When pagination metadata is provided, adds pagination links.
     /// </remarks>
     protected IActionResult JsonApiOk<T>(
         IEnumerable<T> entities,
@@ -102,16 +97,12 @@ public abstract class JsonApiController : ControllerBase
         where T : class
     {
         string baseUrl = GetFullRequestUrl();
-        QueryParameters queryParams = GetJsonApiQueryParameters();
-        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
-            queryParams.Include
-        );
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             entities,
             resourceType,
             baseUrl,
             paginationMeta,
-            mappedIncludes
+            null // No include filtering - serialize all loaded relationships
         );
         return Ok(document);
     }
@@ -202,22 +193,19 @@ public abstract class JsonApiController : ControllerBase
     /// <returns>An IActionResult with Status201Created and a properly formatted JSON:API document</returns>
     /// <remarks>
     /// Sets the Location header to the resource's URL and includes the resource in the response body.
-    /// Automatically processes any "include" parameters from the request to add related resources.
+    /// Serializes the provided entity into JSON:API format. Any relationships that are already loaded
+    /// on the entity will be included in the response.
     /// </remarks>
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
         where T : class
     {
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}{Request.Path}";
         string selfUrl = $"{baseUrl}/{id}";
-        QueryParameters queryParams = GetJsonApiQueryParameters();
-        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
-            queryParams.Include
-        );
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             selfUrl,
-            mappedIncludes
+            null // No include filtering - serialize all loaded relationships
         );
         return Created(selfUrl, document);
     }
