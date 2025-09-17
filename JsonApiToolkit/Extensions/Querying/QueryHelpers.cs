@@ -40,7 +40,7 @@ public static class QueryHelpers
         if (property != null)
             return property;
 
-        string pascalCase = StringExtensions.ToPascalCase(jsonPropertyName);
+        string pascalCase = jsonPropertyName.ToPascalCase();
         property = entityType.GetProperty(pascalCase);
 
         return property
@@ -57,7 +57,7 @@ public static class QueryHelpers
     /// <param name="value">The string value from the query parameter</param>
     /// <param name="targetType">The target property type to convert to</param>
     /// <returns>
-    /// /// The converted value, or trows an exception if conversion fails or is not supported
+    /// /// The converted value, or throws an exception if conversion fails or is not supported
     /// </returns>
     /// <remarks>
     /// Handles common primitive types (int, long, decimal, bool, DateTime, Guid, Uri, TimeSpan,

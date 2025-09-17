@@ -77,8 +77,8 @@ public async Task<IActionResult> GetBooks()
 {
     var query = _dbContext.Books.AsQueryable();
 
-    // JsonApiOkAsync applies filtering, sorting, includes, and pagination automatically.
-    return await JsonApiOkAsync(query, "book");
+    // JsonApiQueryAsync applies filtering, sorting, includes, and pagination automatically.
+    return await JsonApiQueryAsync(query, "book");
 }
 ```
 

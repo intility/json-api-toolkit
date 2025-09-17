@@ -132,7 +132,7 @@ public abstract class JsonApiController : ControllerBase
     /// </list>
     /// This is the recommended method for collection endpoints as it implements the complete JSON:API querying capabilities.
     /// </remarks>
-    protected async Task<IActionResult> JsonApiOkAsync<T>(
+    protected async Task<IActionResult> JsonApiQueryAsync<T>(
         IQueryable<T> queryable,
         string resourceType
     )

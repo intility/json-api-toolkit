@@ -15,7 +15,7 @@ Apply the attribute to controller actions:
 [AllowedIncludes("profile", "posts")]
 public async Task<IActionResult> GetUsers()
 {
-    return await JsonApiOkAsync(_context.Users, "user");
+    return await JsonApiQueryAsync(_context.Users, "user");
 }
 ```
 
@@ -28,7 +28,7 @@ Use wildcards to allow nested includes at specific levels:
 [AllowedIncludes("author.*", "comments")]
 public async Task<IActionResult> GetPosts()
 {
-    return await JsonApiOkAsync(_context.Posts, "post");
+    return await JsonApiQueryAsync(_context.Posts, "post");
 }
 ```
 

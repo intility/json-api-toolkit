@@ -13,6 +13,7 @@ This is **Intility.JsonApiToolkit**, a .NET library that implements the JSON:API
   - Microsoft.AspNetCore.Mvc
   - Microsoft.EntityFrameworkCore
   - Microsoft.AspNetCore.JsonPatch
+  - Microsoft.Extensions.DependencyInjection.Abstractions
   - Intility.Logging.AspNetCore
 - **Test Framework**: xUnit with Moq for mocking
 - **Documentation**: DocFX for API documentation
@@ -83,7 +84,7 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 
 - **Convention-based mapping**: Properties are automatically mapped from C# PascalCase to JSON camelCase
 - **Query parameter parsing**: Standard JSON:API query syntax (`filter[field]=value`, `sort=field,-field2`, `page[number]=1&page[size]=10`, `include=relationship`)
-- **Async-first**: Main controller method `JsonApiOkAsync()` is async and works with `IQueryable<T>`
+- **Async-first**: Main controller method `JsonApiQueryAsync()` is async and works with `IQueryable<T>`
 - **Entity Framework integration**: Uses EF Core's `Include()` and query building capabilities
 - **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, and enum support
 - **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
@@ -137,7 +138,7 @@ Tests are organized by component:
 ### Common Patterns
 
 - Controllers should inherit from `JsonApiController`
-- Use `JsonApiOkAsync(queryable, "resourceType")` for collections with full query processing
+- Use `JsonApiQueryAsync(queryable, "resourceType")` for collections with full query processing
 - Use `JsonApiOk(entity, "resourceType")` for already-loaded entities or collections
 - Entity types should have an `Id` property (auto-detected by `EntityMapper.GetIdProperty()`)
 - Use `QueryParameters queryParams = GetJsonApiQueryParameters()` to access parsed query parameters
