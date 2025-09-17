@@ -31,7 +31,7 @@ public class BooksController : JsonApiController
 public async Task<IActionResult> GetBooks()
 {
     IQueryable<Book> books = _context.Books.AsQueryable();
-    return await JsonApiOkAsync(books, "book");
+    return await JsonApiQueryAsync(books, "book");
 }
 ```
 
@@ -123,13 +123,13 @@ public async Task<IActionResult> DeleteBook(int id)
 [HttpGet("search")]
 public async Task<IActionResult> SearchBooks()
 {
-    // The filtering is handled automatically by JsonApiOkAsync
+    // The filtering is handled automatically by JsonApiQueryAsync
     IQueryable<Book> books = _context.Books.AsQueryable();
     
     // But you can also apply custom logic before the standard processing
     books = books.Where(b => b.IsPublished); // Custom business logic
 
-    return await JsonApiOkAsync(books, "book");
+    return await JsonApiQueryAsync(books, "book");
 }
 ```
 
@@ -216,21 +216,21 @@ Control which relationships can be included to prevent exposure of sensitive dat
 [AllowedIncludes("profile", "posts.*", "settings")]
 public async Task<IActionResult> GetUsers()
 {
-    return await JsonApiOkAsync(_context.Users, "user");
+    return await JsonApiQueryAsync(_context.Users, "user");
 }
 
 [HttpGet("sensitive-data")]
 [AllowedIncludes("publicInfo")]
 public async Task<IActionResult> GetSensitiveData()
 {
-    return await JsonApiOkAsync(_context.SensitiveEntities, "sensitiveEntity");
+    return await JsonApiQueryAsync(_context.SensitiveEntities, "sensitiveEntity");
 }
 
 [HttpGet("public-only")]
 [AllowedIncludes()] // No includes allowed
 public async Task<IActionResult> GetPublicOnly()
 {
-    return await JsonApiOkAsync(_context.PublicData, "publicData");
+    return await JsonApiQueryAsync(_context.PublicData, "publicData");
 }
 ```
 
@@ -243,7 +243,7 @@ public async Task<IActionResult> GetPublicOnly()
 ## Pro Tips
 
 1. **Always use exception types** instead of returning error ActionResults - the filter handles conversion automatically
-2. **Use JsonApiOkAsync for collections** when you want automatic query processing (filtering, sorting, pagination)
+2. **Use JsonApiQueryAsync for collections** when you want automatic query processing (filtering, sorting, pagination)
 3. **Use JsonApiOk for already-loaded data** when you've fetched and processed entities yourself
 4. **Use AllowedIncludes** - restrict relationship access for security and performance
 

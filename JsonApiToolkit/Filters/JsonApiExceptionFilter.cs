@@ -28,45 +28,65 @@ public class JsonApiExceptionFilter(ILogger<JsonApiExceptionFilter> logger) : IE
     /// </remarks>
     public void OnException(ExceptionContext context)
     {
-        var (status, title) = context.Exception switch
-        {
-            JsonApiBadRequestException => (400, "Bad Request"),
-            JsonApiNotFoundException => (404, "Not Found"),
-            JsonApiConflictException => (409, "Conflict"),
-            JsonApiUnauthorizedException => (401, "Unauthorized"),
-            JsonApiForbiddenException => (403, "Forbidden"),
-            JsonApiTooManyRequestsException => (429, "Too Many Requests"),
-            _ => (500, "Internal Server Error"),
-        };
+        int status;
+        string title;
+        JsonApiError error;
 
-        if (status == 500)
+        if (context.Exception is JsonApiException jsonApiException)
         {
-            // Log full stack trace for unexpected errors
-            _logger.LogError(context.Exception, "An unhandled exception occurred");
+            // Handle structured JSON:API exceptions
+            status = jsonApiException.StatusCode;
+            title = GetTitleForStatusCode(status);
+
+            error = new JsonApiError
+            {
+                Status = status.ToString(),
+                Title = title,
+                Detail = jsonApiException.Message,
+                Code = jsonApiException.Code,
+                Source = jsonApiException.ErrorSource,
+                Meta = jsonApiException.Meta,
+            };
+
+            // Log handled exceptions
+            _logger.LogInformation(
+                "Handled JSON:API exception: {Type} - {Message}",
+                jsonApiException.GetType().Name,
+                jsonApiException.Message
+            );
         }
         else
         {
-            // Log only the message for handled exceptions
-            _logger.LogInformation(
-                "Handled JSON:API exception: {Type} - {Message}",
-                context.Exception.GetType().Name,
-                context.Exception.Message
-            );
-        }
+            // Handle unexpected exceptions
+            status = 500;
+            title = "Internal Server Error";
 
-        var error = new JsonApiError
-        {
-            Status = status.ToString(),
-            Title = title,
-            Detail =
-                status != 500
-                    ? context.Exception.Message
-                    : "An error occurred while processing your request.",
-        };
+            error = new JsonApiError
+            {
+                Status = status.ToString(),
+                Title = title,
+                Detail = "An error occurred while processing your request.",
+            };
+
+            // Log full stack trace for unexpected errors
+            _logger.LogError(context.Exception, "An unhandled exception occurred");
+        }
 
         var response = new JsonApiErrorResponse { Errors = [error] };
 
         context.Result = new ObjectResult(response) { StatusCode = status };
         context.ExceptionHandled = true;
     }
+
+    private static string GetTitleForStatusCode(int statusCode) =>
+        statusCode switch
+        {
+            400 => "Bad Request",
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            409 => "Conflict",
+            429 => "Too Many Requests",
+            _ => "Error",
+        };
 }

@@ -34,7 +34,7 @@ public static class StringExtensions
     /// Used for converting JSON property names (camelCase) to C# property names (PascalCase).
     /// Returns the original string if it's null or empty.
     /// </remarks>
-    public static string ToPascalCase(string str)
+    public static string ToPascalCase(this string str)
     {
         if (string.IsNullOrEmpty(str))
             return str;
