@@ -54,7 +54,7 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 
 1. **JsonApiController** (`Controllers/JsonApiController.cs`)
    - Base controller for JSON:API endpoints
-   - Provides methods: `JsonApiOk()`, `JsonApiOkAsync()`, `JsonApiCreated()`, `JsonApiNotFound()`, etc.
+   - Provides methods: `JsonApiOk()`, `JsonApiQueryAsync()`, `JsonApiCreated()`, `JsonApiNotFound()`, etc.
    - Handles query parameter parsing and response formatting
    - Automatically applies filtering, sorting, pagination, and includes (filtering applies to main entity; includes load related resources)
 
