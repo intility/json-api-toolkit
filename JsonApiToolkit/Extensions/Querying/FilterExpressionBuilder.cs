@@ -104,7 +104,13 @@ public static class FilterExpressionBuilder
         return combinedExpression;
     }
 
-    private static Expression? BuildSingleFilterExpression(
+    /// <summary>
+    /// Builds a filter expression for a single FilterParameter.
+    /// </summary>
+    /// <param name="parameter">The parameter expression representing the entity</param>
+    /// <param name="filter">The filter parameter to build an expression for</param>
+    /// <returns>An expression representing the filter condition, or null if the filter cannot be applied</returns>
+    public static Expression? BuildSingleFilterExpression(
         ParameterExpression parameter,
         FilterParameter filter
     )

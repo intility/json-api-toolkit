@@ -13,10 +13,10 @@ public class EntityMapperTests
 
         // Should include foreign key ID
         Assert.Contains("RelatedEntityId", propertyNames);
-        
+
         // Should NOT include the primary ID
         Assert.DoesNotContain("Id", propertyNames);
-        
+
         // Should include other regular properties
         Assert.Contains("Name", propertyNames);
         Assert.Contains("Description", propertyNames);
@@ -33,10 +33,10 @@ public class EntityMapperTests
 
         // Should include foreign key ID
         Assert.Contains("TestEntityId", propertyNames);
-        
+
         // Should NOT include the primary ID
         Assert.DoesNotContain("Id", propertyNames);
-        
+
         // Should include other properties
         Assert.Contains("Name", propertyNames);
     }
@@ -50,7 +50,7 @@ public class EntityMapperTests
         // Should include actual relationships
         Assert.Contains("RelatedEntity", propertyNames);
         Assert.Contains("Children", propertyNames);
-        
+
         // Should NOT include foreign key IDs
         Assert.DoesNotContain("RelatedEntityId", propertyNames);
     }
@@ -59,7 +59,7 @@ public class EntityMapperTests
     public void GetIdProperty_IdentifiesPrimaryId()
     {
         var idProperty = EntityMapper.GetIdProperty(typeof(TestEntity));
-        
+
         Assert.NotNull(idProperty);
         Assert.Equal("Id", idProperty.Name);
     }
