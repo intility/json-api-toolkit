@@ -39,6 +39,11 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
 - **Inclusion (`include`):**  
   Specify which related resources should be included in the response.
   - Example: `GET /api/books?include=author,reviews`
+  
+- **Filtering on Includes (Advanced):**  
+  Filter included resources using dot notation. This feature applies filters directly to the included relationships at the database level.
+  - Example: `GET /api/books?include=reviews&filter[reviews.status][eq]=approved`
+  - Complex filters: `GET /api/books?include=reviews&filter[or][0][reviews.rating][gte]=4&filter[or][1][reviews.featured][eq]=true`
 
 ## How It Works
 
@@ -65,11 +70,12 @@ With this request, the toolkit will:
 - Return the first 10 results.
 - Include related author and reviews data in the response.
 
-**Note:** Filtering applies only to the main resource type (books in this example). The `include` parameter controls which related resources are loaded in the response, but does not affect which main resources are returned by the filters.
+**Note:** Filters without dot notation apply only to the main resource type (books in this example). Filters with dot notation (e.g., `filter[reviews.status][eq]=approved`) filter the included resources themselves.
 
 ## Limitations
 
-- **Filtering on included resources**: Filters only apply to the main resource type. To filter based on related entity properties, structure your query at the main entity level or use custom controller logic.
+- **Include filter validation**: Filters with dot notation can only be applied to relationships that are explicitly included in the request. Use the `AllowedIncludesAttribute` to control which relationships can be filtered.
+- **Complex nested filtering**: Maximum filter depth is 3 levels (e.g., `entity.relationship.property`).
 
 ## Attribute Mapping
 

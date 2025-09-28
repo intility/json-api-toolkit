@@ -32,10 +32,10 @@ public static class PaginationHandler
         // Calculate total count and pages to determine valid page range
         int totalCount = query.Count();
         int totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
-        
+
         // Clamp page number to valid range (1 to totalPages, default to 1 if empty)
         int effectivePage = Math.Max(1, Math.Min(pagination.Number, Math.Max(totalPages, 1)));
-        
+
         int skip = (effectivePage - 1) * pagination.Size;
         return query.Skip(skip).Take(pagination.Size);
     }
@@ -66,7 +66,7 @@ public static class PaginationHandler
             // Fallback for in-memory queryables that don't support async operations
             totalCount = query.Count();
         }
-        
+
         int totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
 
         // Clamp page number to valid range (1 to totalPages, default to 1 if empty)

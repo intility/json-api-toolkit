@@ -143,12 +143,29 @@ public abstract class JsonApiController : ControllerBase
         var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
             parameters.Include
         );
-        queryable = queryable.ApplyIncludes(mappedIncludes);
+
+        // Separate include filters from main filters
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            parameters.Filter,
+            parameters.Include
+        );
+
+        // Apply filtered includes if we have any include filters
+        if (includeFilters.Count > 0)
+        {
+            queryable = queryable.ApplyFilteredIncludes(mappedIncludes, includeFilters);
+        }
+        else
+        {
+            // Regular includes without filters
+            queryable = queryable.ApplyIncludes(mappedIncludes);
+        }
 
         IQueryable<T> filteredQuery = queryable;
 
-        if (parameters.Filter != null)
-            filteredQuery = filteredQuery.ApplyFilters(parameters.Filter);
+        // Apply only the main entity filters (include filters were already applied)
+        if (mainFilters != null)
+            filteredQuery = filteredQuery.ApplyFilters(mainFilters);
 
         if (parameters.Sort?.Count > 0)
             filteredQuery = filteredQuery.ApplySorting(parameters.Sort);

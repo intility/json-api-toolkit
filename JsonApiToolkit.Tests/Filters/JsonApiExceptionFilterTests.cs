@@ -23,12 +23,13 @@ public class JsonApiExceptionFilterTests
     private ExceptionContext CreateExceptionContext(Exception exception)
     {
         var httpContext = new DefaultHttpContext();
-        var actionContext = new ActionContext(httpContext, new Microsoft.AspNetCore.Routing.RouteData(), new ActionDescriptor());
-        
-        return new ExceptionContext(actionContext, [])
-        {
-            Exception = exception
-        };
+        var actionContext = new ActionContext(
+            httpContext,
+            new Microsoft.AspNetCore.Routing.RouteData(),
+            new ActionDescriptor()
+        );
+
+        return new ExceptionContext(actionContext, []) { Exception = exception };
     }
 
     [Fact]
@@ -43,7 +44,7 @@ public class JsonApiExceptionFilterTests
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(400, result.StatusCode);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
-        
+
         Assert.Single(errorResponse.Errors);
         Assert.Equal("400", errorResponse.Errors[0].Status);
         Assert.Equal("Bad Request", errorResponse.Errors[0].Title);
@@ -62,7 +63,7 @@ public class JsonApiExceptionFilterTests
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(404, result.StatusCode);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
-        
+
         Assert.Single(errorResponse.Errors);
         Assert.Equal("404", errorResponse.Errors[0].Status);
         Assert.Equal("Not Found", errorResponse.Errors[0].Title);
@@ -81,7 +82,7 @@ public class JsonApiExceptionFilterTests
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(409, result.StatusCode);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
-        
+
         Assert.Single(errorResponse.Errors);
         Assert.Equal("409", errorResponse.Errors[0].Status);
         Assert.Equal("Conflict", errorResponse.Errors[0].Title);
@@ -100,7 +101,7 @@ public class JsonApiExceptionFilterTests
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(401, result.StatusCode);
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
-        
+
         Assert.Single(errorResponse.Errors);
         Assert.Equal("401", errorResponse.Errors[0].Status);
         Assert.Equal("Unauthorized", errorResponse.Errors[0].Title);
@@ -118,7 +119,7 @@ public class JsonApiExceptionFilterTests
         Assert.True(context.ExceptionHandled);
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(403, result.StatusCode);
-        
+
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
         Assert.Single(errorResponse.Errors);
         Assert.Equal("403", errorResponse.Errors[0].Status);
@@ -137,7 +138,7 @@ public class JsonApiExceptionFilterTests
         Assert.True(context.ExceptionHandled);
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(429, result.StatusCode);
-        
+
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
         Assert.Single(errorResponse.Errors);
         Assert.Equal("429", errorResponse.Errors[0].Status);
@@ -156,12 +157,15 @@ public class JsonApiExceptionFilterTests
         Assert.True(context.ExceptionHandled);
         var result = Assert.IsType<ObjectResult>(context.Result);
         Assert.Equal(500, result.StatusCode);
-        
+
         var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
         Assert.Single(errorResponse.Errors);
         Assert.Equal("500", errorResponse.Errors[0].Status);
         Assert.Equal("Internal Server Error", errorResponse.Errors[0].Title);
-        Assert.Equal("An error occurred while processing your request.", errorResponse.Errors[0].Detail);
+        Assert.Equal(
+            "An error occurred while processing your request.",
+            errorResponse.Errors[0].Detail
+        );
     }
 
     [Fact]
@@ -173,13 +177,18 @@ public class JsonApiExceptionFilterTests
         _filter.OnException(context);
 
         _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("JsonApiNotFoundException")),
-                null,
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            x =>
+                x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>(
+                        (v, t) => v.ToString()!.Contains("JsonApiNotFoundException")
+                    ),
+                    null,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
     }
 
     [Fact]
@@ -191,12 +200,17 @@ public class JsonApiExceptionFilterTests
         _filter.OnException(context);
 
         _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("An unhandled exception occurred")),
-                exception,
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            x =>
+                x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>(
+                        (v, t) => v.ToString()!.Contains("An unhandled exception occurred")
+                    ),
+                    exception,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
     }
 }
