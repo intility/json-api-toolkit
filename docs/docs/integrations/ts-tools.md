@@ -1,11 +1,11 @@
 # Integrations / Frontend Consumption
 
-# jsonapi-react-tools
+# jsonapi-ts-tools
 
-**jsonapi-react-tools** is a lightweight, Deno-based TypeScript library designed
+**jsonapi-ts-tools** is a lightweight, Deno-based TypeScript library designed
 to make working with
 [JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit) responses
-in React applications easier.
+in TypeScript applications easier.
 
 ## Features
 
@@ -19,12 +19,12 @@ in React applications easier.
 
 ## Getting Started
 
-You can read more about jsonapi-react-tools & JsonApiToolkit [**here**](https://intility.github.io/Intility.JsonApiToolkit/docs/integrations/react-tools.html), or follow the instructions below for a quick start.
+You can read more about jsonapi-ts-tools & JsonApiToolkit [**here**](https://intility.github.io/Intility.JsonApiToolkit/docs/integrations/ts-tools.html), or follow the instructions below for a quick start.
 
 ### Installation
 
 ```bash
-npm install @intility/jsonapi-react-tools
+npm install @intility/jsonapi-ts-tools
 ```
 
 ### Define your types
@@ -63,7 +63,7 @@ import {
   HydratedQueryResult,
   hydrateResponse,
   JsonApiResponse,
-} from '@intility/jsonapi-react-tools';
+} from '@intility/jsonapi-ts-tools';
 
 export function useHydratedQuery<THydrated>(
   queryKey: QueryKey,
@@ -195,5 +195,5 @@ filter[completed]=false
 
 For more details on the package itself, visit the repository:
 
-*   **GitHub:** [jsonapi-react-tools](https://github.com/intility/jsonapi-react-tools)
+*   **GitHub:** [jsonapi-ts-tools](https://github.com/intility/jsonapi-ts-tools)
   
