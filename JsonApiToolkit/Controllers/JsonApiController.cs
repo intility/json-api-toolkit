@@ -166,19 +166,24 @@ public abstract class JsonApiController : ControllerBase
         if (mainFilters != null)
             filteredQuery = filteredQuery.ApplyFilters(mainFilters);
 
-        // Apply sorting before includes to prevent EF Core query translation issues
-        if (parameters.Sort?.Count > 0)
-            filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
-
-        // Apply filtered includes after sorting to avoid complex query translation issues
+        // Different ordering strategy based on whether we have filtered includes
         if (includeFilters.Count > 0)
         {
+            // For filtered includes: Apply sorting first to prevent EF Core query translation issues
+            if (parameters.Sort?.Count > 0)
+                filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
+
+            // Then apply filtered includes
             filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters);
         }
         else
         {
-            // Regular includes without filters
+            // For regular includes: Apply includes first for better compatibility
             filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
+
+            // Then apply sorting after includes
+            if (parameters.Sort?.Count > 0)
+                filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
         }
 
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
