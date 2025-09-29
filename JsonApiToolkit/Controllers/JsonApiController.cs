@@ -160,25 +160,26 @@ public abstract class JsonApiController : ControllerBase
             parameters.Include
         );
 
-        // Apply filtered includes if we have any include filters
+        IQueryable<T> filteredQuery = queryable;
+
+        // Apply main entity filters first
+        if (mainFilters != null)
+            filteredQuery = filteredQuery.ApplyFilters(mainFilters);
+
+        // Apply sorting before includes to prevent EF Core query translation issues
+        if (parameters.Sort?.Count > 0)
+            filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
+
+        // Apply filtered includes after sorting to avoid complex query translation issues
         if (includeFilters.Count > 0)
         {
-            queryable = queryable.ApplyFilteredIncludes(mappedIncludes, includeFilters);
+            filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters);
         }
         else
         {
             // Regular includes without filters
-            queryable = queryable.ApplyIncludes(mappedIncludes);
+            filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
         }
-
-        IQueryable<T> filteredQuery = queryable;
-
-        // Apply only the main entity filters (include filters were already applied)
-        if (mainFilters != null)
-            filteredQuery = filteredQuery.ApplyFilters(mainFilters);
-
-        if (parameters.Sort?.Count > 0)
-            filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
 
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
 
