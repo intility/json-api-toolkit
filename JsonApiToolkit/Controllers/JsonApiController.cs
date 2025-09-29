@@ -8,62 +8,49 @@ using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Metadata;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Resources;
-using JsonApiToolkit.Parsing;
+using JsonApiToolkit.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Controllers;
 
 /// <summary>
-/// Base controller class that implements JSON:API specification-compliant responses and request handling.
-/// Provides standardized methods for returning JSON:API document structures with proper content negotiation.
+/// Base controller for JSON:API compliant responses.
+/// Handles content negotiation and applies JsonApiExceptionFilter automatically.
 /// </summary>
-/// <remarks>
-/// Automatically configures content type handling for "application/vnd.api+json" and applies the JsonApiExceptionFilter.
-/// Use this as the base class for all controllers that need to return JSON:API compliant responses.
-/// </remarks>
 [Produces("application/vnd.api+json")]
 [Consumes("application/vnd.api+json")]
 [ServiceFilter(typeof(JsonApiExceptionFilter))]
 public abstract class JsonApiController : ControllerBase
 {
+    private ILogger<JsonApiController>? _logger;
+    private IJsonApiQueryParser? _queryParser;
+
     /// <summary>
-    /// Extracts and parses JSON:API query parameters from the current HTTP request.
+    /// Gets the logger instance.
     /// </summary>
-    /// <returns>A QueryParameters object containing parsed filter, sort, pagination, and include parameters.</returns>
-    /// <remarks>
-    /// Handles standard JSON:API query parameter formats including:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description><c>filter[fieldName]=value</c></description>
-    ///   </item>
-    ///   <item>
-    ///     <description><c>sort=field or sort=-descendingField</c></description>
-    ///   </item>
-    ///   <item>
-    ///     <description><c>page[number]=1&amp;page[size]=10</c></description>
-    ///   </item>
-    ///   <item>
-    ///     <description><c>include=relationship1,relationship2</c></description>
-    ///   </item>
-    /// </list>
-    /// </remarks>
+    protected ILogger<JsonApiController> Logger =>
+        _logger ??= HttpContext.RequestServices.GetRequiredService<ILogger<JsonApiController>>();
+
+    /// <summary>
+    /// Gets the query parser service.
+    /// </summary>
+    protected IJsonApiQueryParser QueryParser =>
+        _queryParser ??= HttpContext.RequestServices.GetRequiredService<IJsonApiQueryParser>();
+
+    /// <summary>
+    /// Parses JSON:API query parameters (filter, sort, page, include).
+    /// </summary>
     protected QueryParameters GetJsonApiQueryParameters()
     {
-        return JsonApiQueryParser.Parse(Request);
+        return QueryParser.Parse(Request);
     }
 
     /// <summary>
-    /// Creates a 200 OK response containing a single resource as a JSON:API document.
+    /// Returns 200 OK with a single resource as JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The entity type being returned</typeparam>
-    /// <param name="entity">The already-loaded entity to serialize into the response</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <returns>An IActionResult with a properly formatted JSON:API document</returns>
-    /// <remarks>
-    /// Serializes the provided entity into JSON:API format. Any relationships that are already loaded
-    /// on the entity will be included in the response.
-    /// </remarks>
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)
         where T : class
     {
@@ -77,23 +64,15 @@ public abstract class JsonApiController : ControllerBase
             entity,
             resourceType,
             baseUrl,
-            mappedIncludes
+            mappedIncludes,
+            Logger
         );
         return Ok(document);
     }
 
     /// <summary>
-    /// Creates a 200 OK response containing a collection of resources as a JSON:API document.
+    /// Returns 200 OK with a collection of resources as JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The entity type of the collection items</typeparam>
-    /// <param name="entities">The already-loaded collection of entities to serialize into the response</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <param name="paginationMeta">Optional pagination metadata to include in the response</param>
-    /// <returns>An IActionResult with a properly formatted JSON:API collection document</returns>
-    /// <remarks>
-    /// Serializes the provided collection into JSON:API format. Any relationships that are already loaded
-    /// on the entities will be included in the response. When pagination metadata is provided, adds pagination links.
-    /// </remarks>
     protected IActionResult JsonApiOk<T>(
         IEnumerable<T> entities,
         string resourceType,
@@ -112,36 +91,15 @@ public abstract class JsonApiController : ControllerBase
             resourceType,
             baseUrl,
             paginationMeta,
-            mappedIncludes
+            mappedIncludes,
+            Logger
         );
         return Ok(document);
     }
 
     /// <summary>
-    /// Creates a 200 OK response for a queryable collection with full JSON:API query parameter support.
+    /// Returns 200 OK for queryable with full JSON:API query support (filter, sort, page, include).
     /// </summary>
-    /// <typeparam name="T">The entity type of the queryable items</typeparam>
-    /// <param name="queryable">The queryable collection to apply filters, sorting, and pagination to</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <returns>An IActionResult with a properly formatted JSON:API collection document with query parameters applied</returns>
-    /// <remarks>
-    /// This method provides comprehensive support for JSON:API query parameters:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description>Automatically applies any filter parameters to the queryable</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Applies sorting based on sort parameters</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Handles pagination and generates pagination metadata and links</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Processes includes to add related resources</description>
-    ///   </item>
-    /// </list>
-    /// This is the recommended method for collection endpoints as it implements the complete JSON:API querying capabilities.
-    /// </remarks>
     protected async Task<IActionResult> JsonApiQueryAsync<T>(
         IQueryable<T> queryable,
         string resourceType
@@ -149,12 +107,39 @@ public abstract class JsonApiController : ControllerBase
         where T : class
     {
         QueryParameters parameters = GetJsonApiQueryParameters();
+
+        Logger.LogDebug(
+            "Query for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}",
+            typeof(T).Name,
+            parameters.Filter?.Filters?.Count ?? 0,
+            parameters.Sort?.Count ?? 0,
+            parameters.Include?.Count ?? 0,
+            parameters.Pagination != null
+        );
+
+        if (parameters.Filter?.Filters?.Count > 20)
+        {
+            Logger.LogInformation(
+                "Complex query with {Count} filters on {EntityType}",
+                parameters.Filter.Filters.Count,
+                typeof(T).Name
+            );
+        }
+
         string baseUrl = GetFullRequestUrl();
         var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
             parameters.Include
         );
 
-        // Separate include filters from main filters
+        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
+        {
+            Logger.LogWarning(
+                "No valid includes for {EntityType}. Requested: {Includes}",
+                typeof(T).Name,
+                string.Join(", ", parameters.Include)
+            );
+        }
+
         var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
             parameters.Filter,
             parameters.Include
@@ -162,31 +147,52 @@ public abstract class JsonApiController : ControllerBase
 
         IQueryable<T> filteredQuery = queryable;
 
-        // Apply main entity filters first
         if (mainFilters != null)
-            filteredQuery = filteredQuery.ApplyFilters(mainFilters);
+            filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
 
-        // Different ordering strategy based on whether we have filtered includes
         if (includeFilters.Count > 0)
         {
-            // For filtered includes: Apply sorting first to prevent EF Core query translation issues
-            if (parameters.Sort?.Count > 0)
-                filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
-
-            // Then apply filtered includes
+            Logger.LogDebug(
+                "Applying {FilterCount} filtered includes for {EntityType}",
+                includeFilters.Count,
+                typeof(T).Name
+            );
             filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters);
         }
-        else
+        else if (mappedIncludes.Count > 0)
         {
-            // For regular includes: Apply includes first for better compatibility
-            filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
+            // Use single query with pagination to avoid EF Core split query issues
+            filteredQuery = parameters.Pagination != null
+                ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
+                : filteredQuery.ApplyIncludes(mappedIncludes);
 
-            // Then apply sorting after includes
-            if (parameters.Sort?.Count > 0)
-                filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
+            Logger.LogDebug(
+                "Applied {IncludeCount} includes for {EntityType} using {QueryType}",
+                mappedIncludes.Count,
+                typeof(T).Name,
+                parameters.Pagination != null ? "SingleQuery" : "SplitQuery"
+            );
         }
 
+        if (parameters.Sort?.Count > 0)
+            filteredQuery = filteredQuery.ApplySorting(parameters.Sort, Logger);
+
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
+
+        if (totalCount == 0 && parameters.Filter?.Filters?.Count > 0)
+        {
+            Logger.LogInformation(
+                "Query returned 0 results for {EntityType}",
+                typeof(T).Name
+            );
+        }
+        else if (totalCount > 1000 && parameters.Pagination == null)
+        {
+            Logger.LogWarning(
+                "Large result set ({TotalCount}) without pagination. Consider adding pagination to improve performance",
+                totalCount
+            );
+        }
 
         if (parameters.Pagination != null)
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination);
@@ -203,6 +209,13 @@ public abstract class JsonApiController : ControllerBase
             };
         }
 
+        Logger.LogDebug(
+            "Executing query for {EntityType}: TotalCount={TotalCount}, Returning={ReturnCount}",
+            typeof(T).Name,
+            totalCount,
+            parameters.Pagination?.Size ?? totalCount
+        );
+
         List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
 
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
@@ -210,25 +223,16 @@ public abstract class JsonApiController : ControllerBase
             resourceType,
             baseUrl,
             paginationMeta,
-            mappedIncludes
+            mappedIncludes,
+            Logger
         );
 
         return Ok(document);
     }
 
     /// <summary>
-    /// Creates a 201 Created response containing a newly created resource as a JSON:API document.
+    /// Returns 201 Created with new resource and Location header.
     /// </summary>
-    /// <typeparam name="T">The entity type being returned</typeparam>
-    /// <param name="entity">The newly created entity</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <param name="id">The ID of the newly created resource</param>
-    /// <returns>An IActionResult with Status201Created and a properly formatted JSON:API document</returns>
-    /// <remarks>
-    /// Sets the Location header to the resource's URL and includes the resource in the response body.
-    /// Serializes the provided entity into JSON:API format. Any relationships that are already loaded
-    /// on the entity will be included in the response.
-    /// </remarks>
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
         where T : class
     {
@@ -243,31 +247,20 @@ public abstract class JsonApiController : ControllerBase
             entity,
             resourceType,
             selfUrl,
-            mappedIncludes
+            mappedIncludes,
+            Logger
         );
         return Created(selfUrl, document);
     }
 
     /// <summary>
-    /// Creates a 204 No Content response for successful operations that don't return data.
+    /// Returns 204 No Content (for DELETE/PUT operations).
     /// </summary>
-    /// <returns>An IActionResult with Status204NoContent and an empty response body</returns>
-    /// <remarks>
-    /// Use this method for successful DELETE operations or updates that don't return the modified resource.
-    /// </remarks>
-    protected IActionResult JsonApiNoContent()
-    {
-        return NoContent();
-    }
+    protected IActionResult JsonApiNoContent() => NoContent();
 
     /// <summary>
-    /// Creates a 404 Not Found response with a JSON:API compliant error object.
+    /// Returns 404 Not Found with JSON:API error.
     /// </summary>
-    /// <param name="detail">Custom error message explaining what resource was not found</param>
-    /// <returns>An IActionResult with Status404NotFound and a properly formatted JSON:API error document</returns>
-    /// <remarks>
-    /// Use this method when a requested resource doesn't exist to provide a consistent error response format.
-    /// </remarks>
     protected IActionResult JsonApiNotFound(string detail = "Resource not found")
     {
         var error = new JsonApiError
@@ -276,18 +269,12 @@ public abstract class JsonApiController : ControllerBase
             Title = "Not Found",
             Detail = detail,
         };
-
         return NotFound(new JsonApiErrorResponse { Errors = [error] });
     }
 
     /// <summary>
-    /// Creates a 400 Bad Request response with a JSON:API compliant error object.
+    /// Returns 400 Bad Request with JSON:API error.
     /// </summary>
-    /// <param name="detail">Specific error message explaining the validation or request problem</param>
-    /// <returns>An IActionResult with Status400BadRequest and a properly formatted JSON:API error document</returns>
-    /// <remarks>
-    /// Use this method for validation errors, malformed requests, or other client errors.
-    /// </remarks>
     protected IActionResult JsonApiBadRequest(string detail)
     {
         var error = new JsonApiError
@@ -296,19 +283,12 @@ public abstract class JsonApiController : ControllerBase
             Title = "Bad Request",
             Detail = detail,
         };
-
         return BadRequest(new JsonApiErrorResponse { Errors = [error] });
     }
 
     /// <summary>
-    /// Constructs the complete URL for the current request including scheme, host, path, and query string.
+    /// Gets full request URL for self/pagination links.
     /// </summary>
-    /// <returns>The full URL of the current request as a string</returns>
-    /// <remarks>
-    /// Used internally to generate self links and pagination links in JSON:API responses.
-    /// </remarks>
-    protected string GetFullRequestUrl()
-    {
-        return $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
-    }
+    protected string GetFullRequestUrl() =>
+        $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
 }

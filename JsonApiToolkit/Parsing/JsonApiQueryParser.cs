@@ -7,31 +7,8 @@ using Microsoft.Extensions.Primitives;
 namespace JsonApiToolkit.Parsing;
 
 /// <summary>
-/// Parses JSON:API compliant query parameters from HTTP requests into structured query objects.
+/// Parses JSON:API query parameters: pagination, filtering, sorting, and includes.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Provides comprehensive parsing of all JSON:API query parameters including:
-/// <list type="bullet">
-///   <item>
-///     <description>Pagination (page[number] and page[size])</description>
-///   </item>
-///   <item>
-///     <description>Filtering (filter[field] and complex filters)</description>
-///   </item>
-///   <item>
-///     <description>Sorting (sort=field,-descendingField)</description>
-///   </item>
-///   <item>
-///     <description>Inclusion (include=relationship1,relationship2)</description>
-///   </item>
-/// </list>
-/// </para>
-/// <para>
-/// The resulting <see cref="QueryParameters"/> object can be used with <see cref="QueryableExtensions"/>
-/// to apply these parameters to Entity Framework queries.
-/// </para>
-/// </remarks>
 public static class JsonApiQueryParser
 {
     private const int DEFAULT_PAGE_SIZE = 10;
@@ -39,77 +16,26 @@ public static class JsonApiQueryParser
     private const int MAX_PAGE_SIZE = 100;
 
     /// <summary>
-    /// Parses all JSON:API query parameters from an HTTP request into a structured QueryParameters object.
+    /// Parses JSON:API query parameters from an HTTP request.
     /// </summary>
-    /// <param name="request">The HTTP request containing the query parameters</param>
-    /// <returns>A QueryParameters object containing all parsed query parameters</returns>
-    /// <remarks>
-    /// <para>
-    /// This method parses:
-    /// <list type="number">
-    ///   <item>
-    ///     <description>Pagination parameters:</description>
-    ///     <list type="bullet">
-    ///       <item>
-    ///         <description>page[number]: The page number (starting from 1)</description>
-    ///       </item>
-    ///       <item>
-    ///         <description>page[size]: The page size (limited to 1-100)</description>
-    ///       </item>
-    ///     </list>
-    ///   </item>
-    ///   <item>
-    ///     <description>Filter parameters:</description>
-    ///     <list type="bullet">
-    ///       <item>
-    ///         <description>Simple: filter[field]=value</description>
-    ///       </item>
-    ///       <item>
-    ///         <description>Complex: filter[field][operator]=value</description>
-    ///       </item>
-    ///       <item>
-    ///         <description>Logical groups: filter[or][0][field]=value</description>
-    ///       </item>
-    ///     </list>
-    ///   </item>
-    ///   <item>
-    ///     <description>Sort parameters: sort=field1,-field2 (minus prefix for descending)</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Include parameters: include=relationship1,relationship2</description>
-    ///   </item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// The method applies reasonable defaults and constraints:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description>Page number defaults to 1 if invalid</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Page size is clamped between 1-100</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Field names are properly normalized</description>
-    ///   </item>
-    /// </list>
-    /// </para>
-    /// </remarks>
     public static QueryParameters Parse(HttpRequest request)
     {
         var queryParams = new QueryParameters();
 
-        if (
-            request.Query.TryGetValue("page[number]", out StringValues pageNumber)
-            && request.Query.TryGetValue("page[size]", out StringValues pageSize)
-        )
+        // Check for pagination parameters - allow either or both to be specified
+        bool hasPageNumber = request.Query.TryGetValue("page[number]", out StringValues pageNumber);
+        bool hasPageSize = request.Query.TryGetValue("page[size]", out StringValues pageSize);
+
+        if (hasPageNumber || hasPageSize)
         {
             queryParams.Pagination = new PaginationParameters
             {
-                Number = int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1,
-                Size = int.TryParse(pageSize, out int size)
-                    ? Math.Clamp(size, MIN_PAGE_SIZE, MAX_PAGE_SIZE)
-                    : DEFAULT_PAGE_SIZE,
+                Number =
+                    hasPageNumber && int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1, // Default to page 1 if not specified or invalid
+                Size =
+                    hasPageSize && int.TryParse(pageSize, out int size)
+                        ? Math.Clamp(size, MIN_PAGE_SIZE, MAX_PAGE_SIZE)
+                        : DEFAULT_PAGE_SIZE, // Use default size if not specified or invalid
             };
         }
 

@@ -2,34 +2,28 @@ using System.Collections;
 using System.Linq.Expressions;
 using System.Reflection;
 using JsonApiToolkit.Models.Querying.Filtering;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Builds LINQ expressions for applying JSON:API filter parameters to entity queries.
+/// Builds LINQ expressions for JSON:API filter parameters.
+/// Converts filter syntax to strongly-typed expressions for Entity Framework.
 /// </summary>
-/// <remarks>
-/// This utility class converts JSON:API filter syntax into strongly-typed LINQ expressions
-/// that can be used with Entity Framework or other LINQ providers.
-/// </remarks>
 public static class FilterExpressionBuilder
 {
     /// <summary>
-    /// Builds a composite filter expression from a group of filter conditions.
+    /// Builds a composite filter expression from filter conditions and nested groups.
+    /// Supports dot notation for nested properties (e.g., "user.address.city").
     /// </summary>
-    /// <typeparam name="T">The entity type being filtered</typeparam>
-    /// <param name="group">The filter group containing conditions and nested groups</param>
-    /// <param name="parameter">The parameter expression representing the entity in the LINQ expression</param>
-    /// <returns>
-    /// A composite Expression that can be used in a LINQ Where clause, or null if no valid filters exist
-    /// </returns>
-    /// <remarks>
-    /// Handles both simple filters and complex nested filter groups with different logical operators.
-    /// For nested properties, supports dot notation (e.g., "user.address.city").
-    /// </remarks>
+    /// <param name="group">Filter group with conditions and nested groups</param>
+    /// <param name="parameter">Parameter expression for the entity</param>
+    /// <param name="logger">Optional logger</param>
+    /// <returns>Expression for LINQ Where clause, or null if no valid filters</returns>
     public static Expression? BuildFilterExpression<T>(
         FilterGroup group,
-        ParameterExpression parameter
+        ParameterExpression parameter,
+        ILogger? logger = null
     )
     {
         var expressions = new List<Expression>();
@@ -39,7 +33,7 @@ public static class FilterExpressionBuilder
             Expression? expr;
             if (filter.Field.Contains('.'))
             {
-                expr = BuildSingleFilterExpression(parameter, filter);
+                expr = BuildSingleFilterExpression(parameter, filter, logger);
             }
             else
             {
@@ -48,19 +42,34 @@ public static class FilterExpressionBuilder
                     filter.Field
                 );
                 if (property == null)
+                {
+                    logger?.LogWarning(
+                        "Property '{Field}' not found on {Type}, skipping filter",
+                        filter.Field,
+                        typeof(T).Name
+                    );
                     continue;
-                expr = BuildSingleFilterExpression(parameter, filter);
+                }
+                expr = BuildSingleFilterExpression(parameter, filter, logger);
             }
 
             if (expr != null)
+            {
                 expressions.Add(expr);
+            }
+            else
+            {
+                logger?.LogWarning("Failed to build filter for '{Field}'", filter.Field);
+            }
         }
 
         foreach (FilterGroup nestedGroup in group.Groups)
         {
-            Expression? nestedExpr = BuildFilterExpression<T>(nestedGroup, parameter);
+            Expression? nestedExpr = BuildFilterExpression<T>(nestedGroup, parameter, logger);
             if (nestedExpr != null)
+            {
                 expressions.Add(nestedExpr);
+            }
         }
 
         if (expressions.Count == 0)
@@ -78,27 +87,37 @@ public static class FilterExpressionBuilder
 
         Expression? combinedExpression = null;
 
-        foreach (Expression expr in expressions)
+        // For NOT: apply De Morgan's law
+        // NOT(A AND B) = NOT(A) OR NOT(B)
+        if (group.LogicalOperator == LogicalOperator.Not)
         {
-            if (combinedExpression == null)
+            foreach (Expression expr in expressions)
             {
-                combinedExpression = expr;
-            }
-            else
-            {
-                combinedExpression = group.LogicalOperator switch
-                {
-                    LogicalOperator.And => Expression.AndAlso(combinedExpression, expr),
-                    LogicalOperator.Or => Expression.OrElse(combinedExpression, expr),
-                    LogicalOperator.Not => Expression.AndAlso(combinedExpression, expr),
-                    _ => Expression.AndAlso(combinedExpression, expr),
-                };
+                var notExpr = Expression.Not(expr);
+                combinedExpression =
+                    combinedExpression == null
+                        ? notExpr
+                        : Expression.OrElse(combinedExpression, notExpr);
             }
         }
-
-        if (group.LogicalOperator == LogicalOperator.Not && combinedExpression != null)
+        else
         {
-            combinedExpression = Expression.Not(combinedExpression);
+            foreach (Expression expr in expressions)
+            {
+                if (combinedExpression == null)
+                {
+                    combinedExpression = expr;
+                }
+                else
+                {
+                    combinedExpression = group.LogicalOperator switch
+                    {
+                        LogicalOperator.And => Expression.AndAlso(combinedExpression, expr),
+                        LogicalOperator.Or => Expression.OrElse(combinedExpression, expr),
+                        _ => Expression.AndAlso(combinedExpression, expr),
+                    };
+                }
+            }
         }
 
         return combinedExpression;
@@ -107,43 +126,87 @@ public static class FilterExpressionBuilder
     /// <summary>
     /// Builds a filter expression for a single FilterParameter.
     /// </summary>
-    /// <param name="parameter">The parameter expression representing the entity</param>
-    /// <param name="filter">The filter parameter to build an expression for</param>
-    /// <returns>An expression representing the filter condition, or null if the filter cannot be applied</returns>
+    /// <param name="parameter">Parameter expression for the entity</param>
+    /// <param name="filter">Filter parameter to build</param>
+    /// <param name="logger">Optional logger</param>
+    /// <returns>Expression for the filter, or null if invalid</returns>
     public static Expression? BuildSingleFilterExpression(
         ParameterExpression parameter,
-        FilterParameter filter
+        FilterParameter filter,
+        ILogger? logger = null
     )
     {
         if (filter.Field.Contains('.'))
         {
-            return BuildSafeNestedFilterExpression(parameter, filter);
+            return BuildSafeNestedFilterExpression(parameter, filter, logger);
         }
-        else
+
+        PropertyInfo? property = QueryHelpers.GetPropertyByJsonName(parameter.Type, filter.Field);
+        if (property == null)
         {
-            PropertyInfo? property = QueryHelpers.GetPropertyByJsonName(
-                parameter.Type,
-                filter.Field
+            logger?.LogWarning(
+                "Property '{Field}' not found on {EntityType}",
+                filter.Field,
+                parameter.Type.Name
             );
-            if (property == null)
-                return null;
-            Expression propertyAccess = Expression.Property(parameter, property);
-            return BuildPropertyFilterExpression(propertyAccess, filter);
+            return null;
         }
+
+        Expression propertyAccess = Expression.Property(parameter, property);
+        return BuildPropertyFilterExpression(propertyAccess, filter, logger);
     }
 
     private static Expression BuildLikeExpression(Expression property, string value)
     {
         if (property.Type == typeof(string))
         {
+            // For string types, use Contains directly
             MethodInfo? method = typeof(string).GetMethod("Contains", [typeof(string)]);
             return Expression.Call(property, method!, Expression.Constant(value));
         }
 
-        MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
-        MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
-        MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
-        return Expression.Call(toStringCall, containsMethod!, Expression.Constant(value));
+        // For non-string types, we need to handle nulls properly
+        // Check if the property is nullable
+        Type? underlyingType = Nullable.GetUnderlyingType(property.Type);
+        if (underlyingType != null || !property.Type.IsValueType)
+        {
+            // Property is nullable or reference type - need null check
+            // Create: property != null && property.ToString().Contains(value)
+
+            // Null check
+            Expression notNullCheck = Expression.NotEqual(
+                property,
+                Expression.Constant(null, property.Type)
+            );
+
+            // ToString call with null check
+            MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
+            if (toStringMethod == null)
+            {
+                // If no ToString method, use Object.ToString
+                toStringMethod = typeof(object).GetMethod("ToString", Type.EmptyTypes);
+                property = Expression.Convert(property, typeof(object));
+            }
+
+            MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
+            MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
+            Expression containsCall = Expression.Call(
+                toStringCall,
+                containsMethod!,
+                Expression.Constant(value)
+            );
+
+            // Combine: not null && contains
+            return Expression.AndAlso(notNullCheck, containsCall);
+        }
+        else
+        {
+            // Non-nullable value type - can call ToString directly
+            MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
+            MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
+            MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
+            return Expression.Call(toStringCall, containsMethod!, Expression.Constant(value));
+        }
     }
 
     private static Expression BuildInExpression(
@@ -152,16 +215,41 @@ public static class FilterExpressionBuilder
         Type propertyType
     )
     {
-        var rawConvertedValues = value
+        var rawValues = value
             .Split(',')
             .Select(v => v.Trim())
             .Where(v => !string.IsNullOrEmpty(v))
-            .Select(v => QueryHelpers.ConvertToPropertyType(v, propertyType))
-            .Where(v => v != null)
-            .Select(v => v!)
             .ToList();
 
-        if (rawConvertedValues.Count == 0)
+        var convertedValues = new List<object?>();
+        var failedValues = new List<string>();
+
+        foreach (var rawValue in rawValues)
+        {
+            try
+            {
+                var converted = QueryHelpers.ConvertToPropertyType(rawValue, propertyType);
+                if (converted != null)
+                {
+                    convertedValues.Add(converted);
+                }
+            }
+            catch (Exception)
+            {
+                // Track failed conversions
+                failedValues.Add(rawValue);
+            }
+        }
+
+        // If any values failed to convert, throw an exception with details
+        if (failedValues.Count > 0)
+        {
+            throw new ArgumentException(
+                $"Failed to convert the following values to type '{propertyType.Name}' for IN operator: {string.Join(", ", failedValues)}"
+            );
+        }
+
+        if (convertedValues.Count == 0)
             return Expression.Constant(false);
 
         Type listElementType = propertyType;
@@ -177,7 +265,7 @@ public static class FilterExpressionBuilder
 
         var typedList = (IList)Activator.CreateInstance(listType)!;
 
-        foreach (object? item in rawConvertedValues)
+        foreach (object? item in convertedValues)
             typedList.Add(item);
 
         ConstantExpression listConstant = Expression.Constant(typedList, listType);
@@ -196,19 +284,27 @@ public static class FilterExpressionBuilder
 
     private static Expression? BuildSafeNestedFilterExpression(
         ParameterExpression parameter,
-        FilterParameter filter
+        FilterParameter filter,
+        ILogger? logger = null
     )
     {
         string[] parts = filter.Field.Split('.');
         Expression current = parameter;
         var nullChecks = new List<Expression>();
 
-        // Build null-safe navigation for all but the last property
+        // Navigate through all but the last property
         for (int i = 0; i < parts.Length - 1; i++)
         {
             PropertyInfo? prop = QueryHelpers.GetPropertyByJsonName(current.Type, parts[i]);
             if (prop == null)
+            {
+                logger?.LogWarning(
+                    "Property '{PropertyName}' not found on {Type} during navigation",
+                    parts[i],
+                    current.Type.Name
+                );
                 return null;
+            }
 
             current = Expression.Property(current, prop);
 
@@ -225,20 +321,45 @@ public static class FilterExpressionBuilder
         // Get the final property
         PropertyInfo? finalProp = QueryHelpers.GetPropertyByJsonName(current.Type, parts[^1]);
         if (finalProp == null)
+        {
+            logger?.LogWarning(
+                "Property '{PropertyName}' not found on {Type}",
+                parts[^1],
+                current.Type.Name
+            );
             return null;
+        }
 
         Expression finalProperty = Expression.Property(current, finalProp);
-
-        // Build the actual filter expression
-        Expression? filterExpression = BuildPropertyFilterExpression(finalProperty, filter);
+        Expression? filterExpression = BuildPropertyFilterExpression(finalProperty, filter, logger);
         if (filterExpression == null)
             return null;
 
-        // Combine null checks with the filter expression
-        Expression result = filterExpression;
-        foreach (Expression nullCheck in nullChecks)
+        // For inequality: null != value is true
+        // For equality: null == value needs all non-null checks
+        Expression result;
+        if (filter.Operator == FilterOperator.Ne || filter.Operator == FilterOperator.Nin)
         {
-            result = Expression.AndAlso(nullCheck, result);
+            if (nullChecks.Count > 0)
+            {
+                Expression allNotNull = nullChecks[0];
+                for (int i = 1; i < nullChecks.Count; i++)
+                    allNotNull = Expression.AndAlso(allNotNull, nullChecks[i]);
+
+                Expression anyNull = Expression.Not(allNotNull);
+                Expression notNullAndFilter = Expression.AndAlso(allNotNull, filterExpression);
+                result = Expression.OrElse(anyNull, notNullAndFilter);
+            }
+            else
+            {
+                result = filterExpression;
+            }
+        }
+        else
+        {
+            result = filterExpression;
+            foreach (Expression nullCheck in nullChecks)
+                result = Expression.AndAlso(nullCheck, result);
         }
 
         return result;
@@ -246,19 +367,17 @@ public static class FilterExpressionBuilder
 
     private static Expression? BuildPropertyFilterExpression(
         Expression propertyAccess,
-        FilterParameter filter
+        FilterParameter filter,
+        ILogger? logger = null
     )
     {
         Type targetType = propertyAccess.Type;
 
         if (filter.Operator == FilterOperator.IsNull)
-        {
             return Expression.Equal(propertyAccess, Expression.Constant(null));
-        }
+
         if (filter.Operator == FilterOperator.IsNotNull)
-        {
             return Expression.NotEqual(propertyAccess, Expression.Constant(null));
-        }
 
         if (filter.Operator == FilterOperator.In)
         {
@@ -276,11 +395,9 @@ public static class FilterExpressionBuilder
                 );
                 return Expression.AndAlso(notNullExpr, containsExpr);
             }
-            else
-            {
-                return BuildInExpression(propertyAccess, filter.Value, targetType);
-            }
+            return BuildInExpression(propertyAccess, filter.Value, targetType);
         }
+
         if (filter.Operator == FilterOperator.Nin)
         {
             Type? underlying = Nullable.GetUnderlyingType(targetType);
@@ -297,10 +414,7 @@ public static class FilterExpressionBuilder
                 );
                 return Expression.OrElse(isNullExpr, Expression.Not(containsExpr));
             }
-            else
-            {
-                return Expression.Not(BuildInExpression(propertyAccess, filter.Value, targetType));
-            }
+            return Expression.Not(BuildInExpression(propertyAccess, filter.Value, targetType));
         }
 
         object? filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, targetType);
@@ -310,8 +424,14 @@ public static class FilterExpressionBuilder
             && filter.Operator != FilterOperator.Ne
         )
         {
+            logger?.LogWarning(
+                "Failed to convert '{Value}' to {PropertyType}",
+                filter.Value,
+                targetType.Name
+            );
             return null;
         }
+
         ConstantExpression constant = Expression.Constant(filterValue, targetType);
 
         return filter.Operator switch

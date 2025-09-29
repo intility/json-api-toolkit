@@ -1,27 +1,14 @@
 namespace JsonApiToolkit.Models.Querying.Filtering;
 
 /// <summary>
-/// Defines logical operators for combining multiple filter conditions.
+/// Logical operators for combining filter conditions.
 /// </summary>
-/// <remarks>
-/// These operators determine how multiple conditions within a filter group are combined.
-/// They correspond to the SQL logical operators AND, OR, and NOT, and are used to build
-/// complex filtering expressions.
-/// </remarks>
 public enum LogicalOperator
 {
-    /// <summary>
-    /// Logical AND (default).
-    /// </summary>
+    /// <summary>All conditions must be true.</summary>
     And,
-
-    /// <summary>
-    /// Logical OR.
-    /// </summary>
+    /// <summary>At least one condition must be true.</summary>
     Or,
-
-    /// <summary>
-    /// Logical NOT.
-    /// </summary>
+    /// <summary>Negates the condition.</summary>
     Not,
 }

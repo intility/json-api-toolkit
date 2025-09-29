@@ -6,26 +6,16 @@ using Microsoft.Extensions.Logging;
 namespace JsonApiToolkit.Filters;
 
 /// <summary>
-/// Exception filter that transforms known and unknown exceptions into JSON:API compliant error responses.
+/// Transforms exceptions into JSON:API compliant error responses.
+/// Handles known JsonApiException types and logs unexpected errors.
 /// </summary>
 public class JsonApiExceptionFilter(ILogger<JsonApiExceptionFilter> logger) : IExceptionFilter
 {
     private readonly ILogger<JsonApiExceptionFilter> _logger = logger;
 
     /// <summary>
-    /// Handles exceptions thrown during the execution of a controller action.
+    /// Handles exceptions and converts them to JSON:API error responses.
     /// </summary>
-    /// <param name="context">The context of the exception.</param>
-    /// <remarks>
-    /// <para>
-    /// This method inspects the exception and determines the appropriate HTTP status code
-    /// and error message to return in the JSON:API error response.
-    /// </para>
-    /// <para>
-    /// It handles known exceptions (e.g., JsonApiBadRequestException, JsonApiNotFoundException)
-    /// and logs unexpected exceptions (500 Internal Server Error).
-    /// </para>
-    /// </remarks>
     public void OnException(ExceptionContext context)
     {
         int status;

@@ -3,39 +3,38 @@ using System.Text.RegularExpressions;
 namespace JsonApiToolkit.Models.Validation;
 
 /// <summary>
-/// Represents a compiled include pattern for efficient matching.
+/// Compiled include pattern for efficient matching (supports wildcards).
 /// </summary>
 public class IncludePattern
 {
     /// <summary>
-    /// Gets the original pattern string.
+    /// The original pattern string.
     /// </summary>
     public string OriginalPattern { get; }
 
     /// <summary>
-    /// Gets whether this pattern contains wildcards.
+    /// Whether the pattern contains wildcards.
     /// </summary>
     public bool IsWildcard { get; }
 
     /// <summary>
-    /// Gets the type of pattern.
+    /// Type of pattern (exact, wildcard, etc.).
     /// </summary>
     public PatternType Type { get; }
 
     /// <summary>
-    /// Gets the compiled regex for wildcard patterns.
+    /// Compiled regex for wildcard matching.
     /// </summary>
     public Regex? CompiledRegex { get; }
 
     /// <summary>
-    /// Gets the pattern parts for non-wildcard patterns.
+    /// Pattern split into parts for exact matching.
     /// </summary>
     public string[]? PatternParts { get; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="IncludePattern"/> class.
+    /// Initializes a new include pattern.
     /// </summary>
-    /// <param name="pattern">The include pattern string.</param>
     public IncludePattern(string pattern)
     {
         OriginalPattern = pattern ?? throw new ArgumentNullException(nameof(pattern));
@@ -93,10 +92,8 @@ public class IncludePattern
     }
 
     /// <summary>
-    /// Checks if the given include matches this pattern.
+    /// Checks if an include path matches this pattern.
     /// </summary>
-    /// <param name="include">The include to check.</param>
-    /// <returns>True if the include matches, false otherwise.</returns>
     public bool Matches(string include)
     {
         if (string.IsNullOrEmpty(include))
@@ -152,27 +149,16 @@ public class IncludePattern
 }
 
 /// <summary>
-/// Specifies the type of include pattern.
+/// Type of include pattern.
 /// </summary>
 public enum PatternType
 {
-    /// <summary>
-    /// Exact string match pattern.
-    /// </summary>
+    /// <summary>Exact match with no wildcards.</summary>
     Exact,
-
-    /// <summary>
-    /// Top-level wildcard (*) that matches any single segment.
-    /// </summary>
+    /// <summary>Top-level wildcard (*).</summary>
     TopLevelWildcard,
-
-    /// <summary>
-    /// Single-level wildcard (e.g., author.*) that matches one level deep.
-    /// </summary>
+    /// <summary>Single-level wildcard (e.g., author.*).</summary>
     SingleLevelWildcard,
-
-    /// <summary>
-    /// Complex wildcard pattern (reserved for future use).
-    /// </summary>
+    /// <summary>Complex wildcard pattern.</summary>
     ComplexWildcard,
 }

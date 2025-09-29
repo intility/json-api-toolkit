@@ -1,68 +1,30 @@
 namespace JsonApiToolkit.Models.Querying.Filtering;
 
 /// <summary>
-/// Defines comparison operators used in JSON:API filter expressions.
+/// Comparison operators for filter expressions.
 /// </summary>
-/// <remarks>
-/// These operators map to SQL comparison operators and determine how field values
-/// are compared against filter values. They support a wide range of comparison types
-/// from basic equality to range checks and pattern matching.
-/// </remarks>
 public enum FilterOperator
 {
-    /// <summary>
-    /// Equal (default).
-    /// </summary>
+    /// <summary>Equal to.</summary>
     Eq,
-
-    /// <summary>
-    /// Not equal.
-    /// </summary>
+    /// <summary>Not equal to.</summary>
     Ne,
-
-    /// <summary>
-    /// Greater than.
-    /// </summary>
+    /// <summary>Greater than.</summary>
     Gt,
-
-    /// <summary>
-    /// Greater than or equal.
-    /// </summary>
+    /// <summary>Greater than or equal to.</summary>
     Ge,
-
-    /// <summary>
-    /// Less than.
-    /// </summary>
+    /// <summary>Less than.</summary>
     Lt,
-
-    /// <summary>
-    /// Less than or equal.
-    /// </summary>
-
+    /// <summary>Less than or equal to.</summary>
     Le,
-
-    /// <summary>
-    /// Contains.
-    /// </summary>
+    /// <summary>String contains (case-insensitive).</summary>
     Like,
-
-    /// <summary>
-    /// In list.
-    /// </summary>
+    /// <summary>In list of values.</summary>
     In,
-
-    /// <summary>
-    /// Not in list.
-    /// </summary>
+    /// <summary>Not in list of values.</summary>
     Nin,
-
-    /// <summary>
-    /// Is null.
-    /// </summary>
+    /// <summary>Is null.</summary>
     IsNull,
-
-    /// <summary>
-    /// Is not null.
-    /// </summary>
+    /// <summary>Is not null.</summary>
     IsNotNull,
 }

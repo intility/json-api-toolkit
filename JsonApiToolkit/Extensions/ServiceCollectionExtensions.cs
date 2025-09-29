@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JsonApiToolkit.Filters;
+using JsonApiToolkit.Services;
 using JsonApiToolkit.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
@@ -11,16 +12,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace JsonApiToolkit.Extensions
 {
     /// <summary>
-    /// Provides extension methods for integrating JsonApiToolkit into the ASP.NET Core dependency injection system.
+    /// Extension methods for registering JsonApiToolkit services.
     /// </summary>
     public static class ServiceCollectionExtensions
     {
         /// <summary>
-        /// Configures all necessary services and options for JsonApiToolkit in an ASP.NET Core application.
-        /// Also configures OpenAPI/Swagger to use the correct JSON:API content types for controllers tagged with GroupName = "JsonApi".
+        /// Registers JsonApiToolkit services: JSON serialization, filters, query parser, and include validation.
         /// </summary>
-        /// <param name="services">The service collection to add JsonApiToolkit services to.</param>
-        /// <returns>The service collection for method chaining.</returns>
         public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services)
         {
             // Configure JSON serialization options
@@ -65,6 +63,9 @@ namespace JsonApiToolkit.Extensions
             // Register filters
             services.AddScoped<JsonApiExceptionFilter>();
             services.AddScoped<JsonApiContentTypeFilter>();
+
+            // Register query parser service
+            services.AddScoped<IJsonApiQueryParser, JsonApiQueryParserService>();
 
             // Register include pattern validator for startup validation
             services.TryAddEnumerable(

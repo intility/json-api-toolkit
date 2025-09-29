@@ -4,59 +4,25 @@ using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Models.Documents;
 using JsonApiToolkit.Models.Metadata;
 using JsonApiToolkit.Models.Resources;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Mapping;
 
 /// <summary>
-/// Core mapper for converting entities and entity collections to JSON:API resource structures.
+/// Maps entities to JSON:API resource structures.
+/// Handles attributes, relationships, included resources, pagination, and links.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This static class provides the primary mapping functionality between application entities and
-/// JSON:API document structures. It handles mapping of attributes, relationships, included resources,
-/// pagination, and links.
-/// </para>
-/// <para>
-/// All JSON:API document creation should use these methods to ensure consistency and compliance
-/// with the JSON:API specification.
-/// </para>
-/// </remarks>
 public static class JsonApiMapper
 {
     /// <summary>
-    /// Maps an entity to a JSON:API resource object with attributes and relationships.
+    /// Maps entity to JSON:API resource object.
+    /// Extracts ID, maps properties to attributes, and maps relationships.
     /// </summary>
-    /// <param name="entity">The entity to map</param>
-    /// <param name="resourceType">The JSON:API resource type identifier</param>
-    /// <param name="includedRelationships">Optional list of relationships to include in the resource object</param>
-    /// <returns>A fully populated ResourceObject representing the entity</returns>
-    /// <remarks>
-    /// Maps the entity to a JSON:API resource object by:
-    /// <list type="number">
-    /// <item>
-    /// <description>Extracting the entity's ID</description>
-    /// </item>
-    /// <item>
-    /// <description>Mapping primitive properties to attributes</description>
-    /// </item>
-    /// <item>
-    /// <description>Mapping related entities to relationships (both to-one and to-many)</description>
-    /// </item>
-    /// </list>
-    /// <para>
-    /// Only maps relationships that are explicitly included in the includedRelationships parameter.
-    /// Performs smart mapping of different relationship types (to-one vs to-many).
-    /// </para>
-    /// <para>
-    /// This is the core mapping method used by all other document creation methods.
-    /// </para>
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">Thrown if the entity parameter is null</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the entity's ID cannot be determined</exception>
     public static ResourceObject ToResourceObject(
         object entity,
         string resourceType,
-        List<string>? includedRelationships = null
+        List<string>? includedRelationships = null,
+        ILogger? logger = null
     )
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -188,6 +154,7 @@ public static class JsonApiMapper
     /// <param name="resourceType">The JSON:API resource type identifier</param>
     /// <param name="selfLink">The self link URL for the resource</param>
     /// <param name="includedRelationships">Optional list of relationship paths to include</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <returns>A fully populated JSON:API document representing the entity</returns>
     /// <remarks>
     /// <para>
@@ -210,11 +177,23 @@ public static class JsonApiMapper
         T entity,
         string resourceType,
         string selfLink,
-        List<string>? includedRelationships = null
+        List<string>? includedRelationships = null,
+        ILogger? logger = null
     )
         where T : class
     {
-        ResourceObject resource = ToResourceObject(entity, resourceType, includedRelationships);
+        logger?.LogDebug(
+            "Creating JSON:API document for entity of type {EntityType} with resource type '{ResourceType}'",
+            typeof(T).Name,
+            resourceType
+        );
+
+        ResourceObject resource = ToResourceObject(
+            entity,
+            resourceType,
+            includedRelationships,
+            logger
+        );
         resource.Links = new Links { Self = selfLink };
 
         var document = new JsonApiDocument<ResourceObject>
@@ -225,11 +204,29 @@ public static class JsonApiMapper
 
         if (includedRelationships?.Count > 0)
         {
+            logger?.LogDebug(
+                "Processing includes for single entity: {IncludeCount} relationships requested",
+                includedRelationships.Count
+            );
+
             var included = new List<ResourceObject>();
-            InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
+            InclusionMapper.AddIncludedResources(entity, includedRelationships, included, logger);
+
+            logger?.LogDebug(
+                "Include processing completed for single entity: {IncludedCount} resources added to included section",
+                included.Count
+            );
+
             if (included.Count > 0)
             {
                 document.Included = included;
+            }
+            else
+            {
+                logger?.LogWarning(
+                    "No included resources were processed for single entity despite {IncludeCount} relationships being requested. Check if relationships are properly loaded",
+                    includedRelationships.Count
+                );
             }
         }
 
@@ -245,22 +242,35 @@ public static class JsonApiMapper
     /// <param name="selfLink">The self link of the resource object.</param>
     /// <param name="paginationMeta">Optional pagination metadata.</param>
     /// <param name="includedRelationships">Optional list of relationship paths to include.</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <returns>The JSON:API collection document.</returns>
     public static JsonApiCollectionDocument<ResourceObject> ToCollectionDocument<T>(
         IEnumerable<T> entities,
         string resourceType,
         string selfLink,
         PaginationMeta? paginationMeta = null,
-        List<string>? includedRelationships = null
+        List<string>? includedRelationships = null,
+        ILogger? logger = null
     )
         where T : class
     {
+        logger?.LogDebug(
+            "Creating JSON:API collection document for entities of type {EntityType} with resource type '{ResourceType}'",
+            typeof(T).Name,
+            resourceType
+        );
+
         string baseUrl = selfLink.Split('?')[0];
 
         var resources = entities
             .Select(e =>
             {
-                ResourceObject resource = ToResourceObject(e, resourceType, includedRelationships);
+                ResourceObject resource = ToResourceObject(
+                    e,
+                    resourceType,
+                    includedRelationships,
+                    logger
+                );
                 resource.Links = new Links { Self = $"{baseUrl}/{resource.Id}" };
                 return resource;
             })
@@ -306,11 +316,30 @@ public static class JsonApiMapper
 
         if (includedRelationships?.Count > 0)
         {
+            logger?.LogDebug(
+                "Processing includes for collection: {IncludeCount} relationships requested for {EntityCount} entities",
+                includedRelationships.Count,
+                resources.Count
+            );
+
             var included = new List<ResourceObject>();
-            InclusionMapper.AddIncludedResources(entities, includedRelationships, included);
+            InclusionMapper.AddIncludedResources(entities, includedRelationships, included, logger);
+
+            logger?.LogDebug(
+                "Include processing completed: {IncludedCount} resources added to included section",
+                included.Count
+            );
+
             if (included.Count > 0)
             {
                 document.Included = included;
+            }
+            else
+            {
+                logger?.LogWarning(
+                    "No included resources were processed despite {IncludeCount} relationships being requested. Check if relationships are properly loaded on entities",
+                    includedRelationships.Count
+                );
             }
         }
 

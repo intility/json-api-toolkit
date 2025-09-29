@@ -1,44 +1,28 @@
 namespace JsonApiToolkit.Models.Querying.Filtering;
 
 /// <summary>
-/// Represents a filter that should be applied to an included relationship in a JSON:API query.
+/// Filter applied to an included relationship (e.g., filter[author.name]=John).
 /// </summary>
-/// <remarks>
-/// Include filters allow filtering of related resources that are being included in the response.
-/// For example, when including comments on a post, you can filter to only include comments from a specific author.
-/// </remarks>
 public class IncludeFilter
 {
     /// <summary>
-    /// The relationship path to filter on, using JSON property names.
+    /// Relationship path (e.g., "author").
     /// </summary>
-    /// <remarks>
-    /// This is the navigation property path from the main entity to the relationship being filtered.
-    /// For example: "cveComments" for a direct relationship, or "cveComments.author" for a nested relationship.
-    /// </remarks>
     public string RelationshipPath { get; set; } = string.Empty;
 
     /// <summary>
-    /// The field path within the related entity to filter on.
+    /// Field path within the relationship (e.g., "name").
     /// </summary>
-    /// <remarks>
-    /// This is the property path within the related entity that should be filtered.
-    /// Can be a simple property name like "companyCode" or a nested path like "author.department".
-    /// </remarks>
     public string FieldPath { get; set; } = string.Empty;
 
     /// <summary>
-    /// The filter parameter containing the operator and value for the filter condition.
+    /// Filter condition to apply.
     /// </summary>
     public FilterParameter Filter { get; set; } = new();
 
     /// <summary>
-    /// The full field path from the original filter parameter.
+    /// Full path combining relationship and field (e.g., "author.name").
     /// </summary>
-    /// <remarks>
-    /// This combines RelationshipPath and FieldPath with a dot separator.
-    /// For example: "cveComments.companyCode"
-    /// </remarks>
     public string FullPath =>
         string.IsNullOrEmpty(FieldPath) ? RelationshipPath : $"{RelationshipPath}.{FieldPath}";
 }

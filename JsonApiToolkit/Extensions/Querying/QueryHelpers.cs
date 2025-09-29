@@ -1,70 +1,50 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Provides helper methods for interpreting and converting query parameters in JSON:API requests.
+/// Helper methods for query parameter interpretation and conversion.
+/// Caches property lookups for performance.
 /// </summary>
-/// <remarks>
-/// Contains utilities for property name mapping between JSON and C# conventions, type conversion,
-/// and other common query handling functions.
-/// </remarks>
 public static class QueryHelpers
 {
+    private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> s_propertyCache =
+        new();
+
     /// <summary>
-    /// Resolves a JSON property name to the corresponding C# property in an entity type.
+    /// Resolves JSON property name to C# property.
+    /// Tries: exact match, PascalCase, then case-insensitive.
     /// </summary>
-    /// <param name="entityType">The entity type to search for the property</param>
-    /// <param name="jsonPropertyName">The JSON property name (typically camelCase)</param>
-    /// <returns>The matching PropertyInfo if found, or null if no matching property exists</returns>
-    /// <remarks>
-    /// Attempts to match properties in the following order:
-    /// <list type="number">
-    /// <item>
-    /// <description>Exact match (case-sensitive)</description>
-    /// </item>
-    /// <item>
-    /// <description>PascalCase version of the JSON name</description>
-    /// </item>
-    /// <item>
-    /// <description>Case-insensitive match</description>
-    /// </item>
-    /// </list>
-    /// This handles the common case of converting between camelCase (JSON) and PascalCase (C#) property names.
-    /// </remarks>
     public static PropertyInfo? GetPropertyByJsonName(Type entityType, string jsonPropertyName)
     {
-        PropertyInfo? property = entityType.GetProperty(jsonPropertyName);
+        return s_propertyCache.GetOrAdd(
+            (entityType, jsonPropertyName),
+            key =>
+            {
+                var (type, name) = key;
 
-        if (property != null)
-            return property;
+                PropertyInfo? property = type.GetProperty(name);
+                if (property != null)
+                    return property;
 
-        string pascalCase = jsonPropertyName.ToPascalCase();
-        property = entityType.GetProperty(pascalCase);
+                string pascalCase = name.ToPascalCase();
+                property = type.GetProperty(pascalCase);
 
-        return property
-            ?? entityType
-                .GetProperties()
-                .FirstOrDefault(p =>
-                    string.Equals(p.Name, jsonPropertyName, StringComparison.OrdinalIgnoreCase)
-                );
+                return property
+                    ?? type.GetProperties()
+                        .FirstOrDefault(p =>
+                            string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)
+                        );
+            }
+        );
     }
 
     /// <summary>
-    /// Converts a string value from a query parameter to the appropriate target property type.
+    /// Converts query parameter string to target property type.
+    /// Supports primitives, enums, DateTime (assumes UTC), Guid, Uri, TimeSpan, byte[].
     /// </summary>
-    /// <param name="value">The string value from the query parameter</param>
-    /// <param name="targetType">The target property type to convert to</param>
-    /// <returns>
-    /// /// The converted value, or throws an exception if conversion fails or is not supported
-    /// </returns>
-    /// <remarks>
-    /// Handles common primitive types (int, long, decimal, bool, DateTime, Guid, Uri, TimeSpan,
-    /// byte[], etc.) and their nullable variants.
-    /// Also supports enum types, converting the string to the corresponding enum value.
-    /// For DateTime values, assumes UTC if no timezone is specified.
-    /// </remarks>
     public static object? ConvertToPropertyType(string value, Type targetType)
     {
         try
@@ -109,7 +89,15 @@ public static class QueryHelpers
                     DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
                 );
             }
+            if (nonNullableType == typeof(DateOnly))
+            {
+                return DateOnly.Parse(value, CultureInfo.InvariantCulture);
+            }
 
+            if (nonNullableType == typeof(TimeOnly))
+            {
+                return TimeOnly.Parse(value, CultureInfo.InvariantCulture);
+            }
             if (nonNullableType == typeof(Guid))
                 return Guid.Parse(value);
 
@@ -138,7 +126,11 @@ public static class QueryHelpers
         catch (Exception ex)
         {
             throw new FormatException(
-                $"Failed to convert '{value}' to type '{targetType.FullName}': {ex.Message}",
+                $"Failed to convert filter value '{value}' to type '{targetType.FullName}'. "
+                    + $"Expected format examples: "
+                    + $"int: '42', decimal: '12.34', DateTime: '2023-12-25T10:30:00Z', bool: 'true'/'false', "
+                    + $"Guid: '550e8400-e29b-41d4-a716-446655440000'. "
+                    + $"Error: {ex.Message}",
                 ex
             );
         }

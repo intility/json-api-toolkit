@@ -2,39 +2,25 @@ using System.Collections;
 using System.Reflection;
 using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Models.Resources;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Mapping;
 
 /// <summary>
-/// Handles the mapping of included (related) resources in JSON:API responses.
+/// Maps included (related) resources for JSON:API responses.
+/// Handles to-one/to-many relationships and nested paths (e.g., "author.comments").
 /// </summary>
-/// <remarks>
-/// Responsible for processing the "include" query parameter and adding the specified related resources
-/// to the "included" section of a JSON:API response. Handles both to-one and to-many relationships,
-/// and supports nested inclusion paths (e.g., "author.comments").
-/// </remarks>
 public static class InclusionMapper
 {
     /// <summary>
-    /// Processes specified include paths and adds related resources to the included collection.
+    /// Processes include paths and adds related resources to included collection.
+    /// Uses HashSet to track processed entities and prevent duplicates.
     /// </summary>
-    /// <param name="entityOrCollection">The primary entity or collection of entities to process</param>
-    /// <param name="includePaths">List of relationship paths to include (e.g., ["author", "comments.user"])</param>
-    /// <param name="included">Collection to add included resources to</param>
-    /// <param name="processedEntities">Optional set tracking already processed entities to prevent duplicates</param>
-    /// <remarks>
-    /// <para>
-    /// The entry point for inclusion processing. Starts from the primary entity and traverses all specified
-    /// relationship paths, collecting related entities for inclusion in the response.
-    /// </para>
-    /// <para>
-    /// Uses a HashSet to track processed entities and prevent duplicate inclusions.
-    /// </para>
-    /// </remarks>
     public static void AddIncludedResources(
         object entityOrCollection,
         List<string> includePaths,
         List<ResourceObject> included,
+        ILogger? logger = null,
         HashSet<string>? processedEntities = null
     )
     {
@@ -43,7 +29,6 @@ public static class InclusionMapper
 
         processedEntities ??= [];
 
-        // Group include paths by their first segment
         IEnumerable<IGrouping<string, string?>> grouped = includePaths
             .Select(path => path.Split('.', 2))
             .GroupBy(parts => parts[0], parts => parts.Length > 1 ? parts[1] : null);
@@ -62,7 +47,8 @@ public static class InclusionMapper
                         relationshipName,
                         nestedPaths,
                         included,
-                        processedEntities
+                        processedEntities,
+                        logger
                     );
                 }
             }
@@ -73,7 +59,8 @@ public static class InclusionMapper
                     relationshipName,
                     nestedPaths,
                     included,
-                    processedEntities
+                    processedEntities,
+                    logger
                 );
             }
         }
@@ -84,19 +71,28 @@ public static class InclusionMapper
         string relationshipName,
         List<string> nestedPaths,
         List<ResourceObject> included,
-        HashSet<string> processedEntities
+        HashSet<string> processedEntities,
+        ILogger? logger = null
     )
     {
         if (entity == null)
             return;
 
         Type type = entity.GetType();
+
         PropertyInfo? relProp = type.GetProperties()
             .FirstOrDefault(p =>
                 string.Equals(p.Name, relationshipName, StringComparison.OrdinalIgnoreCase)
             );
         if (relProp == null)
+        {
+            logger?.LogWarning(
+                "Relationship '{Relationship}' not found on {Type}",
+                relationshipName,
+                type.Name
+            );
             return;
+        }
 
         object? relValue = relProp.GetValue(entity);
         if (relValue == null)
@@ -106,12 +102,12 @@ public static class InclusionMapper
         {
             foreach (object? relEntity in relCollection)
             {
-                AddSingleIncluded(relEntity, included, processedEntities, nestedPaths);
+                AddSingleIncluded(relEntity, included, processedEntities, nestedPaths, logger);
             }
         }
         else
         {
-            AddSingleIncluded(relValue, included, processedEntities, nestedPaths);
+            AddSingleIncluded(relValue, included, processedEntities, nestedPaths, logger);
         }
     }
 
@@ -119,7 +115,8 @@ public static class InclusionMapper
         object relEntity,
         List<ResourceObject> included,
         HashSet<string> processedEntities,
-        List<string> nestedPaths
+        List<string> nestedPaths,
+        ILogger? logger = null
     )
     {
         if (relEntity == null)
@@ -128,73 +125,35 @@ public static class InclusionMapper
         Type type = relEntity.GetType();
         PropertyInfo? idProp = EntityMapper.GetIdProperty(type);
         if (idProp == null)
+        {
+            logger?.LogWarning("No ID property on {Type}", type.Name);
             return;
+        }
+
         object? idValue = idProp.GetValue(relEntity);
         if (idValue == null)
-            return; // <-- Defensive: skip if no ID
+            return;
 
         string id = idValue.ToString()!;
-        string key = $"{EntityMapper.GetResourceType(type)}:{id}";
+        string resourceType = EntityMapper.GetResourceType(type);
+        string key = $"{resourceType}:{id}";
+
         if (!processedEntities.Add(key))
             return; // Already processed
 
-        // Map the related entity to a ResourceObject (attributes + relationships)
-        var resourceObject = JsonApiMapper.ToResourceObject(
-            relEntity,
-            EntityMapper.GetResourceType(type),
-            nestedPaths
-        );
+        var resourceObject = JsonApiMapper.ToResourceObject(relEntity, resourceType, nestedPaths);
         included.Add(resourceObject);
 
-        // Recursively process nested include paths
         if (nestedPaths?.Count > 0)
         {
-            AddIncludedResources(relEntity, nestedPaths, included, processedEntities);
+            AddIncludedResources(relEntity, nestedPaths, included, logger, processedEntities);
         }
     }
 
     /// <summary>
-    /// Recursively processes a single include path to extract related resources.
+    /// Recursively processes include path to extract related resources.
+    /// Handles to-one/to-many relationships and nested paths with duplicate prevention.
     /// </summary>
-    /// <typeparam name="T">The entity type at the current recursion level</typeparam>
-    /// <param name="entity">The entity at the current recursion level</param>
-    /// <param name="pathParts">Array of relationship names forming the include path</param>
-    /// <param name="depth">Current depth in the path</param>
-    /// <param name="included">Collection to add included resources to</param>
-    /// <param name="processedEntities">Set tracking already processed entities to prevent duplicates</param>
-    /// <remarks>
-    /// <para>
-    /// Internal recursive method that handles both to-one and to-many relationships:
-    /// <list type="bullet">
-    /// <item>
-    /// <description>For to-many relationships, iterates through the collection and processes each item</description>
-    /// </item>
-    /// <item>
-    /// <description>For to-one relationships, processes the single related entity</description>
-    /// </item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// For each related entity:
-    /// <list type="number">
-    /// <item>
-    /// <description>Extracts its ID and type to form a unique key</description>
-    /// </item>
-    /// <item>
-    /// <description>Checks if it has already been processed (to avoid duplicates)</description>
-    /// </item>
-    /// <item>
-    /// <description>Adds it to the included collection with all its attributes</description>
-    /// </item>
-    /// <item>
-    /// <description>Recursively processes the next part of the include path if needed</description>
-    /// </item>
-    /// </list>
-    /// </para>
-    /// <para>
-    /// Handles nested includes (e.g., "author.comments") by recursively calling itself with an incremented depth.
-    /// </para>
-    /// </remarks>
     public static void AddIncludedResourcesRecursive<T>(
         T entity,
         string[] pathParts,
