@@ -271,7 +271,20 @@ public abstract class JsonApiController : ControllerBase
         else if (mappedIncludes.Count > 0)
         {
             Logger.LogDebug("Applying {IncludeCount} regular includes", mappedIncludes.Count);
-            filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
+
+            // Use AsSingleQuery when pagination is present to avoid EF Core split query issues
+            // that cause includes to fail with large datasets + small page sizes
+            if (parameters.Pagination != null)
+            {
+                Logger.LogDebug(
+                    "Using AsSingleQuery for includes due to pagination to prevent split query issues"
+                );
+                filteredQuery = filteredQuery.ApplyIncludesSingleQuery(mappedIncludes);
+            }
+            else
+            {
+                filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
+            }
         }
 
         // Apply sorting after includes for consistency

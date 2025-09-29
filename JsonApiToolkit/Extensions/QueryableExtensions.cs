@@ -79,4 +79,35 @@ public static class QueryableExtensions
         }
         return query;
     }
+
+    /// <summary>
+    /// Dynamically applies EF Core Include() calls using AsSingleQuery() to prevent split query issues.
+    /// </summary>
+    /// <typeparam name="T">The entity type.</typeparam>
+    /// <param name="query">The source queryable.</param>
+    /// <param name="includePaths">A list of include paths (e.g. "todo", "todo.category").</param>
+    /// <returns>The queryable with all includes applied using single query mode.</returns>
+    /// <remarks>
+    /// Use this method when pagination is present to avoid EF Core split query optimization issues
+    /// that can cause includes to load data for wrong entities or no entities at all.
+    /// Forces EF Core to use a single query with JOINs instead of separate queries.
+    /// </remarks>
+    public static IQueryable<T> ApplyIncludesSingleQuery<T>(
+        this IQueryable<T> query,
+        List<string>? includePaths
+    )
+        where T : class
+    {
+        if (includePaths == null || includePaths.Count == 0)
+            return query;
+
+        // Force single query to prevent EF Core split query issues with pagination
+        query = query.AsSingleQuery();
+
+        foreach (string path in includePaths)
+        {
+            query = query.Include(path.Trim());
+        }
+        return query;
+    }
 }

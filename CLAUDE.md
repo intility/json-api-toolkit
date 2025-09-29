@@ -48,6 +48,11 @@ dotnet csharpier . --check
 ### Documentation
 Documentation is built using DocFX and deployed to GitHub Pages. The documentation source is in `/docs/` and the built site goes to `/docs/_site/`.
 
+### Debugging
+Enable detailed logging for query processing and troubleshooting:
+- Set `"JsonApiToolkit": "Debug"` in appsettings.json
+- See `/docs/docs/debugging.md` for comprehensive debugging guide
+
 ## Architecture
 
 ### Core Components
@@ -66,7 +71,12 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 3. **Query Processing Pipeline** (`Extensions/Querying/`)
    - `JsonApiQueryParser`: Parses JSON:API query parameters
    - `FilterExpressionBuilder`: Builds LINQ expressions from filters
-   - `QueryableExtensions`: Extension methods for applying filters, sorting, pagination
+   - `FilterHandler`: Applies filter expressions to queryables
+   - `SortingHandler`: Applies sorting to queryables
+   - `PaginationHandler`: Applies pagination to queryables
+   - `QueryHelpers`: Helper methods for property name mapping and type conversion
+   - `IncludeFilterParser`: Separates filters targeting included resources from main entity filters
+   - `FilteredIncludeBuilder`: Applies filtered includes using EF Core's filtered Include functionality
 
 4. **Models** (`Models/`)
    - Document structures: `JsonApiDocument<T>`, `JsonApiCollectionDocument<T>`
@@ -79,11 +89,15 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
    
 6. **Validation** (`Validation/`)
    - `IncludePatternValidator`: Validates include patterns with wildcard support
+   - `IncludeValidator`: Validates include paths against entity relationships
+   - `IncludePattern`: Model representing validated include patterns
 
-7. **Include Filtering** (`Extensions/Querying/`)
-   - `IncludeFilterParser`: Separates filters targeting included resources from main entity filters
-   - `FilteredIncludeBuilder`: Applies filtered includes using EF Core's filtered Include functionality
-   - Enables filtering on relationships (e.g., `filter[author.name]=John` with `include=author`)
+7. **Services** (`Services/`)
+   - `IJsonApiQueryParser`: Interface for query parameter parsing
+   - `JsonApiQueryParserService`: Service implementation for parsing JSON:API query strings
+
+8. **Helpers** (`Helpers/`)
+   - `EfIncludePathHelper`: Utilities for building EF Core Include expressions
 
 ### Key Patterns
 
@@ -91,7 +105,7 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 - **Query parameter parsing**: Standard JSON:API query syntax (`filter[field]=value`, `sort=field,-field2`, `page[number]=1&page[size]=10`, `include=relationship`)
 - **Async-first**: Main controller method `JsonApiQueryAsync()` is async and works with `IQueryable<T>`
 - **Entity Framework integration**: Uses EF Core's `Include()` and query building capabilities
-- **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, enum support, and filtering on included resources
+- **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, enum support, and filtering on included resources via dot notation (e.g., `filter[author.name]=John` with `include=author`)
 - **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
 - **Pagination safety**: Invalid page numbers are automatically clamped to valid ranges (page 1 for negative/zero, last page for overflow)
 - **Include whitelisting**: Use `AllowedIncludesAttribute` on controller actions to restrict which relationships can be included, preventing unauthorized data exposure
@@ -148,6 +162,7 @@ Tests are organized by component:
 - Entity types should have an `Id` property (auto-detected by `EntityMapper.GetIdProperty()`)
 - Use `QueryParameters queryParams = GetJsonApiQueryParameters()` to access parsed query parameters
 - For manual mapping, use `JsonApiMapper.ToDocument()` or `ToCollectionDocument()`
+- Enable debug logging with `"JsonApiToolkit": "Debug"` in appsettings.json for detailed query processing insights
 
 ## Package Publication
 

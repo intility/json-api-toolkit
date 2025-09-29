@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Models.Resources;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Mapping;
 
@@ -21,6 +22,7 @@ public static class InclusionMapper
     /// <param name="entityOrCollection">The primary entity or collection of entities to process</param>
     /// <param name="includePaths">List of relationship paths to include (e.g., ["author", "comments.user"])</param>
     /// <param name="included">Collection to add included resources to</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <param name="processedEntities">Optional set tracking already processed entities to prevent duplicates</param>
     /// <remarks>
     /// <para>
@@ -35,13 +37,25 @@ public static class InclusionMapper
         object entityOrCollection,
         List<string> includePaths,
         List<ResourceObject> included,
+        ILogger? logger = null,
         HashSet<string>? processedEntities = null
     )
     {
         if (entityOrCollection == null || includePaths == null || includePaths.Count == 0)
+        {
+            logger?.LogDebug(
+                "AddIncludedResources: Skipping - null entity/paths or empty include paths"
+            );
             return;
+        }
 
         processedEntities ??= [];
+
+        logger?.LogDebug(
+            "AddIncludedResources: Processing {PathCount} include paths for entity/collection of type {EntityType}",
+            includePaths.Count,
+            entityOrCollection.GetType().Name
+        );
 
         // Group include paths by their first segment
         IEnumerable<IGrouping<string, string?>> grouped = includePaths
@@ -53,27 +67,52 @@ public static class InclusionMapper
             string relationshipName = group.Key;
             var nestedPaths = group.Where(x => x != null).Select(x => x!).ToList();
 
+            logger?.LogDebug(
+                "Processing relationship '{RelationshipName}' with {NestedPathCount} nested paths",
+                relationshipName,
+                nestedPaths.Count
+            );
+
             if (entityOrCollection is IEnumerable enumerable and not string)
             {
+                int entityCount = 0;
                 foreach (object? entity in enumerable)
                 {
+                    entityCount++;
+                    logger?.LogDebug(
+                        "Processing entity {EntityIndex} for relationship '{RelationshipName}'",
+                        entityCount,
+                        relationshipName
+                    );
+
                     AddIncludedForEntity(
                         entity,
                         relationshipName,
                         nestedPaths,
                         included,
-                        processedEntities
+                        processedEntities,
+                        logger
                     );
                 }
+                logger?.LogDebug(
+                    "Processed {EntityCount} entities for relationship '{RelationshipName}'",
+                    entityCount,
+                    relationshipName
+                );
             }
             else
             {
+                logger?.LogDebug(
+                    "Processing single entity for relationship '{RelationshipName}'",
+                    relationshipName
+                );
                 AddIncludedForEntity(
                     entityOrCollection,
                     relationshipName,
                     nestedPaths,
                     included,
-                    processedEntities
+                    processedEntities,
+                    logger
                 );
             }
         }
@@ -84,34 +123,81 @@ public static class InclusionMapper
         string relationshipName,
         List<string> nestedPaths,
         List<ResourceObject> included,
-        HashSet<string> processedEntities
+        HashSet<string> processedEntities,
+        ILogger? logger = null
     )
     {
         if (entity == null)
+        {
+            logger?.LogDebug("AddIncludedForEntity: Skipping null entity");
             return;
+        }
 
         Type type = entity.GetType();
+        logger?.LogDebug(
+            "AddIncludedForEntity: Looking for relationship '{RelationshipName}' on entity type '{EntityType}'",
+            relationshipName,
+            type.Name
+        );
+
         PropertyInfo? relProp = type.GetProperties()
             .FirstOrDefault(p =>
                 string.Equals(p.Name, relationshipName, StringComparison.OrdinalIgnoreCase)
             );
         if (relProp == null)
+        {
+            logger?.LogWarning(
+                "AddIncludedForEntity: Relationship '{RelationshipName}' not found on entity type '{EntityType}'. Available properties: {PropertyNames}",
+                relationshipName,
+                type.Name,
+                string.Join(", ", type.GetProperties().Select(p => p.Name))
+            );
             return;
+        }
+
+        logger?.LogDebug(
+            "AddIncludedForEntity: Found relationship property '{PropertyName}' of type '{PropertyType}'",
+            relProp.Name,
+            relProp.PropertyType.Name
+        );
 
         object? relValue = relProp.GetValue(entity);
         if (relValue == null)
+        {
+            logger?.LogDebug(
+                "AddIncludedForEntity: Relationship '{RelationshipName}' has null value on entity",
+                relationshipName
+            );
             return;
+        }
 
         if (relValue is IEnumerable relCollection && relValue.GetType() != typeof(string))
         {
+            int collectionCount = 0;
             foreach (object? relEntity in relCollection)
             {
-                AddSingleIncluded(relEntity, included, processedEntities, nestedPaths);
+                collectionCount++;
+            }
+
+            logger?.LogDebug(
+                "AddIncludedForEntity: Processing to-many relationship '{RelationshipName}' with {CollectionCount} items",
+                relationshipName,
+                collectionCount
+            );
+
+            foreach (object? relEntity in relCollection)
+            {
+                AddSingleIncluded(relEntity, included, processedEntities, nestedPaths, logger);
             }
         }
         else
         {
-            AddSingleIncluded(relValue, included, processedEntities, nestedPaths);
+            logger?.LogDebug(
+                "AddIncludedForEntity: Processing to-one relationship '{RelationshipName}' with value type '{ValueType}'",
+                relationshipName,
+                relValue.GetType().Name
+            );
+            AddSingleIncluded(relValue, included, processedEntities, nestedPaths, logger);
         }
     }
 
@@ -119,37 +205,82 @@ public static class InclusionMapper
         object relEntity,
         List<ResourceObject> included,
         HashSet<string> processedEntities,
-        List<string> nestedPaths
+        List<string> nestedPaths,
+        ILogger? logger = null
     )
     {
         if (relEntity == null)
+        {
+            logger?.LogDebug("AddSingleIncluded: Skipping null related entity");
             return;
+        }
 
         Type type = relEntity.GetType();
         PropertyInfo? idProp = EntityMapper.GetIdProperty(type);
         if (idProp == null)
+        {
+            logger?.LogWarning(
+                "AddSingleIncluded: No ID property found on entity type '{EntityType}', cannot include",
+                type.Name
+            );
             return;
+        }
+
         object? idValue = idProp.GetValue(relEntity);
         if (idValue == null)
+        {
+            logger?.LogDebug(
+                "AddSingleIncluded: Entity of type '{EntityType}' has null ID, skipping",
+                type.Name
+            );
             return; // <-- Defensive: skip if no ID
+        }
 
         string id = idValue.ToString()!;
-        string key = $"{EntityMapper.GetResourceType(type)}:{id}";
+        string resourceType = EntityMapper.GetResourceType(type);
+        string key = $"{resourceType}:{id}";
+
+        logger?.LogDebug(
+            "AddSingleIncluded: Processing entity '{ResourceType}' with ID '{EntityId}' (key: '{Key}')",
+            resourceType,
+            id,
+            key
+        );
+
         if (!processedEntities.Add(key))
+        {
+            logger?.LogDebug(
+                "AddSingleIncluded: Entity '{Key}' already processed, skipping duplicate",
+                key
+            );
             return; // Already processed
+        }
+
+        logger?.LogDebug(
+            "AddSingleIncluded: Mapping entity '{Key}' to ResourceObject with {NestedPathCount} nested paths",
+            key,
+            nestedPaths?.Count ?? 0
+        );
 
         // Map the related entity to a ResourceObject (attributes + relationships)
-        var resourceObject = JsonApiMapper.ToResourceObject(
-            relEntity,
-            EntityMapper.GetResourceType(type),
-            nestedPaths
-        );
+        var resourceObject = JsonApiMapper.ToResourceObject(relEntity, resourceType, nestedPaths);
         included.Add(resourceObject);
+
+        logger?.LogDebug(
+            "AddSingleIncluded: Successfully added entity '{Key}' to included resources (total included: {IncludedCount})",
+            key,
+            included.Count
+        );
 
         // Recursively process nested include paths
         if (nestedPaths?.Count > 0)
         {
-            AddIncludedResources(relEntity, nestedPaths, included, processedEntities);
+            logger?.LogDebug(
+                "AddSingleIncluded: Recursively processing {NestedPathCount} nested paths for entity '{Key}'",
+                nestedPaths.Count,
+                key
+            );
+            AddIncludedResources(relEntity, nestedPaths, included, logger, processedEntities);
         }
     }
 

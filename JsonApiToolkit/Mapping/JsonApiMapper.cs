@@ -248,11 +248,29 @@ public static class JsonApiMapper
 
         if (includedRelationships?.Count > 0)
         {
+            logger?.LogDebug(
+                "Processing includes for single entity: {IncludeCount} relationships requested",
+                includedRelationships.Count
+            );
+
             var included = new List<ResourceObject>();
-            InclusionMapper.AddIncludedResources(entity, includedRelationships, included);
+            InclusionMapper.AddIncludedResources(entity, includedRelationships, included, logger);
+
+            logger?.LogDebug(
+                "Include processing completed for single entity: {IncludedCount} resources added to included section",
+                included.Count
+            );
+
             if (included.Count > 0)
             {
                 document.Included = included;
+            }
+            else
+            {
+                logger?.LogWarning(
+                    "No included resources were processed for single entity despite {IncludeCount} relationships being requested. Check if relationships are properly loaded",
+                    includedRelationships.Count
+                );
             }
         }
 
@@ -342,11 +360,30 @@ public static class JsonApiMapper
 
         if (includedRelationships?.Count > 0)
         {
+            logger?.LogDebug(
+                "Processing includes for collection: {IncludeCount} relationships requested for {EntityCount} entities",
+                includedRelationships.Count,
+                resources.Count
+            );
+
             var included = new List<ResourceObject>();
-            InclusionMapper.AddIncludedResources(entities, includedRelationships, included);
+            InclusionMapper.AddIncludedResources(entities, includedRelationships, included, logger);
+
+            logger?.LogDebug(
+                "Include processing completed: {IncludedCount} resources added to included section",
+                included.Count
+            );
+
             if (included.Count > 0)
             {
                 document.Included = included;
+            }
+            else
+            {
+                logger?.LogWarning(
+                    "No included resources were processed despite {IncludeCount} relationships being requested. Check if relationships are properly loaded on entities",
+                    includedRelationships.Count
+                );
             }
         }
 

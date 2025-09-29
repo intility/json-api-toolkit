@@ -76,7 +76,7 @@ public class QueryHelpersTests
         );
 
         Assert.Contains(
-            "Failed to convert 'not-a-number' to type 'System.Int32'",
+            "Failed to convert filter value 'not-a-number' to type 'System.Int32'",
             exception.Message
         );
     }
