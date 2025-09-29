@@ -6,30 +6,28 @@ using Microsoft.Extensions.Logging;
 namespace JsonApiToolkit.Validation;
 
 /// <summary>
-/// Provides startup validation for include patterns in AllowedIncludesAttribute.
+/// Validates include patterns in AllowedIncludesAttribute at startup.
 /// </summary>
 public class IncludePatternValidator : IApplicationModelProvider
 {
     private readonly ILogger<IncludePatternValidator> _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="IncludePatternValidator"/> class.
+    /// Initializes a new instance of the include pattern validator.
     /// </summary>
-    /// <param name="logger">The logger instance.</param>
     public IncludePatternValidator(ILogger<IncludePatternValidator> logger)
     {
         _logger = logger;
     }
 
     /// <summary>
-    /// Gets the order in which providers are executed.
+    /// Gets the order in which the provider should be executed.
     /// </summary>
     public int Order => -1000;
 
     /// <summary>
-    /// Validates include patterns during application startup.
+    /// Validates include patterns when providers are executing.
     /// </summary>
-    /// <param name="context">The application model provider context.</param>
     public void OnProvidersExecuting(ApplicationModelProviderContext context)
     {
         foreach (var controller in context.Result.Controllers)
@@ -55,11 +53,7 @@ public class IncludePatternValidator : IApplicationModelProvider
     /// <summary>
     /// Called after providers have executed.
     /// </summary>
-    /// <param name="context">The application model provider context.</param>
-    public void OnProvidersExecuted(ApplicationModelProviderContext context)
-    {
-        // No action needed
-    }
+    public void OnProvidersExecuted(ApplicationModelProviderContext context) { }
 
     private void ValidatePatterns(string[] patterns, string controllerName, string actionName)
     {

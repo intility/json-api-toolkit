@@ -9,12 +9,9 @@ using Microsoft.Extensions.Logging;
 namespace JsonApiToolkit.Attributes;
 
 /// <summary>
-/// Action filter attribute that restricts which relationships can be included in JSON:API responses.
+/// Restricts which relationships can be included in responses.
+/// Returns 403 Forbidden if requested includes don't match the whitelist.
 /// </summary>
-/// <remarks>
-/// This attribute validates the 'include' query parameter against a whitelist of allowed includes.
-/// If a client requests an include that is not in the whitelist, a 403 Forbidden error is returned.
-/// </remarks>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public class AllowedIncludesAttribute : ActionFilterAttribute
 {
@@ -22,14 +19,14 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
     private readonly Dictionary<string, IncludePattern> _compiledPatterns;
 
     /// <summary>
-    /// Gets the list of allowed include patterns.
+    /// Gets the allowed include patterns.
     /// </summary>
     public string[] AllowedIncludes => _allowedIncludes;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="AllowedIncludesAttribute"/> class.
+    /// Initializes a new instance with the specified allowed include patterns.
     /// </summary>
-    /// <param name="allowedIncludes">The list of allowed include patterns. If empty, no includes are allowed.</param>
+    /// <param name="allowedIncludes">Include patterns to allow (supports wildcards).</param>
     public AllowedIncludesAttribute(params string[] allowedIncludes)
     {
         _allowedIncludes = allowedIncludes ?? [];
@@ -44,9 +41,8 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
     }
 
     /// <summary>
-    /// Validates the include query parameters before the action executes.
+    /// Validates requested includes against the allowed patterns.
     /// </summary>
-    /// <param name="context">The action executing context.</param>
     public override void OnActionExecuting(ActionExecutingContext context)
     {
         // Skip validation for JsonApiCreated methods

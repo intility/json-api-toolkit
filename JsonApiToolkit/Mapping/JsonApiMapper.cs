@@ -9,52 +9,15 @@ using Microsoft.Extensions.Logging;
 namespace JsonApiToolkit.Mapping;
 
 /// <summary>
-/// Core mapper for converting entities and entity collections to JSON:API resource structures.
+/// Maps entities to JSON:API resource structures.
+/// Handles attributes, relationships, included resources, pagination, and links.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This static class provides the primary mapping functionality between application entities and
-/// JSON:API document structures. It handles mapping of attributes, relationships, included resources,
-/// pagination, and links.
-/// </para>
-/// <para>
-/// All JSON:API document creation should use these methods to ensure consistency and compliance
-/// with the JSON:API specification.
-/// </para>
-/// </remarks>
 public static class JsonApiMapper
 {
     /// <summary>
-    /// Maps an entity to a JSON:API resource object with attributes and relationships.
+    /// Maps entity to JSON:API resource object.
+    /// Extracts ID, maps properties to attributes, and maps relationships.
     /// </summary>
-    /// <param name="entity">The entity to map</param>
-    /// <param name="resourceType">The JSON:API resource type identifier</param>
-    /// <param name="includedRelationships">Optional list of relationships to include in the resource object</param>
-    /// <param name="logger">Optional logger for debugging and tracing</param>
-    /// <returns>A fully populated ResourceObject representing the entity</returns>
-    /// <remarks>
-    /// Maps the entity to a JSON:API resource object by:
-    /// <list type="number">
-    /// <item>
-    /// <description>Extracting the entity's ID</description>
-    /// </item>
-    /// <item>
-    /// <description>Mapping primitive properties to attributes</description>
-    /// </item>
-    /// <item>
-    /// <description>Mapping related entities to relationships (both to-one and to-many)</description>
-    /// </item>
-    /// </list>
-    /// <para>
-    /// Only maps relationships that are explicitly included in the includedRelationships parameter.
-    /// Performs smart mapping of different relationship types (to-one vs to-many).
-    /// </para>
-    /// <para>
-    /// This is the core mapping method used by all other document creation methods.
-    /// </para>
-    /// </remarks>
-    /// <exception cref="ArgumentNullException">Thrown if the entity parameter is null</exception>
-    /// <exception cref="InvalidOperationException">Thrown if the entity's ID cannot be determined</exception>
     public static ResourceObject ToResourceObject(
         object entity,
         string resourceType,
@@ -65,13 +28,6 @@ public static class JsonApiMapper
         ArgumentNullException.ThrowIfNull(entity);
 
         Type type = entity.GetType();
-
-        logger?.LogDebug(
-            "Mapping entity of type {EntityType} to resource object with type '{ResourceType}' and {IncludeCount} included relationships",
-            type.Name,
-            resourceType,
-            includedRelationships?.Count ?? 0
-        );
 
         PropertyInfo? idProperty = EntityMapper.GetIdProperty(type);
         var idValue =

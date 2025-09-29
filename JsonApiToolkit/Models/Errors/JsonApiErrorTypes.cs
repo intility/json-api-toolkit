@@ -1,26 +1,22 @@
 namespace JsonApiToolkit.Models.Errors;
 
 /// <summary>
-/// Base class for all JSON:API exceptions that provides comprehensive error information.
+/// Base class for JSON:API exceptions with status code, code, source, and meta.
 /// </summary>
-/// <remarks>
-/// This base class supports the full JSON:API error object specification, allowing
-/// for detailed error reporting with structured metadata, source information, and error codes.
-/// </remarks>
 public abstract class JsonApiException : Exception
 {
     /// <summary>
-    /// HTTP status code for this error.
+    /// HTTP status code for the error.
     /// </summary>
     public int StatusCode { get; }
 
     /// <summary>
-    /// Application-specific error code for categorizing the error.
+    /// Application-specific error code.
     /// </summary>
     public string? Code { get; }
 
     /// <summary>
-    /// Source information indicating where the error occurred.
+    /// Location in the request where the error occurred.
     /// </summary>
     public ErrorSource? ErrorSource { get; }
 
@@ -30,14 +26,8 @@ public abstract class JsonApiException : Exception
     public Dictionary<string, object>? Meta { get; }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiException class.
+    /// Initializes a new JSON:API exception.
     /// </summary>
-    /// <param name="statusCode">HTTP status code</param>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     protected JsonApiException(
         int statusCode,
         string message,
@@ -56,25 +46,19 @@ public abstract class JsonApiException : Exception
 }
 
 /// <summary>
-/// Exception representing a 400 Bad Request error.
+/// Exception for bad request errors (400).
 /// </summary>
 public class JsonApiBadRequestException : JsonApiException
 {
     /// <summary>
-    /// Initializes a new instance of the JsonApiBadRequestException class.
+    /// Initializes a new bad request exception.
     /// </summary>
-    /// <param name="message">Error message</param>
     public JsonApiBadRequestException(string message)
         : base(400, message) { }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiBadRequestException class with detailed error information.
+    /// Initializes a new bad request exception with additional details.
     /// </summary>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     public JsonApiBadRequestException(
         string message,
         string? code = null,
@@ -86,25 +70,19 @@ public class JsonApiBadRequestException : JsonApiException
 }
 
 /// <summary>
-/// Exception representing a 404 Not Found error.
+/// Exception for not found errors (404).
 /// </summary>
 public class JsonApiNotFoundException : JsonApiException
 {
     /// <summary>
-    /// Initializes a new instance of the JsonApiNotFoundException class.
+    /// Initializes a new not found exception.
     /// </summary>
-    /// <param name="message">Error message</param>
     public JsonApiNotFoundException(string message)
         : base(404, message) { }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiNotFoundException class with detailed error information.
+    /// Initializes a new not found exception with additional details.
     /// </summary>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     public JsonApiNotFoundException(
         string message,
         string? code = null,
@@ -116,25 +94,19 @@ public class JsonApiNotFoundException : JsonApiException
 }
 
 /// <summary>
-/// Exception representing a 409 Conflict error.
+/// Exception for conflict errors (409).
 /// </summary>
 public class JsonApiConflictException : JsonApiException
 {
     /// <summary>
-    /// Initializes a new instance of the JsonApiConflictException class.
+    /// Initializes a new conflict exception.
     /// </summary>
-    /// <param name="message">Error message</param>
     public JsonApiConflictException(string message)
         : base(409, message) { }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiConflictException class with detailed error information.
+    /// Initializes a new conflict exception with additional details.
     /// </summary>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     public JsonApiConflictException(
         string message,
         string? code = null,
@@ -146,25 +118,19 @@ public class JsonApiConflictException : JsonApiException
 }
 
 /// <summary>
-/// Exception representing a 401 Unauthorized error.
+/// Exception for unauthorized errors (401).
 /// </summary>
 public class JsonApiUnauthorizedException : JsonApiException
 {
     /// <summary>
-    /// Initializes a new instance of the JsonApiUnauthorizedException class.
+    /// Initializes a new unauthorized exception.
     /// </summary>
-    /// <param name="message">Error message</param>
     public JsonApiUnauthorizedException(string message)
         : base(401, message) { }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiUnauthorizedException class with detailed error information.
+    /// Initializes a new unauthorized exception with additional details.
     /// </summary>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     public JsonApiUnauthorizedException(
         string message,
         string? code = null,
@@ -176,25 +142,19 @@ public class JsonApiUnauthorizedException : JsonApiException
 }
 
 /// <summary>
-/// Exception representing a 403 Forbidden error.
+/// Exception for forbidden errors (403).
 /// </summary>
 public class JsonApiForbiddenException : JsonApiException
 {
     /// <summary>
-    /// Initializes a new instance of the JsonApiForbiddenException class.
+    /// Initializes a new forbidden exception.
     /// </summary>
-    /// <param name="message">Error message</param>
     public JsonApiForbiddenException(string message)
         : base(403, message) { }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiForbiddenException class with detailed error information.
+    /// Initializes a new forbidden exception with additional details.
     /// </summary>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     public JsonApiForbiddenException(
         string message,
         string? code = null,
@@ -206,25 +166,19 @@ public class JsonApiForbiddenException : JsonApiException
 }
 
 /// <summary>
-/// Exception representing a 429 Too Many Requests error.
+/// Exception for rate limit errors (429).
 /// </summary>
 public class JsonApiTooManyRequestsException : JsonApiException
 {
     /// <summary>
-    /// Initializes a new instance of the JsonApiTooManyRequestsException class.
+    /// Initializes a new rate limit exception.
     /// </summary>
-    /// <param name="message">Error message</param>
     public JsonApiTooManyRequestsException(string message)
         : base(429, message) { }
 
     /// <summary>
-    /// Initializes a new instance of the JsonApiTooManyRequestsException class with detailed error information.
+    /// Initializes a new rate limit exception with additional details.
     /// </summary>
-    /// <param name="message">Error message</param>
-    /// <param name="code">Application-specific error code</param>
-    /// <param name="errorSource">Source information</param>
-    /// <param name="meta">Additional metadata</param>
-    /// <param name="innerException">Inner exception</param>
     public JsonApiTooManyRequestsException(
         string message,
         string? code = null,

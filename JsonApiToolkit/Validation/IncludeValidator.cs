@@ -3,16 +3,13 @@ using JsonApiToolkit.Models.Validation;
 namespace JsonApiToolkit.Validation;
 
 /// <summary>
-/// Provides validation logic for JSON:API include parameters.
+/// Validates include parameters against allowed patterns.
 /// </summary>
 public static class IncludeValidator
 {
     /// <summary>
     /// Validates requested includes against allowed patterns.
     /// </summary>
-    /// <param name="requestedIncludes">The includes requested by the client.</param>
-    /// <param name="allowedPatterns">The allowed include patterns.</param>
-    /// <returns>A validation result containing any forbidden includes.</returns>
     public static ValidationResult ValidateIncludes(
         IEnumerable<string> requestedIncludes,
         IEnumerable<string> allowedPatterns
@@ -37,21 +34,16 @@ public static class IncludeValidator
     }
 
     /// <summary>
-    /// Checks if a specific include is allowed by any of the patterns.
+    /// Checks if an include path matches any of the allowed patterns.
     /// </summary>
-    /// <param name="include">The include to check.</param>
-    /// <param name="patterns">The allowed patterns.</param>
-    /// <returns>True if the include is allowed, false otherwise.</returns>
     public static bool IsIncludeAllowed(string include, IEnumerable<IncludePattern> patterns)
     {
         return patterns.Any(pattern => pattern.Matches(include));
     }
 
     /// <summary>
-    /// Compiles pattern strings into IncludePattern objects for efficient matching.
+    /// Compiles pattern strings into IncludePattern objects.
     /// </summary>
-    /// <param name="patternStrings">The pattern strings to compile.</param>
-    /// <returns>A collection of compiled patterns.</returns>
     public static IEnumerable<IncludePattern> CompilePatterns(IEnumerable<string> patternStrings)
     {
         return patternStrings.Select(p => new IncludePattern(p));
@@ -59,17 +51,17 @@ public static class IncludeValidator
 }
 
 /// <summary>
-/// Represents the result of include validation.
+/// Result of include validation.
 /// </summary>
 public class ValidationResult
 {
     /// <summary>
-    /// Gets or sets whether all requested includes are valid.
+    /// Whether all includes are valid.
     /// </summary>
     public bool IsValid { get; set; }
 
     /// <summary>
-    /// Gets or sets the list of forbidden includes.
+    /// List of forbidden includes.
     /// </summary>
     public List<string> ForbiddenIncludes { get; set; } = new();
 }

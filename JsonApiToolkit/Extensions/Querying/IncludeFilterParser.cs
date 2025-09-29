@@ -5,7 +5,7 @@ using JsonApiToolkit.Models.Querying.Filtering;
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Provides functionality to parse and separate filters that target included resources from main entity filters.
+/// Separates filters targeting included resources from main entity filters.
 /// </summary>
 public static class IncludeFilterParser
 {
@@ -14,16 +14,9 @@ public static class IncludeFilterParser
     private const int MaxOrConditions = 10;
 
     /// <summary>
-    /// Separates filters targeting included resources from filters targeting the main entity.
+    /// Separates main filters from include filters.
+    /// Validates that filtered relationships are included in the query.
     /// </summary>
-    /// <param name="filters">The original filter group containing all filters</param>
-    /// <param name="includePaths">The list of include paths requested in the query</param>
-    /// <returns>
-    /// A tuple containing the main entity filters and a list of filters for included resources
-    /// </returns>
-    /// <exception cref="JsonApiBadRequestException">
-    /// Thrown when filters reference relationships that aren't included or exceed complexity limits
-    /// </exception>
     public static (
         FilterGroup? mainFilters,
         List<IncludeFilter> includeFilters

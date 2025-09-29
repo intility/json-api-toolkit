@@ -6,18 +6,14 @@ using Microsoft.EntityFrameworkCore;
 namespace JsonApiToolkit.Extensions.Querying;
 
 /// <summary>
-/// Builds filtered Include expressions for Entity Framework Core queries.
+/// Builds filtered Include expressions for EF Core queries.
+/// Uses EF Core's filtered Include() to apply filters on relationships.
 /// </summary>
 public static class FilteredIncludeBuilder
 {
     /// <summary>
-    /// Applies filtered includes to a queryable, using EF Core's filtered Include functionality.
+    /// Applies filtered includes using EF Core's Include().Where() pattern.
     /// </summary>
-    /// <typeparam name="T">The entity type of the queryable</typeparam>
-    /// <param name="query">The source queryable</param>
-    /// <param name="includePaths">The list of relationships to include</param>
-    /// <param name="includeFilters">The filters to apply to included relationships</param>
-    /// <returns>A queryable with filtered includes applied</returns>
     public static IQueryable<T> ApplyFilteredIncludes<T>(
         this IQueryable<T> query,
         List<string>? includePaths,

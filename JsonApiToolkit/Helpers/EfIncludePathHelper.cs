@@ -1,63 +1,78 @@
 using System.Collections;
+using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace JsonApiToolkit.Helpers;
 
 /// <summary>
-/// Provides utilities for mapping between include paths and CLR properties.
+/// Maps include paths to CLR property names.
+/// Caches property lookups for performance.
 /// </summary>
 public static class EfIncludePathHelper
 {
+    private static readonly ConcurrentDictionary<(Type, string), string> s_includePathCache = new();
+
     /// <summary>
-    /// Maps a list of include paths to CLR properties for a given type.
+    /// Maps include paths to CLR property names for the given type.
     /// </summary>
-    /// <typeparam name="T">The type to map include paths to</typeparam>
-    /// <param name="includePaths">The list of include paths to map</param>
-    /// <returns>A list of mapped CLR property names</returns>
     public static List<string> MapIncludePathsToClrProperties<T>(List<string>? includePaths)
     {
-        if (includePaths == null)
+        if (includePaths == null || includePaths.Count == 0)
             return [];
 
         var type = typeof(T);
-        var mapped = new List<string>();
+        var mapped = new List<string>(includePaths.Count);
 
         foreach (var path in includePaths)
         {
             if (string.IsNullOrWhiteSpace(path))
                 continue;
 
-            var parts = path.Split('.');
-            var mappedParts = new List<string>();
-            var currentType = type;
+            var mappedPath = s_includePathCache.GetOrAdd(
+                (type, path),
+                key => MapSinglePath(key.Item1, key.Item2)
+            );
 
-            foreach (var part in parts)
-            {
-                var prop = currentType
-                    .GetProperties()
-                    .FirstOrDefault(p =>
-                        string.Equals(p.Name, part, StringComparison.OrdinalIgnoreCase)
-                    );
-                if (prop == null)
-                {
-                    mappedParts.Add(part);
-                    break;
-                }
-                mappedParts.Add(prop.Name);
-                currentType = prop.PropertyType;
-                if (
-                    typeof(IEnumerable).IsAssignableFrom(currentType)
-                    && currentType != typeof(string)
-                )
-                {
-                    currentType = currentType.IsGenericType
-                        ? currentType.GetGenericArguments()[0]
-                        : typeof(object);
-                }
-            }
-
-            mapped.Add(string.Join('.', mappedParts));
+            mapped.Add(mappedPath);
         }
 
         return mapped;
+    }
+
+    private static string MapSinglePath(Type startType, string path)
+    {
+        var parts = path.Split('.');
+        var mappedParts = new string[parts.Length];
+        var currentType = startType;
+
+        for (int i = 0; i < parts.Length; i++)
+        {
+            PropertyInfo? prop = currentType
+                .GetProperties()
+                .FirstOrDefault(p =>
+                    string.Equals(p.Name, parts[i], StringComparison.OrdinalIgnoreCase)
+                );
+
+            if (prop == null)
+            {
+                // Property not found, keep original and stop
+                for (int j = i; j < parts.Length; j++)
+                    mappedParts[j] = parts[j];
+                break;
+            }
+
+            mappedParts[i] = prop.Name;
+            currentType = prop.PropertyType;
+
+            // Handle collections
+            if (typeof(IEnumerable).IsAssignableFrom(currentType) && currentType != typeof(string))
+            {
+                currentType = currentType.IsGenericType
+                    ? currentType.GetGenericArguments()[0]
+                    : typeof(object);
+            }
+        }
+
+        return string.Join('.', mappedParts);
     }
 }

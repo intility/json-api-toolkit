@@ -17,13 +17,9 @@ using Microsoft.Extensions.Logging;
 namespace JsonApiToolkit.Controllers;
 
 /// <summary>
-/// Base controller class that implements JSON:API specification-compliant responses and request handling.
-/// Provides standardized methods for returning JSON:API document structures with proper content negotiation.
+/// Base controller for JSON:API compliant responses.
+/// Handles content negotiation and applies JsonApiExceptionFilter automatically.
 /// </summary>
-/// <remarks>
-/// Automatically configures content type handling for "application/vnd.api+json" and applies the JsonApiExceptionFilter.
-/// Use this as the base class for all controllers that need to return JSON:API compliant responses.
-/// </remarks>
 [Produces("application/vnd.api+json")]
 [Consumes("application/vnd.api+json")]
 [ServiceFilter(typeof(JsonApiExceptionFilter))]
@@ -33,54 +29,28 @@ public abstract class JsonApiController : ControllerBase
     private IJsonApiQueryParser? _queryParser;
 
     /// <summary>
-    /// Gets the logger instance from dependency injection.
+    /// Gets the logger instance.
     /// </summary>
-    protected ILogger<JsonApiController> Logger => 
+    protected ILogger<JsonApiController> Logger =>
         _logger ??= HttpContext.RequestServices.GetRequiredService<ILogger<JsonApiController>>();
 
     /// <summary>
-    /// Gets the query parser instance from dependency injection.
+    /// Gets the query parser service.
     /// </summary>
-    protected IJsonApiQueryParser QueryParser => 
+    protected IJsonApiQueryParser QueryParser =>
         _queryParser ??= HttpContext.RequestServices.GetRequiredService<IJsonApiQueryParser>();
 
     /// <summary>
-    /// Extracts and parses JSON:API query parameters from the current HTTP request.
+    /// Parses JSON:API query parameters (filter, sort, page, include).
     /// </summary>
-    /// <returns>A QueryParameters object containing parsed filter, sort, pagination, and include parameters.</returns>
-    /// <remarks>
-    /// Handles standard JSON:API query parameter formats including:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description><c>filter[fieldName]=value</c></description>
-    ///   </item>
-    ///   <item>
-    ///     <description><c>sort=field or sort=-descendingField</c></description>
-    ///   </item>
-    ///   <item>
-    ///     <description><c>page[number]=1&amp;page[size]=10</c></description>
-    ///   </item>
-    ///   <item>
-    ///     <description><c>include=relationship1,relationship2</c></description>
-    ///   </item>
-    /// </list>
-    /// </remarks>
     protected QueryParameters GetJsonApiQueryParameters()
     {
         return QueryParser.Parse(Request);
     }
 
     /// <summary>
-    /// Creates a 200 OK response containing a single resource as a JSON:API document.
+    /// Returns 200 OK with a single resource as JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The entity type being returned</typeparam>
-    /// <param name="entity">The already-loaded entity to serialize into the response</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <returns>An IActionResult with a properly formatted JSON:API document</returns>
-    /// <remarks>
-    /// Serializes the provided entity into JSON:API format. Any relationships that are already loaded
-    /// on the entity will be included in the response.
-    /// </remarks>
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)
         where T : class
     {
@@ -101,17 +71,8 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a 200 OK response containing a collection of resources as a JSON:API document.
+    /// Returns 200 OK with a collection of resources as JSON:API document.
     /// </summary>
-    /// <typeparam name="T">The entity type of the collection items</typeparam>
-    /// <param name="entities">The already-loaded collection of entities to serialize into the response</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <param name="paginationMeta">Optional pagination metadata to include in the response</param>
-    /// <returns>An IActionResult with a properly formatted JSON:API collection document</returns>
-    /// <remarks>
-    /// Serializes the provided collection into JSON:API format. Any relationships that are already loaded
-    /// on the entities will be included in the response. When pagination metadata is provided, adds pagination links.
-    /// </remarks>
     protected IActionResult JsonApiOk<T>(
         IEnumerable<T> entities,
         string resourceType,
@@ -137,65 +98,31 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a 200 OK response for a queryable collection with full JSON:API query parameter support.
+    /// Returns 200 OK for queryable with full JSON:API query support (filter, sort, page, include).
     /// </summary>
-    /// <typeparam name="T">The entity type of the queryable items</typeparam>
-    /// <param name="queryable">The queryable collection to apply filters, sorting, and pagination to</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <returns>An IActionResult with a properly formatted JSON:API collection document with query parameters applied</returns>
-    /// <remarks>
-    /// This method provides comprehensive support for JSON:API query parameters:
-    /// <list type="bullet">
-    ///   <item>
-    ///     <description>Automatically applies any filter parameters to the queryable</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Applies sorting based on sort parameters</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Handles pagination and generates pagination metadata and links</description>
-    ///   </item>
-    ///   <item>
-    ///     <description>Processes includes to add related resources</description>
-    ///   </item>
-    /// </list>
-    /// This is the recommended method for collection endpoints as it implements the complete JSON:API querying capabilities.
-    /// </remarks>
     protected async Task<IActionResult> JsonApiQueryAsync<T>(
         IQueryable<T> queryable,
         string resourceType
     )
         where T : class
     {
-        Logger.LogDebug(
-            "Starting JSON:API query processing for resource type '{ResourceType}'",
-            resourceType
-        );
-
         QueryParameters parameters = GetJsonApiQueryParameters();
+
         Logger.LogDebug(
-            "Parsed query parameters: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}",
+            "Query for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}",
+            typeof(T).Name,
             parameters.Filter?.Filters?.Count ?? 0,
             parameters.Sort?.Count ?? 0,
             parameters.Include?.Count ?? 0,
             parameters.Pagination != null
         );
 
-        // User-friendly warnings for common issues
-        if (parameters.Include?.Count > 0)
+        if (parameters.Filter?.Filters?.Count > 20)
         {
             Logger.LogInformation(
-                "Processing includes: {Includes}. If you get errors, ensure these relationships exist on {EntityType}",
-                string.Join(", ", parameters.Include), 
+                "Complex query with {Count} filters on {EntityType}",
+                parameters.Filter.Filters.Count,
                 typeof(T).Name
-            );
-        }
-
-        if (parameters.Filter?.Filters?.Count > 10)
-        {
-            Logger.LogWarning(
-                "Large number of filters detected ({FilterCount}). This may impact performance. Consider simplifying the query",
-                parameters.Filter.Filters.Count
             );
         }
 
@@ -204,125 +131,71 @@ public abstract class JsonApiController : ControllerBase
             parameters.Include
         );
 
-        Logger.LogDebug(
-            "Mapped {IncludeCount} include paths to CLR properties: {MappedIncludes}",
-            mappedIncludes.Count,
-            string.Join(", ", mappedIncludes)
-        );
-
-        // User-friendly warnings for include mapping issues
         if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
         {
             Logger.LogWarning(
-                "No valid include paths found for {EntityType}. Requested: {RequestedIncludes}. Check that these properties exist and are navigation properties",
+                "No valid includes for {EntityType}. Requested: {Includes}",
                 typeof(T).Name,
                 string.Join(", ", parameters.Include)
             );
         }
-        else if (parameters.Include?.Count > mappedIncludes.Count)
-        {
-            var unmapped = parameters.Include.Except(mappedIncludes.Select(m => m.Split('.')[0])).ToList();
-            if (unmapped.Count > 0)
-            {
-                Logger.LogWarning(
-                    "Some includes could not be mapped for {EntityType}: {UnmappedIncludes}. Check property names and navigation relationships",
-                    typeof(T).Name,
-                    string.Join(", ", unmapped)
-                );
-            }
-        }
 
-        // Separate include filters from main filters
         var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
             parameters.Filter,
             parameters.Include
         );
 
-        Logger.LogDebug(
-            "Separated filters: MainFilters={MainFilterCount}, IncludeFilters={IncludeFilterCount}",
-            mainFilters?.Filters?.Count ?? 0,
-            includeFilters.Count
-        );
-
         IQueryable<T> filteredQuery = queryable;
 
-        // Apply main entity filters first
         if (mainFilters != null)
-        {
-            Logger.LogDebug(
-                "Applying {FilterCount} main entity filters",
-                mainFilters.Filters.Count
-            );
             filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
-        }
 
-        // Standardized order: Filters -> Includes -> Sorting
-        // This ensures consistent behavior regardless of include type
-
-        // Apply includes (filtered or regular)
         if (includeFilters.Count > 0)
         {
             Logger.LogDebug(
-                "Applying {FilteredIncludeCount} filtered includes",
-                includeFilters.Count
+                "Applying {FilterCount} filtered includes for {EntityType}",
+                includeFilters.Count,
+                typeof(T).Name
             );
             filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters);
         }
         else if (mappedIncludes.Count > 0)
         {
-            Logger.LogDebug("Applying {IncludeCount} regular includes", mappedIncludes.Count);
+            // Use single query with pagination to avoid EF Core split query issues
+            filteredQuery = parameters.Pagination != null
+                ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
+                : filteredQuery.ApplyIncludes(mappedIncludes);
 
-            // Use AsSingleQuery when pagination is present to avoid EF Core split query issues
-            // that cause includes to fail with large datasets + small page sizes
-            if (parameters.Pagination != null)
-            {
-                Logger.LogDebug(
-                    "Using AsSingleQuery for includes due to pagination to prevent split query issues"
-                );
-                filteredQuery = filteredQuery.ApplyIncludesSingleQuery(mappedIncludes);
-            }
-            else
-            {
-                filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
-            }
+            Logger.LogDebug(
+                "Applied {IncludeCount} includes for {EntityType} using {QueryType}",
+                mappedIncludes.Count,
+                typeof(T).Name,
+                parameters.Pagination != null ? "SingleQuery" : "SplitQuery"
+            );
         }
 
-        // Apply sorting after includes for consistency
         if (parameters.Sort?.Count > 0)
-        {
-            Logger.LogDebug("Applying {SortCount} sort parameters", parameters.Sort.Count);
             filteredQuery = filteredQuery.ApplySorting(parameters.Sort, Logger);
-        }
 
-        Logger.LogDebug("Executing count query to get total resource count");
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
-        Logger.LogDebug("Total count after filtering: {TotalCount}", totalCount);
 
-        // User-friendly info about results
-        if (totalCount == 0 && (parameters.Filter?.Filters?.Count > 0 || parameters.Include?.Count > 0))
+        if (totalCount == 0 && parameters.Filter?.Filters?.Count > 0)
         {
             Logger.LogInformation(
-                "Query returned 0 results for {EntityType}. This might be due to filters or include conditions. Check your filter values and relationship data",
+                "Query returned 0 results for {EntityType}",
                 typeof(T).Name
             );
         }
-        else if (totalCount > 1000)
+        else if (totalCount > 1000 && parameters.Pagination == null)
         {
             Logger.LogWarning(
-                "Large result set detected ({TotalCount} records). Consider adding pagination or more specific filters for better performance",
+                "Large result set ({TotalCount}) without pagination. Consider adding pagination to improve performance",
                 totalCount
             );
         }
 
         if (parameters.Pagination != null)
-        {
-            Logger.LogDebug(
-                "Applying pagination: Page={PageNumber}, Size={PageSize}",
-                parameters.Pagination.Number,
-                parameters.Pagination.Size
-            );
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination);
-        }
 
         PaginationMeta? paginationMeta = null;
         if (parameters.Pagination != null)
@@ -334,20 +207,17 @@ public abstract class JsonApiController : ControllerBase
                 CurrentPage = parameters.Pagination.Number,
                 PageSize = parameters.Pagination.Size,
             };
-
-            Logger.LogDebug(
-                "Created pagination metadata: TotalPages={TotalPages}, CurrentPage={CurrentPage}, PageSize={PageSize}",
-                paginationMeta.TotalPages,
-                paginationMeta.CurrentPage,
-                paginationMeta.PageSize
-            );
         }
 
-        Logger.LogDebug("Executing final query to retrieve results");
-        List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
-        Logger.LogDebug("Retrieved {ResultCount} results from database", results.Count);
+        Logger.LogDebug(
+            "Executing query for {EntityType}: TotalCount={TotalCount}, Returning={ReturnCount}",
+            typeof(T).Name,
+            totalCount,
+            parameters.Pagination?.Size ?? totalCount
+        );
 
-        Logger.LogDebug("Mapping results to JSON:API document structure");
+        List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
+
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             results,
             resourceType,
@@ -357,29 +227,12 @@ public abstract class JsonApiController : ControllerBase
             Logger
         );
 
-        Logger.LogDebug(
-            "Successfully completed JSON:API query processing for resource type '{ResourceType}' with {ResourceCount} resources and {IncludedCount} included resources",
-            resourceType,
-            document.Data?.Count() ?? 0,
-            document.Included?.Count() ?? 0
-        );
-
         return Ok(document);
     }
 
     /// <summary>
-    /// Creates a 201 Created response containing a newly created resource as a JSON:API document.
+    /// Returns 201 Created with new resource and Location header.
     /// </summary>
-    /// <typeparam name="T">The entity type being returned</typeparam>
-    /// <param name="entity">The newly created entity</param>
-    /// <param name="resourceType">The JSON:API resource type identifier (typically the entity name in camelCase)</param>
-    /// <param name="id">The ID of the newly created resource</param>
-    /// <returns>An IActionResult with Status201Created and a properly formatted JSON:API document</returns>
-    /// <remarks>
-    /// Sets the Location header to the resource's URL and includes the resource in the response body.
-    /// Serializes the provided entity into JSON:API format. Any relationships that are already loaded
-    /// on the entity will be included in the response.
-    /// </remarks>
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
         where T : class
     {
@@ -401,25 +254,13 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a 204 No Content response for successful operations that don't return data.
+    /// Returns 204 No Content (for DELETE/PUT operations).
     /// </summary>
-    /// <returns>An IActionResult with Status204NoContent and an empty response body</returns>
-    /// <remarks>
-    /// Use this method for successful DELETE operations or updates that don't return the modified resource.
-    /// </remarks>
-    protected IActionResult JsonApiNoContent()
-    {
-        return NoContent();
-    }
+    protected IActionResult JsonApiNoContent() => NoContent();
 
     /// <summary>
-    /// Creates a 404 Not Found response with a JSON:API compliant error object.
+    /// Returns 404 Not Found with JSON:API error.
     /// </summary>
-    /// <param name="detail">Custom error message explaining what resource was not found</param>
-    /// <returns>An IActionResult with Status404NotFound and a properly formatted JSON:API error document</returns>
-    /// <remarks>
-    /// Use this method when a requested resource doesn't exist to provide a consistent error response format.
-    /// </remarks>
     protected IActionResult JsonApiNotFound(string detail = "Resource not found")
     {
         var error = new JsonApiError
@@ -428,18 +269,12 @@ public abstract class JsonApiController : ControllerBase
             Title = "Not Found",
             Detail = detail,
         };
-
         return NotFound(new JsonApiErrorResponse { Errors = [error] });
     }
 
     /// <summary>
-    /// Creates a 400 Bad Request response with a JSON:API compliant error object.
+    /// Returns 400 Bad Request with JSON:API error.
     /// </summary>
-    /// <param name="detail">Specific error message explaining the validation or request problem</param>
-    /// <returns>An IActionResult with Status400BadRequest and a properly formatted JSON:API error document</returns>
-    /// <remarks>
-    /// Use this method for validation errors, malformed requests, or other client errors.
-    /// </remarks>
     protected IActionResult JsonApiBadRequest(string detail)
     {
         var error = new JsonApiError
@@ -448,19 +283,12 @@ public abstract class JsonApiController : ControllerBase
             Title = "Bad Request",
             Detail = detail,
         };
-
         return BadRequest(new JsonApiErrorResponse { Errors = [error] });
     }
 
     /// <summary>
-    /// Constructs the complete URL for the current request including scheme, host, path, and query string.
+    /// Gets full request URL for self/pagination links.
     /// </summary>
-    /// <returns>The full URL of the current request as a string</returns>
-    /// <remarks>
-    /// Used internally to generate self links and pagination links in JSON:API responses.
-    /// </remarks>
-    protected string GetFullRequestUrl()
-    {
-        return $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
-    }
+    protected string GetFullRequestUrl() =>
+        $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
 }
