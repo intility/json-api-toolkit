@@ -40,6 +40,37 @@ public class JsonApiQueryParserService : IJsonApiQueryParser
             queryParams.Pagination != null
         );
 
+        // User-friendly warnings for common parameter issues
+        if (
+            request.Query.Keys.Any(k => k.StartsWith("filter", StringComparison.OrdinalIgnoreCase))
+            && (queryParams.Filter?.Filters?.Count ?? 0) == 0
+        )
+        {
+            _logger.LogWarning(
+                "Filter parameters detected in query string but no valid filters parsed. Check filter syntax: filter[fieldName][operator]=value. Example: filter[name][like]=John"
+            );
+        }
+
+        if (
+            request.Query.Keys.Any(k => k.StartsWith("sort", StringComparison.OrdinalIgnoreCase))
+            && (queryParams.Sort?.Count ?? 0) == 0
+        )
+        {
+            _logger.LogWarning(
+                "Sort parameter detected but no valid sorts parsed. Check sort syntax: sort=field1,-field2. Example: sort=name,-createdAt"
+            );
+        }
+
+        if (
+            request.Query.Keys.Any(k => k.StartsWith("page", StringComparison.OrdinalIgnoreCase))
+            && queryParams.Pagination == null
+        )
+        {
+            _logger.LogWarning(
+                "Page parameters detected but no pagination parsed. Use: page[number]=1&page[size]=10"
+            );
+        }
+
         if (queryParams.Pagination != null)
         {
             _logger.LogDebug(

@@ -157,12 +157,6 @@ public class AllowedIncludesIntegrationTests : IDisposable
 [Route("api/test")]
 public class TestIntegrationController : JsonApiController
 {
-    public TestIntegrationController(
-        ILogger<JsonApiController> logger,
-        IJsonApiQueryParser queryParser
-    )
-        : base(logger, queryParser) { }
-
     [HttpGet("with-allowed")]
     [AllowedIncludes("author", "posts")]
     public IActionResult GetWithAllowed()

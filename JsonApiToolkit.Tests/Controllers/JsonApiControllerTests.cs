@@ -6,6 +6,7 @@ using JsonApiToolkit.Services;
 using JsonApiToolkit.Tests.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -13,9 +14,6 @@ namespace JsonApiToolkit.Tests.Controllers;
 
 public class TestJsonApiController : JsonApiController
 {
-    public TestJsonApiController(ILogger<JsonApiController> logger, IJsonApiQueryParser queryParser)
-        : base(logger, queryParser) { }
-
     public IActionResult TestJsonApiOk(TestEntity entity)
     {
         return JsonApiOk(entity, "testEntities");
@@ -48,16 +46,25 @@ public class JsonApiControllerTests
 
     public JsonApiControllerTests()
     {
-        var logger = new Mock<ILogger<JsonApiController>>();
-        var queryParser = new Mock<IJsonApiQueryParser>();
-        queryParser
-            .Setup(x => x.Parse(It.IsAny<Microsoft.AspNetCore.Http.HttpRequest>()))
-            .Returns(
-                new JsonApiToolkit.Models.Querying.QueryParameters { Include = new List<string>() }
-            );
-        _controller = new TestJsonApiController(logger.Object, queryParser.Object);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddScoped<IJsonApiQueryParser>(provider =>
+        {
+            var mock = new Mock<IJsonApiQueryParser>();
+            mock.Setup(x => x.Parse(It.IsAny<Microsoft.AspNetCore.Http.HttpRequest>()))
+                .Returns(
+                    new JsonApiToolkit.Models.Querying.QueryParameters
+                    {
+                        Include = new List<string>(),
+                    }
+                );
+            return mock.Object;
+        });
 
-        var httpContext = new DefaultHttpContext();
+        var serviceProvider = services.BuildServiceProvider();
+        _controller = new TestJsonApiController();
+
+        var httpContext = new DefaultHttpContext { RequestServices = serviceProvider };
         httpContext.Request.Scheme = "https";
         httpContext.Request.Host = new HostString("api.example.com");
         httpContext.Request.Path = "/test-entities";

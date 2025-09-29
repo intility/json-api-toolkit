@@ -146,7 +146,11 @@ public static class QueryHelpers
         catch (Exception ex)
         {
             throw new FormatException(
-                $"Failed to convert '{value}' to type '{targetType.FullName}': {ex.Message}",
+                $"Failed to convert filter value '{value}' to type '{targetType.FullName}'. "
+                    + $"Expected format examples: "
+                    + $"int: '42', decimal: '12.34', DateTime: '2023-12-25T10:30:00Z', bool: 'true'/'false', "
+                    + $"Guid: '550e8400-e29b-41d4-a716-446655440000'. "
+                    + $"Error: {ex.Message}",
                 ex
             );
         }

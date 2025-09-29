@@ -228,9 +228,10 @@ public static class FilterExpressionBuilder
             if (property == null)
             {
                 logger?.LogWarning(
-                    "Property '{Field}' not found on type {Type}",
+                    "Property '{Field}' not found on entity type '{EntityType}'. Available properties: {Properties}. Check your filter field names",
                     filter.Field,
-                    parameter.Type.Name
+                    parameter.Type.Name,
+                    string.Join(", ", parameter.Type.GetProperties().Select(p => p.Name))
                 );
                 return null;
             }

@@ -10,5 +10,7 @@
   href: security.md
 - name: API Controller Examples
   href: api-controller-examples.md
+- name: Debugging
+  href: debugging.md
 - name: Integrations
   href: integrations/toc.yml
