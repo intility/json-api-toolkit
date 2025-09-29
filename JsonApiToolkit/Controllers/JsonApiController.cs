@@ -67,12 +67,17 @@ public abstract class JsonApiController : ControllerBase
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)
         where T : class
     {
+        QueryParameters parameters = GetJsonApiQueryParameters();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            parameters.Include
+        );
+
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             baseUrl,
-            null // No include filtering - serialize all loaded relationships
+            mappedIncludes
         );
         return Ok(document);
     }
@@ -96,13 +101,18 @@ public abstract class JsonApiController : ControllerBase
     )
         where T : class
     {
+        QueryParameters parameters = GetJsonApiQueryParameters();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            parameters.Include
+        );
+
         string baseUrl = GetFullRequestUrl();
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             entities,
             resourceType,
             baseUrl,
             paginationMeta,
-            null // No include filtering - serialize all loaded relationships
+            mappedIncludes
         );
         return Ok(document);
     }
@@ -216,13 +226,18 @@ public abstract class JsonApiController : ControllerBase
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)
         where T : class
     {
+        QueryParameters parameters = GetJsonApiQueryParameters();
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            parameters.Include
+        );
+
         string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}{Request.Path}";
         string selfUrl = $"{baseUrl}/{id}";
         JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
             entity,
             resourceType,
             selfUrl,
-            null // No include filtering - serialize all loaded relationships
+            mappedIncludes
         );
         return Created(selfUrl, document);
     }

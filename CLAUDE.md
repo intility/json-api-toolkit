@@ -56,7 +56,7 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
    - Base controller for JSON:API endpoints
    - Provides methods: `JsonApiOk()`, `JsonApiQueryAsync()`, `JsonApiCreated()`, `JsonApiNotFound()`, etc.
    - Handles query parameter parsing and response formatting
-   - Automatically applies filtering, sorting, pagination, and includes (filtering applies to main entity; includes load related resources)
+   - Automatically applies filtering, sorting, pagination, and includes (filtering applies to main entity and included resources; includes load related resources)
 
 2. **JsonApiMapper** (`Mapping/JsonApiMapper.cs`)
    - Core mapper for converting entities to JSON:API resource structures
@@ -80,13 +80,18 @@ Documentation is built using DocFX and deployed to GitHub Pages. The documentati
 6. **Validation** (`Validation/`)
    - `IncludePatternValidator`: Validates include patterns with wildcard support
 
+7. **Include Filtering** (`Extensions/Querying/`)
+   - `IncludeFilterParser`: Separates filters targeting included resources from main entity filters
+   - `FilteredIncludeBuilder`: Applies filtered includes using EF Core's filtered Include functionality
+   - Enables filtering on relationships (e.g., `filter[author.name]=John` with `include=author`)
+
 ### Key Patterns
 
 - **Convention-based mapping**: Properties are automatically mapped from C# PascalCase to JSON camelCase
 - **Query parameter parsing**: Standard JSON:API query syntax (`filter[field]=value`, `sort=field,-field2`, `page[number]=1&page[size]=10`, `include=relationship`)
 - **Async-first**: Main controller method `JsonApiQueryAsync()` is async and works with `IQueryable<T>`
 - **Entity Framework integration**: Uses EF Core's `Include()` and query building capabilities
-- **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, and enum support
+- **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, enum support, and filtering on included resources
 - **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
 - **Pagination safety**: Invalid page numbers are automatically clamped to valid ranges (page 1 for negative/zero, last page for overflow)
 - **Include whitelisting**: Use `AllowedIncludesAttribute` on controller actions to restrict which relationships can be included, preventing unauthorized data exposure
