@@ -2,14 +2,20 @@ using JsonApiToolkit.Controllers;
 using JsonApiToolkit.Models.Documents;
 using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Resources;
+using JsonApiToolkit.Services;
 using JsonApiToolkit.Tests.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace JsonApiToolkit.Tests.Controllers;
 
 public class TestJsonApiController : JsonApiController
 {
+    public TestJsonApiController(ILogger<JsonApiController> logger, IJsonApiQueryParser queryParser)
+        : base(logger, queryParser) { }
+
     public IActionResult TestJsonApiOk(TestEntity entity)
     {
         return JsonApiOk(entity, "testEntities");
@@ -42,7 +48,14 @@ public class JsonApiControllerTests
 
     public JsonApiControllerTests()
     {
-        _controller = new TestJsonApiController();
+        var logger = new Mock<ILogger<JsonApiController>>();
+        var queryParser = new Mock<IJsonApiQueryParser>();
+        queryParser
+            .Setup(x => x.Parse(It.IsAny<Microsoft.AspNetCore.Http.HttpRequest>()))
+            .Returns(
+                new JsonApiToolkit.Models.Querying.QueryParameters { Include = new List<string>() }
+            );
+        _controller = new TestJsonApiController(logger.Object, queryParser.Object);
 
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Scheme = "https";

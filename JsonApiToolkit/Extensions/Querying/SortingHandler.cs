@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using JsonApiToolkit.Models.Querying;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Extensions.Querying;
 
@@ -19,6 +20,7 @@ public static class SortingHandler
     /// <typeparam name="T">The entity type of the queryable</typeparam>
     /// <param name="query">The source IQueryable to sort</param>
     /// <param name="sortParameters">The list of sort parameters specifying fields and directions</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <returns>A new IQueryable with the specified sorting applied</returns>
     /// <remarks>
     /// <para>
@@ -31,11 +33,19 @@ public static class SortingHandler
     /// </remarks>
     public static IQueryable<T> ApplySorting<T>(
         this IQueryable<T> query,
-        List<SortParameter> sortParameters
+        List<SortParameter> sortParameters,
+        ILogger? logger = null
     )
     {
+        logger?.LogDebug(
+            "Applying sorting to query for type {EntityType} with {SortParameterCount} sort parameters",
+            typeof(T).Name,
+            sortParameters?.Count ?? 0
+        );
+
         if (sortParameters == null || sortParameters.Count == 0)
         {
+            logger?.LogDebug("No sort parameters provided, returning original query");
             return query;
         }
 

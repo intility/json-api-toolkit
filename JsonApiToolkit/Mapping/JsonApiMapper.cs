@@ -4,6 +4,7 @@ using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Models.Documents;
 using JsonApiToolkit.Models.Metadata;
 using JsonApiToolkit.Models.Resources;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Mapping;
 
@@ -29,6 +30,7 @@ public static class JsonApiMapper
     /// <param name="entity">The entity to map</param>
     /// <param name="resourceType">The JSON:API resource type identifier</param>
     /// <param name="includedRelationships">Optional list of relationships to include in the resource object</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <returns>A fully populated ResourceObject representing the entity</returns>
     /// <remarks>
     /// Maps the entity to a JSON:API resource object by:
@@ -56,12 +58,20 @@ public static class JsonApiMapper
     public static ResourceObject ToResourceObject(
         object entity,
         string resourceType,
-        List<string>? includedRelationships = null
+        List<string>? includedRelationships = null,
+        ILogger? logger = null
     )
     {
         ArgumentNullException.ThrowIfNull(entity);
 
         Type type = entity.GetType();
+
+        logger?.LogDebug(
+            "Mapping entity of type {EntityType} to resource object with type '{ResourceType}' and {IncludeCount} included relationships",
+            type.Name,
+            resourceType,
+            includedRelationships?.Count ?? 0
+        );
 
         PropertyInfo? idProperty = EntityMapper.GetIdProperty(type);
         var idValue =
@@ -188,6 +198,7 @@ public static class JsonApiMapper
     /// <param name="resourceType">The JSON:API resource type identifier</param>
     /// <param name="selfLink">The self link URL for the resource</param>
     /// <param name="includedRelationships">Optional list of relationship paths to include</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <returns>A fully populated JSON:API document representing the entity</returns>
     /// <remarks>
     /// <para>
@@ -210,11 +221,23 @@ public static class JsonApiMapper
         T entity,
         string resourceType,
         string selfLink,
-        List<string>? includedRelationships = null
+        List<string>? includedRelationships = null,
+        ILogger? logger = null
     )
         where T : class
     {
-        ResourceObject resource = ToResourceObject(entity, resourceType, includedRelationships);
+        logger?.LogDebug(
+            "Creating JSON:API document for entity of type {EntityType} with resource type '{ResourceType}'",
+            typeof(T).Name,
+            resourceType
+        );
+
+        ResourceObject resource = ToResourceObject(
+            entity,
+            resourceType,
+            includedRelationships,
+            logger
+        );
         resource.Links = new Links { Self = selfLink };
 
         var document = new JsonApiDocument<ResourceObject>
@@ -245,22 +268,35 @@ public static class JsonApiMapper
     /// <param name="selfLink">The self link of the resource object.</param>
     /// <param name="paginationMeta">Optional pagination metadata.</param>
     /// <param name="includedRelationships">Optional list of relationship paths to include.</param>
+    /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <returns>The JSON:API collection document.</returns>
     public static JsonApiCollectionDocument<ResourceObject> ToCollectionDocument<T>(
         IEnumerable<T> entities,
         string resourceType,
         string selfLink,
         PaginationMeta? paginationMeta = null,
-        List<string>? includedRelationships = null
+        List<string>? includedRelationships = null,
+        ILogger? logger = null
     )
         where T : class
     {
+        logger?.LogDebug(
+            "Creating JSON:API collection document for entities of type {EntityType} with resource type '{ResourceType}'",
+            typeof(T).Name,
+            resourceType
+        );
+
         string baseUrl = selfLink.Split('?')[0];
 
         var resources = entities
             .Select(e =>
             {
-                ResourceObject resource = ToResourceObject(e, resourceType, includedRelationships);
+                ResourceObject resource = ToResourceObject(
+                    e,
+                    resourceType,
+                    includedRelationships,
+                    logger
+                );
                 resource.Links = new Links { Self = $"{baseUrl}/{resource.Id}" };
                 return resource;
             })

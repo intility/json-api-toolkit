@@ -8,9 +8,10 @@ using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Metadata;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Resources;
-using JsonApiToolkit.Parsing;
+using JsonApiToolkit.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Controllers;
 
@@ -27,6 +28,18 @@ namespace JsonApiToolkit.Controllers;
 [ServiceFilter(typeof(JsonApiExceptionFilter))]
 public abstract class JsonApiController : ControllerBase
 {
+    private readonly ILogger<JsonApiController> _logger;
+    private readonly IJsonApiQueryParser _queryParser;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JsonApiController"/> class.
+    /// </summary>
+    protected JsonApiController(ILogger<JsonApiController> logger, IJsonApiQueryParser queryParser)
+    {
+        _logger = logger;
+        _queryParser = queryParser;
+    }
+
     /// <summary>
     /// Extracts and parses JSON:API query parameters from the current HTTP request.
     /// </summary>
@@ -50,7 +63,7 @@ public abstract class JsonApiController : ControllerBase
     /// </remarks>
     protected QueryParameters GetJsonApiQueryParameters()
     {
-        return JsonApiQueryParser.Parse(Request);
+        return _queryParser.Parse(Request);
     }
 
     /// <summary>
@@ -77,7 +90,8 @@ public abstract class JsonApiController : ControllerBase
             entity,
             resourceType,
             baseUrl,
-            mappedIncludes
+            mappedIncludes,
+            _logger
         );
         return Ok(document);
     }
@@ -112,7 +126,8 @@ public abstract class JsonApiController : ControllerBase
             resourceType,
             baseUrl,
             paginationMeta,
-            mappedIncludes
+            mappedIncludes,
+            _logger
         );
         return Ok(document);
     }
@@ -148,10 +163,29 @@ public abstract class JsonApiController : ControllerBase
     )
         where T : class
     {
+        _logger.LogDebug(
+            "Starting JSON:API query processing for resource type '{ResourceType}'",
+            resourceType
+        );
+
         QueryParameters parameters = GetJsonApiQueryParameters();
+        _logger.LogDebug(
+            "Parsed query parameters: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}",
+            parameters.Filter?.Filters?.Count ?? 0,
+            parameters.Sort?.Count ?? 0,
+            parameters.Include?.Count ?? 0,
+            parameters.Pagination != null
+        );
+
         string baseUrl = GetFullRequestUrl();
         var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
             parameters.Include
+        );
+
+        _logger.LogDebug(
+            "Mapped {IncludeCount} include paths to CLR properties: {MappedIncludes}",
+            mappedIncludes.Count,
+            string.Join(", ", mappedIncludes)
         );
 
         // Separate include filters from main filters
@@ -160,36 +194,62 @@ public abstract class JsonApiController : ControllerBase
             parameters.Include
         );
 
+        _logger.LogDebug(
+            "Separated filters: MainFilters={MainFilterCount}, IncludeFilters={IncludeFilterCount}",
+            mainFilters?.Filters?.Count ?? 0,
+            includeFilters.Count
+        );
+
         IQueryable<T> filteredQuery = queryable;
 
         // Apply main entity filters first
         if (mainFilters != null)
-            filteredQuery = filteredQuery.ApplyFilters(mainFilters);
+        {
+            _logger.LogDebug(
+                "Applying {FilterCount} main entity filters",
+                mainFilters.Filters.Count
+            );
+            filteredQuery = filteredQuery.ApplyFilters(mainFilters, _logger);
+        }
 
-        // Different ordering strategy based on whether we have filtered includes
+        // Standardized order: Filters -> Includes -> Sorting
+        // This ensures consistent behavior regardless of include type
+
+        // Apply includes (filtered or regular)
         if (includeFilters.Count > 0)
         {
-            // For filtered includes: Apply sorting first to prevent EF Core query translation issues
-            if (parameters.Sort?.Count > 0)
-                filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
-
-            // Then apply filtered includes
+            _logger.LogDebug(
+                "Applying {FilteredIncludeCount} filtered includes",
+                includeFilters.Count
+            );
             filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters);
         }
-        else
+        else if (mappedIncludes.Count > 0)
         {
-            // For regular includes: Apply includes first for better compatibility
+            _logger.LogDebug("Applying {IncludeCount} regular includes", mappedIncludes.Count);
             filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
-
-            // Then apply sorting after includes
-            if (parameters.Sort?.Count > 0)
-                filteredQuery = filteredQuery.ApplySorting(parameters.Sort);
         }
 
+        // Apply sorting after includes for consistency
+        if (parameters.Sort?.Count > 0)
+        {
+            _logger.LogDebug("Applying {SortCount} sort parameters", parameters.Sort.Count);
+            filteredQuery = filteredQuery.ApplySorting(parameters.Sort, _logger);
+        }
+
+        _logger.LogDebug("Executing count query to get total resource count");
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
+        _logger.LogDebug("Total count after filtering: {TotalCount}", totalCount);
 
         if (parameters.Pagination != null)
+        {
+            _logger.LogDebug(
+                "Applying pagination: Page={PageNumber}, Size={PageSize}",
+                parameters.Pagination.Number,
+                parameters.Pagination.Size
+            );
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination);
+        }
 
         PaginationMeta? paginationMeta = null;
         if (parameters.Pagination != null)
@@ -201,16 +261,34 @@ public abstract class JsonApiController : ControllerBase
                 CurrentPage = parameters.Pagination.Number,
                 PageSize = parameters.Pagination.Size,
             };
+
+            _logger.LogDebug(
+                "Created pagination metadata: TotalPages={TotalPages}, CurrentPage={CurrentPage}, PageSize={PageSize}",
+                paginationMeta.TotalPages,
+                paginationMeta.CurrentPage,
+                paginationMeta.PageSize
+            );
         }
 
+        _logger.LogDebug("Executing final query to retrieve results");
         List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
+        _logger.LogDebug("Retrieved {ResultCount} results from database", results.Count);
 
+        _logger.LogDebug("Mapping results to JSON:API document structure");
         JsonApiCollectionDocument<ResourceObject> document = JsonApiMapper.ToCollectionDocument(
             results,
             resourceType,
             baseUrl,
             paginationMeta,
-            mappedIncludes
+            mappedIncludes,
+            _logger
+        );
+
+        _logger.LogDebug(
+            "Successfully completed JSON:API query processing for resource type '{ResourceType}' with {ResourceCount} resources and {IncludedCount} included resources",
+            resourceType,
+            document.Data?.Count() ?? 0,
+            document.Included?.Count() ?? 0
         );
 
         return Ok(document);
@@ -243,7 +321,8 @@ public abstract class JsonApiController : ControllerBase
             entity,
             resourceType,
             selfUrl,
-            mappedIncludes
+            mappedIncludes,
+            _logger
         );
         return Created(selfUrl, document);
     }

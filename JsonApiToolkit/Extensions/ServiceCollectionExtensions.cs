@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using JsonApiToolkit.Filters;
+using JsonApiToolkit.Services;
 using JsonApiToolkit.Validation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
@@ -65,6 +66,9 @@ namespace JsonApiToolkit.Extensions
             // Register filters
             services.AddScoped<JsonApiExceptionFilter>();
             services.AddScoped<JsonApiContentTypeFilter>();
+
+            // Register query parser service
+            services.AddScoped<IJsonApiQueryParser, JsonApiQueryParserService>();
 
             // Register include pattern validator for startup validation
             services.TryAddEnumerable(

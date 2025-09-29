@@ -4,6 +4,7 @@ using JsonApiToolkit.Attributes;
 using JsonApiToolkit.Controllers;
 using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Models.Errors;
+using JsonApiToolkit.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Tests.Integration;
 
@@ -155,6 +157,12 @@ public class AllowedIncludesIntegrationTests : IDisposable
 [Route("api/test")]
 public class TestIntegrationController : JsonApiController
 {
+    public TestIntegrationController(
+        ILogger<JsonApiController> logger,
+        IJsonApiQueryParser queryParser
+    )
+        : base(logger, queryParser) { }
+
     [HttpGet("with-allowed")]
     [AllowedIncludes("author", "posts")]
     public IActionResult GetWithAllowed()

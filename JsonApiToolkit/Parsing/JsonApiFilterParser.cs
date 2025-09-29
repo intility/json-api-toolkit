@@ -198,10 +198,11 @@ public static class JsonApiFilterParser
 
         foreach (var indexGroup in indexGroups)
         {
-            var condition = new FilterParameter();
-
+            // Create a new FilterParameter for each filter in the group
             foreach (var item in indexGroup)
             {
+                var condition = new FilterParameter();
+
                 string restOfKey = item.Key.Substring(
                     $"filter[{groupName}][{indexGroup.Key}][".Length
                 );
@@ -219,9 +220,10 @@ public static class JsonApiFilterParser
                 }
 
                 condition.Value = request.Query[item.Key].ToString();
-            }
 
-            newGroup.Filters.Add(condition);
+                // Add each condition to the group
+                newGroup.Filters.Add(condition);
+            }
         }
 
         if (newGroup.Filters.Count > 0)

@@ -99,17 +99,20 @@ public static class JsonApiQueryParser
     {
         var queryParams = new QueryParameters();
 
-        if (
-            request.Query.TryGetValue("page[number]", out StringValues pageNumber)
-            && request.Query.TryGetValue("page[size]", out StringValues pageSize)
-        )
+        // Check for pagination parameters - allow either or both to be specified
+        bool hasPageNumber = request.Query.TryGetValue("page[number]", out StringValues pageNumber);
+        bool hasPageSize = request.Query.TryGetValue("page[size]", out StringValues pageSize);
+
+        if (hasPageNumber || hasPageSize)
         {
             queryParams.Pagination = new PaginationParameters
             {
-                Number = int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1,
-                Size = int.TryParse(pageSize, out int size)
-                    ? Math.Clamp(size, MIN_PAGE_SIZE, MAX_PAGE_SIZE)
-                    : DEFAULT_PAGE_SIZE,
+                Number =
+                    hasPageNumber && int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1, // Default to page 1 if not specified or invalid
+                Size =
+                    hasPageSize && int.TryParse(pageSize, out int size)
+                        ? Math.Clamp(size, MIN_PAGE_SIZE, MAX_PAGE_SIZE)
+                        : DEFAULT_PAGE_SIZE, // Use default size if not specified or invalid
             };
         }
 

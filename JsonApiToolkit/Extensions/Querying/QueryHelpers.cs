@@ -57,7 +57,7 @@ public static class QueryHelpers
     /// <param name="value">The string value from the query parameter</param>
     /// <param name="targetType">The target property type to convert to</param>
     /// <returns>
-    /// /// The converted value, or throws an exception if conversion fails or is not supported
+    /// The converted value, or throws an exception if conversion fails or is not supported
     /// </returns>
     /// <remarks>
     /// Handles common primitive types (int, long, decimal, bool, DateTime, Guid, Uri, TimeSpan,
@@ -109,7 +109,15 @@ public static class QueryHelpers
                     DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal
                 );
             }
+            if (nonNullableType == typeof(DateOnly))
+            {
+                return DateOnly.Parse(value, CultureInfo.InvariantCulture);
+            }
 
+            if (nonNullableType == typeof(TimeOnly))
+            {
+                return TimeOnly.Parse(value, CultureInfo.InvariantCulture);
+            }
             if (nonNullableType == typeof(Guid))
                 return Guid.Parse(value);
 
