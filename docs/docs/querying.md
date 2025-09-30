@@ -40,10 +40,14 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
   Specify which related resources should be included in the response.
   - Example: `GET /api/books?include=author,reviews`
   
-- **Filtering on Includes (Advanced):**  
+- **Filtering on Includes (Advanced):**
   Filter included resources using dot notation. This feature applies filters directly to the included relationships at the database level.
   - Example: `GET /api/books?include=reviews&filter[reviews.status][eq]=approved`
   - Complex filters: `GET /api/books?include=reviews&filter[or][0][reviews.rating][gte]=4&filter[or][1][reviews.featured][eq]=true`
+  - Nested includes: `GET /api/vulnerabilities?include=cve,cve.cvecomments&filter[cvecomments.companyCode][eq]=AA`
+
+> [!NOTE]
+> Filtered includes currently support up to 2-level nesting (e.g., `parent.child`). Deeper nesting will fall back to unfiltered includes.
 
 ## How It Works
 

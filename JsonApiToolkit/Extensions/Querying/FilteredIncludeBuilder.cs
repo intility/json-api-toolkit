@@ -29,20 +29,41 @@ public static class FilteredIncludeBuilder
             .GroupBy(f => f.RelationshipPath, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
+        // Sort include paths by depth (process shorter paths first)
+        var sortedPaths = includePaths.OrderBy(p => p.Count(c => c == '.')).ToList();
+
         // Process each include path
-        foreach (var includePath in includePaths)
+        foreach (var includePath in sortedPaths)
         {
             var segments = includePath.Split('.');
-            query = ApplyFilteredInclude(query, segments, filtersByRelationship, typeof(T));
+
+            // Check if this path has filters
+            if (
+                filtersByRelationship.TryGetValue(includePath, out var filters)
+                && filters.Count > 0
+            )
+            {
+                // Apply filtered include chain
+                query = ApplyFilteredIncludeChain(query, segments, filters, typeof(T));
+            }
+            else
+            {
+                // Regular include without filters - use string-based Include
+                query = query.Include(includePath);
+            }
         }
 
         return query;
     }
 
-    private static IQueryable<T> ApplyFilteredInclude<T>(
+    /// <summary>
+    /// Applies a filtered include chain for nested relationships.
+    /// For example: Include(v => v.Cve).ThenInclude(c => c.CveComments.Where(...))
+    /// </summary>
+    private static IQueryable<T> ApplyFilteredIncludeChain<T>(
         IQueryable<T> query,
         string[] pathSegments,
-        Dictionary<string, List<IncludeFilter>> filtersByRelationship,
+        List<IncludeFilter> filters,
         Type rootType
     )
         where T : class
@@ -50,52 +71,295 @@ public static class FilteredIncludeBuilder
         if (pathSegments.Length == 0)
             return query;
 
-        var currentPath = pathSegments[0];
-        var fullPath = currentPath;
-
-        // Build the Include expression
-        var parameter = Expression.Parameter(rootType, "x");
-        var includeProperty = GetPropertyExpression(parameter, currentPath, rootType);
-
-        if (includeProperty == null)
-            return query;
-
-        // Check if we have filters for this relationship
-        if (filtersByRelationship.TryGetValue(fullPath, out var filters) && filters.Count > 0)
+        if (pathSegments.Length == 1)
         {
-            // Apply filtered include
-            query = ApplyFilteredIncludeWithFilters(query, currentPath, filters, rootType);
-        }
-        else
-        {
-            // Regular include without filters
-            query = query.Include(currentPath);
+            // Simple case - single level filtered include
+            return ApplyFilteredIncludeWithFilters(query, pathSegments[0], filters, rootType);
         }
 
-        // Handle nested includes recursively
-        if (pathSegments.Length > 1)
-        {
-            var remainingPath = string.Join(".", pathSegments.Skip(1));
+        // Multi-level case: need to build Include().ThenInclude().ThenInclude()...
+        // with filtering on the last level
+        return ApplyNestedFilteredInclude(query, pathSegments, filters, rootType);
+    }
 
-            // For nested includes, we need to check if there are filters at deeper levels
-            var nestedPath = string.Join(".", pathSegments.Take(2));
-            if (
-                filtersByRelationship.TryGetValue(nestedPath, out var nestedFilters)
-                && nestedFilters.Count > 0
-            )
+    /// <summary>
+    /// Builds a nested Include/ThenInclude chain with filtering on the deepest level.
+    /// Uses string-based Include with manual query construction.
+    /// </summary>
+    private static IQueryable<T> ApplyNestedFilteredInclude<T>(
+        IQueryable<T> query,
+        string[] pathSegments,
+        List<IncludeFilter> filters,
+        Type rootType
+    )
+        where T : class
+    {
+        // For 2-level nesting (e.g., cve.cvecomments), we can build the chain
+        if (pathSegments.Length == 2)
+        {
+            return ApplyTwoLevelFilteredInclude(query, pathSegments, filters, rootType);
+        }
+
+        // For deeper nesting, use string-based include (no filtering)
+        // TODO: Implement full depth support
+        var fullPath = string.Join(".", pathSegments);
+        return query.Include(fullPath);
+    }
+
+    /// <summary>
+    /// Special case for two-level includes: Include(x => x.Nav1).ThenInclude(x => x.Nav2.Where(...))
+    /// </summary>
+    private static IQueryable<T> ApplyTwoLevelFilteredInclude<T>(
+        IQueryable<T> query,
+        string[] pathSegments,
+        List<IncludeFilter> filters,
+        Type rootType
+    )
+        where T : class
+    {
+        var firstProperty = QueryHelpers.GetPropertyByJsonName(rootType, pathSegments[0]);
+        if (firstProperty == null)
+            return query.Include(string.Join(".", pathSegments));
+
+        var firstNavType = GetNavigationTargetType(firstProperty.PropertyType);
+        var secondProperty = QueryHelpers.GetPropertyByJsonName(firstNavType, pathSegments[1]);
+        if (secondProperty == null)
+            return query.Include(string.Join(".", pathSegments));
+
+        var isSecondCollection = IsCollectionType(secondProperty.PropertyType);
+        if (!isSecondCollection)
+        {
+            // Can't filter non-collection, use string-based include
+            return query.Include(string.Join(".", pathSegments));
+        }
+
+        var elementType = GetCollectionElementType(secondProperty.PropertyType);
+        if (elementType == null)
+            return query.Include(string.Join(".", pathSegments));
+
+        // Build: Include(v => v.FirstNav).ThenInclude(x => x.SecondNav.Where(filter))
+        try
+        {
+            // Build Include expression for first nav
+            var rootParam = Expression.Parameter(rootType, "root");
+            var firstNavAccess = Expression.Property(rootParam, firstProperty);
+            var includeLambda = Expression.Lambda(firstNavAccess, rootParam);
+
+            // Apply the Include
+            var includeMethod = typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods()
+                .First(m =>
+                    m.Name == "Include"
+                    && m.GetParameters().Length == 2
+                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                        == typeof(Expression<>)
+                )
+                .MakeGenericMethod(rootType, firstProperty.PropertyType);
+
+            var includedQuery = includeMethod.Invoke(null, new object[] { query, includeLambda });
+
+            // Build ThenInclude expression with filtering
+            var navParam = Expression.Parameter(firstNavType, "nav");
+            var secondNavAccess = Expression.Property(navParam, secondProperty);
+
+            // Build filter: nav.SecondNav.Where(filter)
+            var filterParam = Expression.Parameter(elementType, "item");
+            Expression? filterExpr = null;
+
+            foreach (var filter in filters)
             {
-                // We have filters at a deeper level - this requires special handling
-                // For now, we'll include the nested path normally
-                query = query.Include($"{currentPath}.{remainingPath}");
+                var singleFilterExpr = BuildSingleFilterExpression(filterParam, filter);
+                if (singleFilterExpr != null)
+                {
+                    filterExpr =
+                        filterExpr == null
+                            ? singleFilterExpr
+                            : Expression.OrElse(filterExpr, singleFilterExpr);
+                }
+            }
+
+            if (filterExpr != null)
+            {
+                // Create Where lambda
+                var whereLambda = Expression.Lambda(filterExpr, filterParam);
+
+                // Call Where on the collection
+                var whereMethod = typeof(Enumerable)
+                    .GetMethods()
+                    .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
+                    .MakeGenericMethod(elementType);
+
+                var filteredCollection = Expression.Call(whereMethod, secondNavAccess, whereLambda);
+                var thenIncludeLambda = Expression.Lambda(filteredCollection, navParam);
+
+                // Apply ThenInclude
+                var thenIncludeMethod = typeof(EntityFrameworkQueryableExtensions)
+                    .GetMethods()
+                    .First(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
+                    .MakeGenericMethod(rootType, firstNavType, filteredCollection.Type);
+
+                var result = thenIncludeMethod.Invoke(
+                    null,
+                    new[] { includedQuery, thenIncludeLambda }
+                );
+                return (IQueryable<T>)result!;
             }
             else
             {
-                // Regular nested include
-                query = query.Include($"{currentPath}.{remainingPath}");
+                // No valid filter, use unfiltered ThenInclude
+                var thenIncludeLambda = Expression.Lambda(secondNavAccess, navParam);
+
+                var thenIncludeMethod = typeof(EntityFrameworkQueryableExtensions)
+                    .GetMethods()
+                    .First(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
+                    .MakeGenericMethod(rootType, firstNavType, secondProperty.PropertyType);
+
+                var result = thenIncludeMethod.Invoke(
+                    null,
+                    new[] { includedQuery, thenIncludeLambda }
+                );
+                return (IQueryable<T>)result!;
+            }
+        }
+        catch
+        {
+            // Fallback to string-based include if expression building fails
+            return query.Include(string.Join(".", pathSegments));
+        }
+    }
+
+    private static LambdaExpression? BuildIncludeExpression(Type entityType, PropertyInfo property)
+    {
+        var parameter = Expression.Parameter(entityType, "x");
+        var propertyAccess = Expression.Property(parameter, property);
+        return Expression.Lambda(propertyAccess, parameter);
+    }
+
+    private static LambdaExpression? BuildThenIncludeExpression(
+        Type entityType,
+        PropertyInfo property,
+        Type previousResultType
+    )
+    {
+        var parameter = Expression.Parameter(entityType, "x");
+        var propertyAccess = Expression.Property(parameter, property);
+        return Expression.Lambda(propertyAccess, parameter);
+    }
+
+    private static LambdaExpression? BuildFilteredThenIncludeExpression(
+        Type entityType,
+        PropertyInfo property,
+        List<IncludeFilter> filters,
+        Type previousResultType
+    )
+    {
+        var isCollection = IsCollectionType(property.PropertyType);
+
+        if (!isCollection)
+        {
+            // Can't filter non-collection navigations
+            return BuildThenIncludeExpression(entityType, property, previousResultType);
+        }
+
+        var elementType = GetCollectionElementType(property.PropertyType);
+        if (elementType == null)
+            return null;
+
+        // Build: x => x.Navigation.Where(filter)
+        var parameter = Expression.Parameter(entityType, "x");
+        var navigationAccess = Expression.Property(parameter, property);
+        var elementParameter = Expression.Parameter(elementType, "e");
+
+        // Build combined filter expression (OR logic for multiple filters)
+        Expression? filterExpression = null;
+        foreach (var filter in filters)
+        {
+            var singleFilterExpr = BuildSingleFilterExpression(elementParameter, filter);
+            if (singleFilterExpr != null)
+            {
+                filterExpression =
+                    filterExpression == null
+                        ? singleFilterExpr
+                        : Expression.OrElse(filterExpression, singleFilterExpr);
             }
         }
 
-        return query;
+        if (filterExpression == null)
+            return null;
+
+        // Create Where lambda
+        var whereLambda = Expression.Lambda(filterExpression, elementParameter);
+
+        // Call Where method
+        var whereMethod = typeof(Enumerable)
+            .GetMethods()
+            .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
+            .MakeGenericMethod(elementType);
+
+        var filteredCollection = Expression.Call(whereMethod, navigationAccess, whereLambda);
+
+        return Expression.Lambda(filteredCollection, parameter);
+    }
+
+    private static object ApplyIncludeToQuery(object query, LambdaExpression includeExpression)
+    {
+        var queryType = query.GetType().GetGenericArguments()[0];
+        var navigationPropertyType = includeExpression.ReturnType;
+
+        var includeMethod = typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods()
+            .First(m =>
+                m.Name == "Include"
+                && m.GetParameters().Length == 2
+                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                    == typeof(Expression<>)
+            )
+            .MakeGenericMethod(queryType, navigationPropertyType);
+
+        return includeMethod.Invoke(null, new[] { query, includeExpression })!;
+    }
+
+    private static object ApplyThenIncludeToQuery(
+        object query,
+        LambdaExpression thenIncludeExpression,
+        Type previousEntityType,
+        Type previousNavigationType
+    )
+    {
+        var queryType = query.GetType();
+        var navigationPropertyType = thenIncludeExpression.ReturnType;
+
+        // Find the right ThenInclude overload
+        var thenIncludeMethod = typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods()
+            .FirstOrDefault(m =>
+                m.Name == "ThenInclude"
+                && m.GetParameters().Length == 2
+                && m.GetGenericArguments().Length == 3
+            );
+
+        if (thenIncludeMethod == null)
+            return query;
+
+        // Get the element type for collections
+        var previousEntityGenericType =
+            GetCollectionElementType(previousNavigationType) ?? previousNavigationType;
+
+        var entityType = queryType.GetGenericArguments()[0]; // TEntity
+        var propertyType = thenIncludeExpression.ReturnType; // TProperty
+
+        thenIncludeMethod = thenIncludeMethod.MakeGenericMethod(
+            entityType,
+            previousEntityGenericType,
+            propertyType
+        );
+
+        return thenIncludeMethod.Invoke(null, new[] { query, thenIncludeExpression })!;
+    }
+
+    private static Type GetNavigationTargetType(Type navigationType)
+    {
+        return GetCollectionElementType(navigationType) ?? navigationType;
     }
 
     private static IQueryable<T> ApplyFilteredIncludeWithFilters<T>(

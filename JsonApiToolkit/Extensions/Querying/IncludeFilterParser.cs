@@ -130,17 +130,28 @@ public static class IncludeFilterParser
             var potentialRelationship = string.Join(".", parts.Take(i));
             var normalizedPotential = ConvertKebabToCamelCase(potentialRelationship);
 
-            if (
-                normalizedIncludePaths.Any(path =>
-                    path.Equals(normalizedPotential, StringComparison.OrdinalIgnoreCase)
-                    || path.StartsWith(
-                        normalizedPotential + ".",
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                )
-            )
+            // First check for exact match or prefix match
+            var matchedPath = normalizedIncludePaths.FirstOrDefault(path =>
+                path.Equals(normalizedPotential, StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith(normalizedPotential + ".", StringComparison.OrdinalIgnoreCase)
+            );
+
+            if (matchedPath != null)
             {
                 relationshipPath = potentialRelationship;
+                fieldPath = string.Join(".", parts.Skip(i));
+                return true;
+            }
+
+            // Check if any include path ends with this potential relationship
+            // This handles cases like: include=cve.cvecomments&filter[cvecomments.field]
+            matchedPath = normalizedIncludePaths.FirstOrDefault(path =>
+                path.EndsWith("." + normalizedPotential, StringComparison.OrdinalIgnoreCase)
+            );
+
+            if (matchedPath != null)
+            {
+                relationshipPath = matchedPath;
                 fieldPath = string.Join(".", parts.Skip(i));
                 return true;
             }

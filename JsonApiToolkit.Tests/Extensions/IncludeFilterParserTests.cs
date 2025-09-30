@@ -393,4 +393,111 @@ public class IncludeFilterParserTests
         Assert.All(includeFilters, f => Assert.Equal("comments", f.RelationshipPath));
         Assert.All(includeFilters, f => Assert.Equal("status", f.FieldPath));
     }
+
+    [Fact]
+    public void SeparateIncludeFilters_WithDeepNestedIncludeFilterUsingLeafName_SeparatesCorrectly()
+    {
+        // Arrange - This tests the scenario: include=cve,cve.cvecomments&filter[cvecomments.companyCode][eq]=AA
+        var filters = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new()
+                {
+                    Field = "cvecomments.companyCode",
+                    Operator = FilterOperator.Eq,
+                    Value = "AA",
+                },
+            },
+        };
+        var includePaths = new List<string> { "cve", "cve.cvecomments" };
+
+        // Act
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            filters,
+            includePaths
+        );
+
+        // Assert
+        Assert.Null(mainFilters); // No main filters expected
+        Assert.Single(includeFilters);
+        Assert.Equal("cve.cvecomments", includeFilters[0].RelationshipPath);
+        Assert.Equal("companyCode", includeFilters[0].FieldPath);
+        Assert.Equal("AA", includeFilters[0].Filter.Value);
+    }
+
+    [Fact]
+    public void SeparateIncludeFilters_WithDeepNestedIncludeFilterUsingKebabCase_SeparatesCorrectly()
+    {
+        // Arrange - Similar test with kebab-case include path
+        var filters = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new()
+                {
+                    Field = "cveComments.companyCode",
+                    Operator = FilterOperator.Eq,
+                    Value = "AA",
+                },
+            },
+        };
+        var includePaths = new List<string> { "cve", "cve.cve-comments" };
+
+        // Act
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            filters,
+            includePaths
+        );
+
+        // Assert
+        Assert.Null(mainFilters);
+        Assert.Single(includeFilters);
+        // The relationship path is returned as the matched normalized path
+        Assert.Equal("cve.cveComments", includeFilters[0].RelationshipPath);
+        Assert.Equal("companyCode", includeFilters[0].FieldPath);
+    }
+
+    [Fact]
+    public void SeparateIncludeFilters_WithMultipleDeepNestedFilters_SeparatesCorrectly()
+    {
+        // Arrange - Multiple filters on deep nested includes
+        var filters = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new()
+                {
+                    Field = "author.name",
+                    Operator = FilterOperator.Eq,
+                    Value = "John",
+                },
+                new()
+                {
+                    Field = "comments.status",
+                    Operator = FilterOperator.Eq,
+                    Value = "approved",
+                },
+            },
+        };
+        var includePaths = new List<string> { "posts.author", "posts.comments" };
+
+        // Act
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            filters,
+            includePaths
+        );
+
+        // Assert
+        Assert.Null(mainFilters);
+        Assert.Equal(2, includeFilters.Count);
+
+        var authorFilter = includeFilters.First(f => f.FieldPath == "name");
+        Assert.Equal("posts.author", authorFilter.RelationshipPath);
+        Assert.Equal("John", authorFilter.Filter.Value);
+
+        var commentFilter = includeFilters.First(f => f.FieldPath == "status");
+        Assert.Equal("posts.comments", commentFilter.RelationshipPath);
+        Assert.Equal("approved", commentFilter.Filter.Value);
+    }
 }
