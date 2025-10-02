@@ -49,6 +49,27 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
+    /// Applies only filtering from JSON:API query parameters to a queryable.
+    /// Useful when you need to filter before aggregation/projection to DTOs.
+    /// </summary>
+    /// <typeparam name="T">The entity type to filter.</typeparam>
+    /// <param name="queryable">The queryable to apply filters to.</param>
+    /// <returns>The filtered queryable.</returns>
+    /// <remarks>
+    /// Use this when working with projections/DTOs where you need to apply filters
+    /// to the source entity before grouping or projecting to a DTO.
+    /// </remarks>
+    protected IQueryable<T> ApplyFiltersOnly<T>(IQueryable<T> queryable)
+        where T : class
+    {
+        QueryParameters parameters = GetJsonApiQueryParameters();
+        if (parameters.Filter == null)
+            return queryable;
+
+        return queryable.ApplyFilters(parameters.Filter, Logger);
+    }
+
+    /// <summary>
     /// Returns 200 OK with a single resource as JSON:API document.
     /// </summary>
     protected IActionResult JsonApiOk<T>(T entity, string resourceType)

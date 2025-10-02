@@ -4,6 +4,8 @@
   href: getting-started.md
 - name: Querying
   href: querying.md
+- name: Statistics and Aggregations
+  href: statistics-and-aggregations.md
 - name: Enhanced Error Handling
   href: enhanced-error-handling.md
 - name: Security
