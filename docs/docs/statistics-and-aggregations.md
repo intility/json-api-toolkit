@@ -141,32 +141,4 @@ public async Task<IActionResult> GetPublisherStatsAsync()
 }
 ```
 
-### Manual Filter Application
-```csharp
-[HttpGet("monthly-stats")]
-public async Task<IActionResult> GetMonthlyStatsAsync()
-{
-    var queryParams = GetJsonApiQueryParameters();
-
-    // Apply filters to source entity
-    var query = _context.Books.AsQueryable();
-    if (queryParams.Filter != null)
-    {
-        query = query.ApplyFilters(queryParams.Filter, Logger);
-    }
-
-    // Aggregate by month
-    var stats = query
-        .GroupBy(b => new { b.PublishedDate.Year, b.PublishedDate.Month })
-        .Select(g => new MonthlyStatsDto
-        {
-            Year = g.Key.Year,
-            Month = g.Key.Month,
-            BookCount = g.Count()
-        });
-
-    return Ok(await stats.ToListAsync());
-}
-```
-
 
