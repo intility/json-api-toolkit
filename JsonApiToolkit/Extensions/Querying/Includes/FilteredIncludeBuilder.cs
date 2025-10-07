@@ -26,8 +26,7 @@ public static class FilteredIncludeBuilder
             return query;
 
         var filtersByRelationship = includeFilters
-            .GroupBy(f => f.RelationshipPath, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(f => f.RelationshipPath, f => f.FilterGroup, StringComparer.OrdinalIgnoreCase);
 
         var sortedPaths = includePaths.OrderBy(p => p.Count(c => c == '.')).ToList();
 
@@ -36,11 +35,11 @@ public static class FilteredIncludeBuilder
             var segments = includePath.Split('.');
 
             if (
-                filtersByRelationship.TryGetValue(includePath, out var filters)
-                && filters.Count > 0
+                filtersByRelationship.TryGetValue(includePath, out var filterGroup)
+                && (filterGroup.Filters.Count > 0 || filterGroup.Groups.Count > 0)
             )
             {
-                query = ApplyFilteredIncludeChain(query, segments, filters, typeof(T), logger);
+                query = ApplyFilteredIncludeChain(query, segments, filterGroup, typeof(T), logger);
             }
             else
             {
@@ -54,7 +53,7 @@ public static class FilteredIncludeBuilder
     private static IQueryable<T> ApplyFilteredIncludeChain<T>(
         IQueryable<T> query,
         string[] pathSegments,
-        List<IncludeFilter> filters,
+        FilterGroup filterGroup,
         Type rootType,
         ILogger? logger
     )
@@ -64,10 +63,10 @@ public static class FilteredIncludeBuilder
             return query;
 
         if (pathSegments.Length == 1)
-            return ApplyFilteredIncludeWithFilters(query, pathSegments[0], filters, rootType, logger);
+            return ApplyFilteredIncludeWithFilters(query, pathSegments[0], filterGroup, rootType, logger);
 
         if (pathSegments.Length == 2)
-            return ApplyTwoLevelFilteredInclude(query, pathSegments, filters, rootType, logger);
+            return ApplyTwoLevelFilteredInclude(query, pathSegments, filterGroup, rootType, logger);
 
         logger?.LogWarning(
             "Filtered includes beyond 2 levels are not supported. Include path '{Path}' will use unfiltered include. Filters will be ignored.",
@@ -79,7 +78,7 @@ public static class FilteredIncludeBuilder
     private static IQueryable<T> ApplyTwoLevelFilteredInclude<T>(
         IQueryable<T> query,
         string[] pathSegments,
-        List<IncludeFilter> filters,
+        FilterGroup filterGroup,
         Type rootType,
         ILogger? logger
     )
@@ -130,19 +129,14 @@ public static class FilteredIncludeBuilder
             var secondNavAccess = Expression.Property(navParam, secondProperty);
 
             var filterParam = Expression.Parameter(elementType, "item");
-            Expression? filterExpr = null;
 
-            foreach (var filter in filters)
-            {
-                var singleFilterExpr = BuildSingleFilterExpression(filterParam, filter);
-                if (singleFilterExpr != null)
-                {
-                    filterExpr =
-                        filterExpr == null
-                            ? singleFilterExpr
-                            : Expression.OrElse(filterExpr, singleFilterExpr);
-                }
-            }
+            // Use FilterExpressionBuilder to build the filter expression with proper logical operators
+            var filterExpr = FilterExpressionBuilder.BuildFilterExpression(
+                filterGroup,
+                filterParam,
+                elementType,
+                logger
+            );
 
             if (filterExpr != null)
             {
@@ -203,7 +197,7 @@ public static class FilteredIncludeBuilder
     private static IQueryable<T> ApplyFilteredIncludeWithFilters<T>(
         IQueryable<T> query,
         string navigationPath,
-        List<IncludeFilter> filters,
+        FilterGroup filterGroup,
         Type entityType,
         ILogger? logger
     )
@@ -225,7 +219,8 @@ public static class FilteredIncludeBuilder
                     entityType,
                     navigationProperty,
                     elementType,
-                    filters
+                    filterGroup,
+                    logger
                 );
 
                 query = EfCoreIncludeExpressions.ApplyIncludeExpression(query, includeExpression);
@@ -251,27 +246,21 @@ public static class FilteredIncludeBuilder
         Type entityType,
         PropertyInfo navigationProperty,
         Type elementType,
-        List<IncludeFilter> filters
+        FilterGroup filterGroup,
+        ILogger? logger
     )
     {
         var entityParameter = Expression.Parameter(entityType, "e");
         var navigationAccess = Expression.Property(entityParameter, navigationProperty);
         var elementParameter = Expression.Parameter(elementType, "x");
 
-        Expression? filterExpression = null;
-
-        foreach (var filter in filters)
-        {
-            var singleFilterExpr = BuildSingleFilterExpression(elementParameter, filter);
-
-            if (singleFilterExpr != null)
-            {
-                filterExpression =
-                    filterExpression == null
-                        ? singleFilterExpr
-                        : Expression.OrElse(filterExpression, singleFilterExpr);
-            }
-        }
+        // Use FilterExpressionBuilder to build the filter expression with proper logical operators
+        var filterExpression = FilterExpressionBuilder.BuildFilterExpression(
+            filterGroup,
+            elementParameter,
+            elementType,
+            logger
+        );
 
         if (filterExpression == null)
             return null;
@@ -288,25 +277,6 @@ public static class FilteredIncludeBuilder
         var includeLambda = Expression.Lambda(filteredCollection, entityParameter);
 
         return includeLambda;
-    }
-
-    private static Expression? BuildSingleFilterExpression(
-        ParameterExpression parameter,
-        IncludeFilter filter
-    )
-    {
-        var property = GetPropertyExpression(parameter, filter.FieldPath, parameter.Type);
-        if (property == null)
-            return null;
-
-        var filterParam = new FilterParameter
-        {
-            Field = filter.FieldPath,
-            Operator = filter.Filter.Operator,
-            Value = filter.Filter.Value,
-        };
-
-        return FilterExpressionBuilder.BuildSingleFilterExpression(parameter, filterParam);
     }
 
     private static MemberExpression? GetPropertyExpression(

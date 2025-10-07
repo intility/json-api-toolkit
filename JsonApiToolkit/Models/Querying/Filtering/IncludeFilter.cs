@@ -11,18 +11,8 @@ public class IncludeFilter
     public string RelationshipPath { get; set; } = string.Empty;
 
     /// <summary>
-    /// Field path within the relationship (e.g., "name").
+    /// Filter group containing all conditions for this relationship path.
+    /// Preserves logical operator structure (AND/OR/NOT).
     /// </summary>
-    public string FieldPath { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Filter condition to apply.
-    /// </summary>
-    public FilterParameter Filter { get; set; } = new();
-
-    /// <summary>
-    /// Full path combining relationship and field (e.g., "author.name").
-    /// </summary>
-    public string FullPath =>
-        string.IsNullOrEmpty(FieldPath) ? RelationshipPath : $"{RelationshipPath}.{FieldPath}";
+    public FilterGroup FilterGroup { get; set; } = new();
 }

@@ -24,10 +24,25 @@ public static class IncludeFilterParser
         if (filters == null)
             return (null, new List<IncludeFilter>());
 
-        var includeFilters = new List<IncludeFilter>();
         var normalizedIncludePaths = NormalizeIncludePaths(includePaths ?? new List<string>());
 
-        var mainFilters = ExtractIncludeFilters(filters, normalizedIncludePaths, includeFilters);
+        // Dictionary to group filters by relationship path
+        var filtersByRelationship = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
+
+        var mainFilters = ExtractIncludeFilters(
+            filters,
+            normalizedIncludePaths,
+            filtersByRelationship
+        );
+
+        // Convert dictionary to list of IncludeFilters
+        var includeFilters = filtersByRelationship
+            .Select(kvp => new IncludeFilter
+            {
+                RelationshipPath = kvp.Key,
+                FilterGroup = kvp.Value
+            })
+            .ToList();
 
         ValidateIncludeFilters(includeFilters, normalizedIncludePaths);
 
@@ -37,7 +52,7 @@ public static class IncludeFilterParser
     private static FilterGroup? ExtractIncludeFilters(
         FilterGroup group,
         HashSet<string> normalizedIncludePaths,
-        List<IncludeFilter> includeFilters
+        Dictionary<string, FilterGroup> filtersByRelationship
     )
     {
         var newGroup = new FilterGroup { LogicalOperator = group.LogicalOperator };
@@ -50,6 +65,9 @@ public static class IncludeFilterParser
             );
         }
 
+        // Track filters for each relationship in this group
+        var localIncludeFilters = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var filter in group.Filters)
         {
             if (
@@ -61,14 +79,24 @@ public static class IncludeFilterParser
                 )
             )
             {
-                includeFilters.Add(
-                    new IncludeFilter
+                // Add to local filters for this group
+                if (!localIncludeFilters.ContainsKey(relationshipPath))
+                {
+                    localIncludeFilters[relationshipPath] = new FilterGroup
                     {
-                        RelationshipPath = relationshipPath,
-                        FieldPath = fieldPath,
-                        Filter = filter,
-                    }
-                );
+                        LogicalOperator = group.LogicalOperator
+                    };
+                }
+
+                // Create a filter with the field path relative to the relationship
+                var relativeFilter = new FilterParameter
+                {
+                    Field = fieldPath,
+                    Operator = filter.Operator,
+                    Value = filter.Value
+                };
+
+                localIncludeFilters[relationshipPath].Filters.Add(relativeFilter);
             }
             else
             {
@@ -76,12 +104,13 @@ public static class IncludeFilterParser
             }
         }
 
+        // Process nested groups
         foreach (var nestedGroup in group.Groups)
         {
             var processedNestedGroup = ExtractIncludeFilters(
                 nestedGroup,
                 normalizedIncludePaths,
-                includeFilters
+                filtersByRelationship
             );
 
             if (
@@ -90,6 +119,39 @@ public static class IncludeFilterParser
             )
             {
                 newGroup.Groups.Add(processedNestedGroup);
+            }
+        }
+
+        // Merge local include filters into the global dictionary
+        foreach (var kvp in localIncludeFilters)
+        {
+            if (!filtersByRelationship.ContainsKey(kvp.Key))
+            {
+                // First time seeing this relationship - use its logical operator directly
+                filtersByRelationship[kvp.Key] = kvp.Value;
+            }
+            else
+            {
+                // Already have filters for this relationship - need to merge
+                var existing = filtersByRelationship[kvp.Key];
+
+                // If both groups have the same operator and no nested groups, merge filters
+                if (existing.LogicalOperator == kvp.Value.LogicalOperator
+                    && existing.Groups.Count == 0
+                    && kvp.Value.Groups.Count == 0)
+                {
+                    existing.Filters.AddRange(kvp.Value.Filters);
+                }
+                else
+                {
+                    // Otherwise, need to combine with AND logic
+                    var combined = new FilterGroup
+                    {
+                        LogicalOperator = LogicalOperator.And,
+                        Groups = new List<FilterGroup> { existing, kvp.Value }
+                    };
+                    filtersByRelationship[kvp.Key] = combined;
+                }
             }
         }
 
@@ -241,6 +303,25 @@ public static class IncludeFilterParser
                     $"Filtered includes beyond 2 levels are not supported. Include path '{includeFilter.RelationshipPath}' has {depth} levels. Maximum supported: 2 levels."
                 );
             }
+
+            // Count total filters in the group
+            int totalFilters = CountFiltersInGroup(includeFilter.FilterGroup);
+            if (totalFilters > MaxIncludeFilters)
+            {
+                throw new JsonApiBadRequestException(
+                    $"Too many filters for relationship '{includeFilter.RelationshipPath}'. Maximum allowed: {MaxIncludeFilters}"
+                );
+            }
         }
+    }
+
+    private static int CountFiltersInGroup(FilterGroup group)
+    {
+        int count = group.Filters.Count;
+        foreach (var nestedGroup in group.Groups)
+        {
+            count += CountFiltersInGroup(nestedGroup);
+        }
+        return count;
     }
 }
