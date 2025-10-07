@@ -178,7 +178,7 @@ public abstract class JsonApiController : ControllerBase
                 includeFilters.Count,
                 typeof(T).Name
             );
-            filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters);
+            filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters, Logger);
         }
         else if (mappedIncludes.Count > 0)
         {
