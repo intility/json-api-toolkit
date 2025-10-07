@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying.Filtering;
 
@@ -232,6 +231,14 @@ public static class IncludeFilterParser
             {
                 throw new JsonApiBadRequestException(
                     $"Cannot filter on '{includeFilter.RelationshipPath}' - relationship must be included in the request"
+                );
+            }
+
+            var depth = includeFilter.RelationshipPath.Count(c => c == '.') + 1;
+            if (depth > 2)
+            {
+                throw new JsonApiBadRequestException(
+                    $"Filtered includes beyond 2 levels are not supported. Include path '{includeFilter.RelationshipPath}' has {depth} levels. Maximum supported: 2 levels."
                 );
             }
         }
