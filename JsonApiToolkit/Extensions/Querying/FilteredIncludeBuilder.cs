@@ -192,11 +192,14 @@ public static class FilteredIncludeBuilder
                 var filteredCollection = Expression.Call(whereMethod, secondNavAccess, whereLambda);
                 var thenIncludeLambda = Expression.Lambda(filteredCollection, navParam);
 
-                // Apply ThenInclude
-                var thenIncludeMethod = typeof(EntityFrameworkQueryableExtensions)
-                    .GetMethods()
-                    .First(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
-                    .MakeGenericMethod(rootType, firstNavType, filteredCollection.Type);
+                // Apply ThenInclude with correct overload selection
+                var isFirstCollection = IsCollectionType(firstProperty.PropertyType);
+                var thenIncludeMethod = GetThenIncludeMethod(
+                    isFirstCollection,
+                    rootType,
+                    firstNavType,
+                    filteredCollection.Type
+                );
 
                 var result = thenIncludeMethod.Invoke(
                     null,
@@ -209,10 +212,14 @@ public static class FilteredIncludeBuilder
                 // No valid filter, use unfiltered ThenInclude
                 var thenIncludeLambda = Expression.Lambda(secondNavAccess, navParam);
 
-                var thenIncludeMethod = typeof(EntityFrameworkQueryableExtensions)
-                    .GetMethods()
-                    .First(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
-                    .MakeGenericMethod(rootType, firstNavType, secondProperty.PropertyType);
+                // Apply ThenInclude with correct overload selection
+                var isFirstCollection = IsCollectionType(firstProperty.PropertyType);
+                var thenIncludeMethod = GetThenIncludeMethod(
+                    isFirstCollection,
+                    rootType,
+                    firstNavType,
+                    secondProperty.PropertyType
+                );
 
                 var result = thenIncludeMethod.Invoke(
                     null,
@@ -360,6 +367,61 @@ public static class FilteredIncludeBuilder
     private static Type GetNavigationTargetType(Type navigationType)
     {
         return GetCollectionElementType(navigationType) ?? navigationType;
+    }
+
+    /// <summary>
+    /// Gets the correct ThenInclude method based on whether the previous navigation is a collection or reference.
+    /// EF Core has two overloads:
+    /// - ThenInclude for IIncludableQueryable with IEnumerable (collection navigation)
+    /// - ThenInclude for IIncludableQueryable with single entity (reference navigation)
+    /// </summary>
+    private static MethodInfo GetThenIncludeMethod(
+        bool isPreviousCollection,
+        Type entityType,
+        Type previousPropertyType,
+        Type newPropertyType
+    )
+    {
+        var thenIncludeMethods = typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods()
+            .Where(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
+            .ToList();
+
+        foreach (var method in thenIncludeMethods)
+        {
+            var parameters = method.GetParameters();
+            if (parameters.Length != 2)
+                continue;
+
+            var firstParamType = parameters[0].ParameterType;
+            if (
+                !firstParamType.IsGenericType
+                || firstParamType.GetGenericTypeDefinition().Name != "IIncludableQueryable`2"
+            )
+                continue;
+
+            var genericArgs = firstParamType.GetGenericArguments();
+            if (genericArgs.Length != 2)
+                continue;
+
+            var secondGenericArg = genericArgs[1];
+
+            // Check if this overload matches our navigation type (collection vs reference)
+            bool isCollectionOverload =
+                secondGenericArg.IsGenericType
+                && secondGenericArg.GetGenericTypeDefinition() == typeof(IEnumerable<>);
+
+            if (isCollectionOverload == isPreviousCollection)
+            {
+                return method.MakeGenericMethod(entityType, previousPropertyType, newPropertyType);
+            }
+        }
+
+        // Fallback to original logic if no match found
+        return typeof(EntityFrameworkQueryableExtensions)
+            .GetMethods()
+            .First(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
+            .MakeGenericMethod(entityType, previousPropertyType, newPropertyType);
     }
 
     private static IQueryable<T> ApplyFilteredIncludeWithFilters<T>(
