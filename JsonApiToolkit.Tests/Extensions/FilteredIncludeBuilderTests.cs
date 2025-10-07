@@ -65,13 +65,18 @@ public class FilteredIncludeBuilderTests
             new()
             {
                 RelationshipPath = "comments",
-                FieldPath = "status",
-                Filter = new FilterParameter
+                FilterGroup = new FilterGroup
                 {
-                    Field = "status",
-                    Operator = FilterOperator.Eq,
-                    Value = "approved",
-                },
+                    Filters = new List<FilterParameter>
+                    {
+                        new()
+                        {
+                            Field = "status",
+                            Operator = FilterOperator.Eq,
+                            Value = "approved",
+                        }
+                    }
+                }
             },
         };
 
@@ -94,24 +99,24 @@ public class FilteredIncludeBuilderTests
             new()
             {
                 RelationshipPath = "comments",
-                FieldPath = "status",
-                Filter = new FilterParameter
+                FilterGroup = new FilterGroup
                 {
-                    Field = "status",
-                    Operator = FilterOperator.Eq,
-                    Value = "approved",
-                },
-            },
-            new()
-            {
-                RelationshipPath = "comments",
-                FieldPath = "priority",
-                Filter = new FilterParameter
-                {
-                    Field = "priority",
-                    Operator = FilterOperator.Gt,
-                    Value = "5",
-                },
+                    Filters = new List<FilterParameter>
+                    {
+                        new()
+                        {
+                            Field = "status",
+                            Operator = FilterOperator.Eq,
+                            Value = "approved",
+                        },
+                        new()
+                        {
+                            Field = "priority",
+                            Operator = FilterOperator.Gt,
+                            Value = "5",
+                        }
+                    }
+                }
             },
         };
 
@@ -148,13 +153,18 @@ public class FilteredIncludeBuilderTests
             new()
             {
                 RelationshipPath = "comments",
-                FieldPath = "status",
-                Filter = new FilterParameter
+                FilterGroup = new FilterGroup
                 {
-                    Field = "status",
-                    Operator = FilterOperator.Eq,
-                    Value = "approved",
-                },
+                    Filters = new List<FilterParameter>
+                    {
+                        new()
+                        {
+                            Field = "status",
+                            Operator = FilterOperator.Eq,
+                            Value = "approved",
+                        }
+                    }
+                }
             },
             // tags and author have no filters
         };

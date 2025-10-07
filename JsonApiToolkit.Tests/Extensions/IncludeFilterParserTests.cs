@@ -98,8 +98,9 @@ public class IncludeFilterParserTests
 
         Assert.Single(includeFilters);
         Assert.Equal("comments", includeFilters[0].RelationshipPath);
-        Assert.Equal("status", includeFilters[0].FieldPath);
-        Assert.Equal("approved", includeFilters[0].Filter.Value);
+        Assert.Single(includeFilters[0].FilterGroup.Filters);
+        Assert.Equal("status", includeFilters[0].FilterGroup.Filters[0].Field);
+        Assert.Equal("approved", includeFilters[0].FilterGroup.Filters[0].Value);
     }
 
     [Fact]
@@ -129,7 +130,8 @@ public class IncludeFilterParserTests
         // Assert
         Assert.Single(includeFilters);
         Assert.Equal("cveComments", includeFilters[0].RelationshipPath);
-        Assert.Equal("companyCode", includeFilters[0].FieldPath);
+        Assert.Single(includeFilters[0].FilterGroup.Filters);
+        Assert.Equal("companyCode", includeFilters[0].FilterGroup.Filters[0].Field);
     }
 
     [Fact]
@@ -159,7 +161,8 @@ public class IncludeFilterParserTests
         // Assert
         Assert.Single(includeFilters);
         Assert.Equal("comments.author", includeFilters[0].RelationshipPath);
-        Assert.Equal("department", includeFilters[0].FieldPath);
+        Assert.Single(includeFilters[0].FilterGroup.Filters);
+        Assert.Equal("department", includeFilters[0].FilterGroup.Filters[0].Field);
     }
 
     [Fact]
@@ -194,9 +197,11 @@ public class IncludeFilterParserTests
         );
 
         // Assert
-        Assert.Equal(2, includeFilters.Count);
-        Assert.All(includeFilters, f => Assert.Equal("comments", f.RelationshipPath));
-        Assert.All(includeFilters, f => Assert.Equal("companyCode", f.FieldPath));
+        Assert.Single(includeFilters);
+        Assert.Equal("comments", includeFilters[0].RelationshipPath);
+        Assert.Equal(LogicalOperator.Or, includeFilters[0].FilterGroup.LogicalOperator);
+        Assert.Equal(2, includeFilters[0].FilterGroup.Filters.Count);
+        Assert.All(includeFilters[0].FilterGroup.Filters, f => Assert.Equal("companyCode", f.Field));
     }
 
     [Fact]
@@ -334,7 +339,8 @@ public class IncludeFilterParserTests
 
         Assert.Single(includeFilters);
         Assert.Equal("comments", includeFilters[0].RelationshipPath);
-        Assert.Equal("approved", includeFilters[0].FieldPath);
+        Assert.Single(includeFilters[0].FilterGroup.Filters);
+        Assert.Equal("approved", includeFilters[0].FilterGroup.Filters[0].Field);
     }
 
     [Fact]
@@ -389,9 +395,12 @@ public class IncludeFilterParserTests
         Assert.Single(mainFilters.Filters);
         Assert.Equal("title", mainFilters.Filters[0].Field);
 
-        Assert.Equal(2, includeFilters.Count);
-        Assert.All(includeFilters, f => Assert.Equal("comments", f.RelationshipPath));
-        Assert.All(includeFilters, f => Assert.Equal("status", f.FieldPath));
+        Assert.Single(includeFilters);
+        Assert.Equal("comments", includeFilters[0].RelationshipPath);
+        // The OR group should be used directly (not wrapped)
+        Assert.Equal(LogicalOperator.Or, includeFilters[0].FilterGroup.LogicalOperator);
+        Assert.Equal(2, includeFilters[0].FilterGroup.Filters.Count);
+        Assert.All(includeFilters[0].FilterGroup.Filters, f => Assert.Equal("status", f.Field));
     }
 
     [Fact]
@@ -422,8 +431,9 @@ public class IncludeFilterParserTests
         Assert.Null(mainFilters); // No main filters expected
         Assert.Single(includeFilters);
         Assert.Equal("cve.cvecomments", includeFilters[0].RelationshipPath);
-        Assert.Equal("companyCode", includeFilters[0].FieldPath);
-        Assert.Equal("AA", includeFilters[0].Filter.Value);
+        Assert.Single(includeFilters[0].FilterGroup.Filters);
+        Assert.Equal("companyCode", includeFilters[0].FilterGroup.Filters[0].Field);
+        Assert.Equal("AA", includeFilters[0].FilterGroup.Filters[0].Value);
     }
 
     [Fact]
@@ -455,7 +465,8 @@ public class IncludeFilterParserTests
         Assert.Single(includeFilters);
         // The relationship path is returned as the matched normalized path
         Assert.Equal("cve.cveComments", includeFilters[0].RelationshipPath);
-        Assert.Equal("companyCode", includeFilters[0].FieldPath);
+        Assert.Single(includeFilters[0].FilterGroup.Filters);
+        Assert.Equal("companyCode", includeFilters[0].FilterGroup.Filters[0].Field);
     }
 
     [Fact]
@@ -492,12 +503,16 @@ public class IncludeFilterParserTests
         Assert.Null(mainFilters);
         Assert.Equal(2, includeFilters.Count);
 
-        var authorFilter = includeFilters.First(f => f.FieldPath == "name");
+        var authorFilter = includeFilters.First(f => f.RelationshipPath == "posts.author");
         Assert.Equal("posts.author", authorFilter.RelationshipPath);
-        Assert.Equal("John", authorFilter.Filter.Value);
+        Assert.Single(authorFilter.FilterGroup.Filters);
+        Assert.Equal("name", authorFilter.FilterGroup.Filters[0].Field);
+        Assert.Equal("John", authorFilter.FilterGroup.Filters[0].Value);
 
-        var commentFilter = includeFilters.First(f => f.FieldPath == "status");
+        var commentFilter = includeFilters.First(f => f.RelationshipPath == "posts.comments");
         Assert.Equal("posts.comments", commentFilter.RelationshipPath);
-        Assert.Equal("approved", commentFilter.Filter.Value);
+        Assert.Single(commentFilter.FilterGroup.Filters);
+        Assert.Equal("status", commentFilter.FilterGroup.Filters[0].Field);
+        Assert.Equal("approved", commentFilter.FilterGroup.Filters[0].Value);
     }
 }

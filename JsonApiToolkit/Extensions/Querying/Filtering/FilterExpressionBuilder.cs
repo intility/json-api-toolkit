@@ -19,6 +19,19 @@ public static class FilterExpressionBuilder
         ILogger? logger = null
     )
     {
+        return BuildFilterExpression(group, parameter, typeof(T), logger);
+    }
+
+    /// <summary>
+    /// Builds a composite filter expression from filter conditions and nested groups (non-generic overload).
+    /// </summary>
+    public static Expression? BuildFilterExpression(
+        FilterGroup group,
+        ParameterExpression parameter,
+        Type entityType,
+        ILogger? logger = null
+    )
+    {
         var expressions = new List<Expression>();
 
         foreach (FilterParameter filter in group.Filters)
@@ -31,7 +44,7 @@ public static class FilterExpressionBuilder
             else
             {
                 PropertyInfo? property = QueryHelpers.GetPropertyByJsonName(
-                    typeof(T),
+                    entityType,
                     filter.Field
                 );
                 if (property == null)
@@ -39,7 +52,7 @@ public static class FilterExpressionBuilder
                     logger?.LogWarning(
                         "Property '{Field}' not found on {Type}, skipping filter",
                         filter.Field,
-                        typeof(T).Name
+                        entityType.Name
                     );
                     continue;
                 }
@@ -58,7 +71,7 @@ public static class FilterExpressionBuilder
 
         foreach (FilterGroup nestedGroup in group.Groups)
         {
-            Expression? nestedExpr = BuildFilterExpression<T>(nestedGroup, parameter, logger);
+            Expression? nestedExpr = BuildFilterExpression(nestedGroup, parameter, entityType, logger);
             if (nestedExpr != null)
                 expressions.Add(nestedExpr);
         }
