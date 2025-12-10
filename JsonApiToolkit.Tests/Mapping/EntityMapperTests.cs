@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using JsonApiToolkit.Mapping;
 using JsonApiToolkit.Tests.Models;
 
@@ -62,5 +63,47 @@ public class EntityMapperTests
 
         Assert.NotNull(idProperty);
         Assert.Equal("Id", idProperty.Name);
+    }
+
+    [Fact]
+    public void GetAttributeProperties_ExcludesJsonIgnoreProperties()
+    {
+        var attributeProperties = EntityMapper.GetAttributeProperties(typeof(EntityWithJsonIgnore));
+        var propertyNames = attributeProperties.Select(p => p.Name).ToList();
+
+        Assert.Contains("VisibleProperty", propertyNames);
+        Assert.DoesNotContain("HiddenProperty", propertyNames);
+    }
+
+    [Fact]
+    public void GetRelationshipProperties_ExcludesJsonIgnoreProperties()
+    {
+        var relationshipProperties = EntityMapper.GetRelationshipProperties(
+            typeof(EntityWithJsonIgnore)
+        );
+        var propertyNames = relationshipProperties.Select(p => p.Name).ToList();
+
+        Assert.Contains("VisibleRelation", propertyNames);
+        Assert.DoesNotContain("HiddenRelation", propertyNames);
+    }
+
+    private class EntityWithJsonIgnore
+    {
+        public int Id { get; set; }
+        public string VisibleProperty { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public string HiddenProperty { get; set; } = string.Empty;
+
+        public RelatedEntityForIgnoreTest? VisibleRelation { get; set; }
+
+        [JsonIgnore]
+        public RelatedEntityForIgnoreTest? HiddenRelation { get; set; }
+    }
+
+    private class RelatedEntityForIgnoreTest
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }

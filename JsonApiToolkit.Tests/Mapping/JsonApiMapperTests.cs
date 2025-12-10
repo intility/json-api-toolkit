@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using JsonApiToolkit.Mapping;
 using JsonApiToolkit.Models.Documents;
 using JsonApiToolkit.Models.Metadata;
@@ -176,5 +177,37 @@ public class JsonApiMapperTests
 
         Assert.NotNull(document.Meta);
         Assert.True(document.Meta.ContainsKey("pagination"));
+    }
+
+    [Fact]
+    public void ToResourceObject_ExcludesJsonIgnoreProperties()
+    {
+        var entity = new EntityWithIgnoredProperties
+        {
+            Id = 1,
+            VisibleName = "Visible",
+            SecretPassword = "should-not-appear",
+            InternalData = "should-not-appear-either",
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(entity, "entities");
+
+        Assert.NotNull(resourceObject.Attributes);
+        Assert.True(resourceObject.Attributes.ContainsKey("visibleName"));
+        Assert.Equal("Visible", resourceObject.Attributes["visibleName"]);
+        Assert.False(resourceObject.Attributes.ContainsKey("secretPassword"));
+        Assert.False(resourceObject.Attributes.ContainsKey("internalData"));
+    }
+
+    private class EntityWithIgnoredProperties
+    {
+        public int Id { get; set; }
+        public string VisibleName { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public string SecretPassword { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public string InternalData { get; set; } = string.Empty;
     }
 }

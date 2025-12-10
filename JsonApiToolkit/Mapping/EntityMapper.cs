@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text.Json.Serialization;
 using JsonApiToolkit.Extensions;
 
 namespace JsonApiToolkit.Mapping;
@@ -58,6 +59,7 @@ public static class EntityMapper
                         && !relationshipNames.Contains(p.Name) // Exclude properties identified as relationships
                         && p.CanRead
                         && p.GetMethod?.IsPublic == true
+                        && !HasJsonIgnoreAttribute(p) // Exclude properties marked with [JsonIgnore]
                     )
                     .ToList();
             }
@@ -79,6 +81,7 @@ public static class EntityMapper
                     .Where(p =>
                         p.CanRead
                         && p.GetMethod?.IsPublic == true
+                        && !HasJsonIgnoreAttribute(p) // Exclude properties marked with [JsonIgnore]
                         && (
                             (
                                 typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
@@ -123,6 +126,14 @@ public static class EntityMapper
         if (type == null)
             return false;
         return GetIdProperty(type) != null;
+    }
+
+    /// <summary>
+    /// Checks if a property has the JsonIgnore attribute.
+    /// </summary>
+    private static bool HasJsonIgnoreAttribute(PropertyInfo property)
+    {
+        return property.GetCustomAttribute<JsonIgnoreAttribute>() != null;
     }
 
     /// <summary>
