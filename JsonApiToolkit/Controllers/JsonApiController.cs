@@ -92,6 +92,57 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
+    /// Returns 200 OK for a single resource queryable with JSON:API query support (filter, include).
+    /// Use this when you need includes to be automatically loaded from the database.
+    /// </summary>
+    protected async Task<IActionResult> JsonApiOkAsync<T>(
+        IQueryable<T> queryable,
+        string resourceType
+    )
+        where T : class
+    {
+        QueryParameters parameters = GetJsonApiQueryParameters();
+
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            parameters.Include
+        );
+
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            parameters.Filter,
+            parameters.Include
+        );
+
+        IQueryable<T> filteredQuery = queryable;
+
+        // Apply main entity filters
+        if (mainFilters != null)
+            filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
+
+        // Apply includes (with or without filters)
+        if (includeFilters.Count > 0)
+        {
+            filteredQuery = filteredQuery.ApplyFilteredIncludes(
+                mappedIncludes,
+                includeFilters,
+                Logger
+            );
+        }
+        else if (mappedIncludes.Count > 0)
+        {
+            filteredQuery = filteredQuery.ApplyIncludes(mappedIncludes);
+        }
+
+        // Execute query for single entity
+        T? entity = await filteredQuery.FirstOrDefaultAsync().ConfigureAwait(false);
+
+        if (entity == null)
+            return JsonApiNotFound();
+
+        // Use existing JsonApiOk - entity now has includes loaded
+        return JsonApiOk(entity, resourceType);
+    }
+
+    /// <summary>
     /// Returns 200 OK with a collection of resources as JSON:API document.
     /// </summary>
     protected IActionResult JsonApiOk<T>(
@@ -178,14 +229,19 @@ public abstract class JsonApiController : ControllerBase
                 includeFilters.Count,
                 typeof(T).Name
             );
-            filteredQuery = filteredQuery.ApplyFilteredIncludes(mappedIncludes, includeFilters, Logger);
+            filteredQuery = filteredQuery.ApplyFilteredIncludes(
+                mappedIncludes,
+                includeFilters,
+                Logger
+            );
         }
         else if (mappedIncludes.Count > 0)
         {
             // Use single query with pagination to avoid EF Core split query issues
-            filteredQuery = parameters.Pagination != null
-                ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
-                : filteredQuery.ApplyIncludes(mappedIncludes);
+            filteredQuery =
+                parameters.Pagination != null
+                    ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
+                    : filteredQuery.ApplyIncludes(mappedIncludes);
 
             Logger.LogDebug(
                 "Applied {IncludeCount} includes for {EntityType} using {QueryType}",
@@ -202,10 +258,7 @@ public abstract class JsonApiController : ControllerBase
 
         if (totalCount == 0 && parameters.Filter?.Filters?.Count > 0)
         {
-            Logger.LogInformation(
-                "Query returned 0 results for {EntityType}",
-                typeof(T).Name
-            );
+            Logger.LogInformation("Query returned 0 results for {EntityType}", typeof(T).Name);
         }
         else if (totalCount > 1000 && parameters.Pagination == null)
         {
