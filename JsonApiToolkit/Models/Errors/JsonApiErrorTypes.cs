@@ -188,3 +188,29 @@ public class JsonApiTooManyRequestsException : JsonApiException
     )
         : base(429, message, code, errorSource, meta, innerException) { }
 }
+
+/// <summary>
+/// General-purpose exception for any HTTP status code.
+/// Use this when the specific exception types don't cover your use case.
+/// </summary>
+public class JsonApiHttpException : JsonApiException
+{
+    /// <summary>
+    /// Initializes a new JSON:API HTTP exception with any status code.
+    /// </summary>
+    public JsonApiHttpException(int statusCode, string message)
+        : base(statusCode, message) { }
+
+    /// <summary>
+    /// Initializes a new JSON:API HTTP exception with additional details.
+    /// </summary>
+    public JsonApiHttpException(
+        int statusCode,
+        string message,
+        string? code = null,
+        ErrorSource? errorSource = null,
+        Dictionary<string, object>? meta = null,
+        Exception? innerException = null
+    )
+        : base(statusCode, message, code, errorSource, meta, innerException) { }
+}

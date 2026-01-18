@@ -213,4 +213,29 @@ public class JsonApiExceptionFilterTests
             Times.Once
         );
     }
+
+    [Theory]
+    [InlineData(402, "Payment Required")]
+    [InlineData(410, "Gone")]
+    [InlineData(422, "Unprocessable Entity")]
+    [InlineData(451, "Unavailable For Legal Reasons")]
+    public void OnException_WithJsonApiHttpException_ReturnsCorrectStatusAndTitle(
+        int statusCode,
+        string expectedTitle
+    )
+    {
+        var exception = new JsonApiHttpException(statusCode, "Test message");
+        var context = CreateExceptionContext(exception);
+
+        _filter.OnException(context);
+
+        Assert.True(context.ExceptionHandled);
+        var result = Assert.IsType<ObjectResult>(context.Result);
+        Assert.Equal(statusCode, result.StatusCode);
+        var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
+
+        Assert.Single(errorResponse.Errors);
+        Assert.Equal(statusCode.ToString(), errorResponse.Errors[0].Status);
+        Assert.Equal(expectedTitle, errorResponse.Errors[0].Title);
+    }
 }

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.RegularExpressions;
 using JsonApiToolkit.Models.Errors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -68,15 +70,14 @@ public class JsonApiExceptionFilter(ILogger<JsonApiExceptionFilter> logger) : IE
         context.ExceptionHandled = true;
     }
 
-    private static string GetTitleForStatusCode(int statusCode) =>
-        statusCode switch
+    private static string GetTitleForStatusCode(int statusCode)
+    {
+        if (Enum.IsDefined(typeof(HttpStatusCode), statusCode))
         {
-            400 => "Bad Request",
-            401 => "Unauthorized",
-            403 => "Forbidden",
-            404 => "Not Found",
-            409 => "Conflict",
-            429 => "Too Many Requests",
-            _ => "Error",
-        };
+            // Convert PascalCase enum name to Title Case with spaces
+            var name = ((HttpStatusCode)statusCode).ToString();
+            return Regex.Replace(name, "(\\B[A-Z])", " $1");
+        }
+        return "Error";
+    }
 }
