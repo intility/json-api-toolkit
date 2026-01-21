@@ -287,39 +287,6 @@ public class IncludeFilterParserTests
     }
 
     [Fact]
-    public void SeparateIncludeFilters_WithTooManyOrConditions_ThrowsException()
-    {
-        // Arrange
-        var filters = new FilterGroup
-        {
-            LogicalOperator = LogicalOperator.Or,
-            Filters = new List<FilterParameter>(),
-        };
-
-        // Add 11 OR conditions (exceeds limit of 10)
-        for (int i = 0; i < 11; i++)
-        {
-            filters.Filters.Add(
-                new FilterParameter
-                {
-                    Field = "comments.status",
-                    Operator = FilterOperator.Eq,
-                    Value = $"value{i}",
-                }
-            );
-        }
-
-        var includePaths = new List<string> { "comments" };
-
-        // Act & Assert
-        var exception = Assert.Throws<JsonApiBadRequestException>(
-            () => IncludeFilterParser.SeparateIncludeFilters(filters, includePaths)
-        );
-
-        Assert.Contains("Too many OR conditions", exception.Message);
-    }
-
-    [Fact]
     public void SeparateIncludeFilters_WithTooDeepNesting_ThrowsException()
     {
         // Arrange - Include filters must have IsIncludeFilter=true for depth checking

@@ -10,7 +10,6 @@ public static class IncludeFilterParser
 {
     private const int MaxIncludeFilterDepth = 3;
     private const int MaxIncludeFilters = 20;
-    private const int MaxOrConditions = 10;
 
     /// <summary>
     /// Separates main filters from include filters.
@@ -58,14 +57,6 @@ public static class IncludeFilterParser
     )
     {
         var newGroup = new FilterGroup { LogicalOperator = group.LogicalOperator };
-
-        // Check OR conditions count
-        if (group.LogicalOperator == LogicalOperator.Or && group.Filters.Count > MaxOrConditions)
-        {
-            throw new JsonApiBadRequestException(
-                $"Too many OR conditions in filter group. Maximum allowed: {MaxOrConditions}"
-            );
-        }
 
         // Track filters for each relationship in this group
         var localIncludeFilters = new Dictionary<string, FilterGroup>(
