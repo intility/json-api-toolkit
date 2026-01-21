@@ -19,4 +19,12 @@ public class FilterParameter
     /// Value to compare against.
     /// </summary>
     public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indicates if this filter should be applied to included relationships (filtered includes)
+    /// rather than filtering the primary resource.
+    /// When true: filters what gets included (e.g., filter[rel][field][op]=value bracket syntax)
+    /// When false: filters the primary resource, optionally navigating through relationships (dot notation)
+    /// </summary>
+    public bool IsIncludeFilter { get; set; } = false;
 }

@@ -64,7 +64,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithSimpleIncludeFilter_SeparatesCorrectly()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true (set by parser for bracket syntax)
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -80,6 +80,7 @@ public class IncludeFilterParserTests
                     Field = "comments.status",
                     Operator = FilterOperator.Eq,
                     Value = "approved",
+                    IsIncludeFilter = true, // Bracket syntax: filter[comments][status][eq]=approved
                 },
             },
         };
@@ -104,9 +105,50 @@ public class IncludeFilterParserTests
     }
 
     [Fact]
+    public void SeparateIncludeFilters_WithDotNotation_TreatedAsPrimaryFilter()
+    {
+        // Arrange - Dot notation filters are primary filters (filter main resource through relationship)
+        var filters = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new()
+                {
+                    Field = "title",
+                    Operator = FilterOperator.Eq,
+                    Value = "Test",
+                },
+                new()
+                {
+                    Field = "comments.status", // Dot notation without IsIncludeFilter = primary filter
+                    Operator = FilterOperator.Eq,
+                    Value = "approved",
+                    IsIncludeFilter = false,
+                },
+            },
+        };
+        var includePaths = new List<string> { "comments" };
+
+        // Act
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            filters,
+            includePaths
+        );
+
+        // Assert - Both filters should be main filters (dot notation = primary filter)
+        Assert.NotNull(mainFilters);
+        Assert.Equal(2, mainFilters.Filters.Count);
+        Assert.Contains(mainFilters.Filters, f => f.Field == "title");
+        Assert.Contains(mainFilters.Filters, f => f.Field == "comments.status");
+
+        // No include filters - dot notation is now primary filter
+        Assert.Empty(includeFilters);
+    }
+
+    [Fact]
     public void SeparateIncludeFilters_WithKebabCaseInclude_HandlesCorrectly()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -116,6 +158,7 @@ public class IncludeFilterParserTests
                     Field = "cveComments.companyCode",
                     Operator = FilterOperator.Eq,
                     Value = "AA",
+                    IsIncludeFilter = true, // Bracket syntax: filter[cveComments][companyCode][eq]=AA
                 },
             },
         };
@@ -137,7 +180,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithNestedIncludeFilter_SeparatesCorrectly()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -147,6 +190,7 @@ public class IncludeFilterParserTests
                     Field = "comments.author.department",
                     Operator = FilterOperator.Eq,
                     Value = "Security",
+                    IsIncludeFilter = true, // Bracket syntax for nested: filter[comments.author][department][eq]=Security
                 },
             },
         };
@@ -168,7 +212,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithComplexOrFilter_HandlesCorrectly()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true
         var filters = new FilterGroup
         {
             LogicalOperator = LogicalOperator.Or,
@@ -179,12 +223,14 @@ public class IncludeFilterParserTests
                     Field = "comments.companyCode",
                     Operator = FilterOperator.Eq,
                     Value = "AA",
+                    IsIncludeFilter = true,
                 },
                 new()
                 {
                     Field = "comments.companyCode",
                     Operator = FilterOperator.IsNull,
                     Value = "true",
+                    IsIncludeFilter = true,
                 },
             },
         };
@@ -201,13 +247,16 @@ public class IncludeFilterParserTests
         Assert.Equal("comments", includeFilters[0].RelationshipPath);
         Assert.Equal(LogicalOperator.Or, includeFilters[0].FilterGroup.LogicalOperator);
         Assert.Equal(2, includeFilters[0].FilterGroup.Filters.Count);
-        Assert.All(includeFilters[0].FilterGroup.Filters, f => Assert.Equal("companyCode", f.Field));
+        Assert.All(
+            includeFilters[0].FilterGroup.Filters,
+            f => Assert.Equal("companyCode", f.Field)
+        );
     }
 
     [Fact]
     public void SeparateIncludeFilters_WithFilterOnNonIncludedRelationship_ReturnsAsMainFilter()
     {
-        // Arrange
+        // Arrange - Even with IsIncludeFilter=true, if relationship is not included, it becomes main filter
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -217,6 +266,7 @@ public class IncludeFilterParserTests
                     Field = "comments.status",
                     Operator = FilterOperator.Eq,
                     Value = "approved",
+                    IsIncludeFilter = true, // Marked as include filter but relationship not in includes
                 },
             },
         };
@@ -229,7 +279,7 @@ public class IncludeFilterParserTests
         );
 
         // Assert
-        // When the relationship is not included, the filter should be treated as a main filter with dot notation
+        // When the relationship is not included, the filter should be treated as a main filter
         Assert.NotNull(mainFilters);
         Assert.Single(mainFilters.Filters);
         Assert.Equal("comments.status", mainFilters.Filters[0].Field);
@@ -239,7 +289,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithTooDeepNesting_ThrowsException()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true for depth checking
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -249,7 +299,8 @@ public class IncludeFilterParserTests
                     Field = "a.b.c.d.e",
                     Operator = FilterOperator.Eq,
                     Value = "test",
-                }, // 5 levels deep
+                    IsIncludeFilter = true, // 5 levels deep
+                },
             },
         };
         var includePaths = new List<string> { "a.b.c.d" };
@@ -265,7 +316,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithMixedMainAndIncludeFilters_SeparatesCorrectly()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -281,6 +332,7 @@ public class IncludeFilterParserTests
                     Field = "comments.approved",
                     Operator = FilterOperator.Eq,
                     Value = "true",
+                    IsIncludeFilter = true, // Bracket syntax: filter[comments][approved][eq]=true
                 },
                 new()
                 {
@@ -313,7 +365,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithNestedGroups_HandlesCorrectly()
     {
-        // Arrange
+        // Arrange - Include filters must have IsIncludeFilter=true
         var filters = new FilterGroup
         {
             LogicalOperator = LogicalOperator.And,
@@ -338,12 +390,14 @@ public class IncludeFilterParserTests
                             Field = "comments.status",
                             Operator = FilterOperator.Eq,
                             Value = "approved",
+                            IsIncludeFilter = true,
                         },
                         new()
                         {
                             Field = "comments.status",
                             Operator = FilterOperator.Eq,
                             Value = "pending",
+                            IsIncludeFilter = true,
                         },
                     },
                 },
@@ -373,7 +427,7 @@ public class IncludeFilterParserTests
     [Fact]
     public void SeparateIncludeFilters_WithDeepNestedIncludeFilterUsingLeafName_SeparatesCorrectly()
     {
-        // Arrange - This tests the scenario: include=cve,cve.cvecomments&filter[cvecomments.companyCode][eq]=AA
+        // Arrange - This tests the scenario: include=cve,cve.cvecomments&filter[cvecomments][companyCode][eq]=AA
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -383,6 +437,7 @@ public class IncludeFilterParserTests
                     Field = "cvecomments.companyCode",
                     Operator = FilterOperator.Eq,
                     Value = "AA",
+                    IsIncludeFilter = true, // Bracket syntax: filter[cvecomments][companyCode][eq]=AA
                 },
             },
         };
@@ -416,6 +471,7 @@ public class IncludeFilterParserTests
                     Field = "cveComments.companyCode",
                     Operator = FilterOperator.Eq,
                     Value = "AA",
+                    IsIncludeFilter = true, // Bracket syntax: filter[cveComments][companyCode][eq]=AA
                 },
             },
         };
@@ -449,12 +505,14 @@ public class IncludeFilterParserTests
                     Field = "author.name",
                     Operator = FilterOperator.Eq,
                     Value = "John",
+                    IsIncludeFilter = true, // Bracket syntax
                 },
                 new()
                 {
                     Field = "comments.status",
                     Operator = FilterOperator.Eq,
                     Value = "approved",
+                    IsIncludeFilter = true, // Bracket syntax
                 },
             },
         };
