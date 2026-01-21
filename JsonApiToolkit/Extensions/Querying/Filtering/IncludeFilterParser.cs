@@ -27,7 +27,9 @@ public static class IncludeFilterParser
         var normalizedIncludePaths = NormalizeIncludePaths(includePaths ?? new List<string>());
 
         // Dictionary to group filters by relationship path
-        var filtersByRelationship = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
+        var filtersByRelationship = new Dictionary<string, FilterGroup>(
+            StringComparer.OrdinalIgnoreCase
+        );
 
         var mainFilters = ExtractIncludeFilters(
             filters,
@@ -40,7 +42,7 @@ public static class IncludeFilterParser
             .Select(kvp => new IncludeFilter
             {
                 RelationshipPath = kvp.Key,
-                FilterGroup = kvp.Value
+                FilterGroup = kvp.Value,
             })
             .ToList();
 
@@ -66,13 +68,15 @@ public static class IncludeFilterParser
         }
 
         // Track filters for each relationship in this group
-        var localIncludeFilters = new Dictionary<string, FilterGroup>(StringComparer.OrdinalIgnoreCase);
+        var localIncludeFilters = new Dictionary<string, FilterGroup>(
+            StringComparer.OrdinalIgnoreCase
+        );
 
         foreach (var filter in group.Filters)
         {
             if (
                 IsIncludeFilter(
-                    filter.Field,
+                    filter,
                     normalizedIncludePaths,
                     out var relationshipPath,
                     out var fieldPath
@@ -84,7 +88,7 @@ public static class IncludeFilterParser
                 {
                     localIncludeFilters[relationshipPath] = new FilterGroup
                     {
-                        LogicalOperator = group.LogicalOperator
+                        LogicalOperator = group.LogicalOperator,
                     };
                 }
 
@@ -93,7 +97,7 @@ public static class IncludeFilterParser
                 {
                     Field = fieldPath,
                     Operator = filter.Operator,
-                    Value = filter.Value
+                    Value = filter.Value,
                 };
 
                 localIncludeFilters[relationshipPath].Filters.Add(relativeFilter);
@@ -136,9 +140,11 @@ public static class IncludeFilterParser
                 var existing = filtersByRelationship[kvp.Key];
 
                 // If both groups have the same operator and no nested groups, merge filters
-                if (existing.LogicalOperator == kvp.Value.LogicalOperator
+                if (
+                    existing.LogicalOperator == kvp.Value.LogicalOperator
                     && existing.Groups.Count == 0
-                    && kvp.Value.Groups.Count == 0)
+                    && kvp.Value.Groups.Count == 0
+                )
                 {
                     existing.Filters.AddRange(kvp.Value.Filters);
                 }
@@ -148,7 +154,7 @@ public static class IncludeFilterParser
                     var combined = new FilterGroup
                     {
                         LogicalOperator = LogicalOperator.And,
-                        Groups = new List<FilterGroup> { existing, kvp.Value }
+                        Groups = new List<FilterGroup> { existing, kvp.Value },
                     };
                     filtersByRelationship[kvp.Key] = combined;
                 }
@@ -163,7 +169,7 @@ public static class IncludeFilterParser
     }
 
     private static bool IsIncludeFilter(
-        string field,
+        FilterParameter filter,
         HashSet<string> normalizedIncludePaths,
         out string relationshipPath,
         out string fieldPath
@@ -172,6 +178,12 @@ public static class IncludeFilterParser
         relationshipPath = string.Empty;
         fieldPath = string.Empty;
 
+        // Only treat as include filter if explicitly marked via bracket syntax
+        // Dot notation filters are now primary filters (filter the main resource through relationships)
+        if (!filter.IsIncludeFilter)
+            return false;
+
+        var field = filter.Field;
         if (!field.Contains('.'))
             return false;
 

@@ -40,11 +40,27 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
   Specify which related resources should be included in the response.
   - Example: `GET /api/books?include=author,reviews`
   
-- **Filtering on Includes (Advanced):**
-  Filter included resources using dot notation. This feature applies filters directly to the included relationships at the database level.
-  - Example: `GET /api/books?include=reviews&filter[reviews.status][eq]=approved`
-  - Complex filters: `GET /api/books?include=reviews&filter[or][0][reviews.rating][gte]=4&filter[or][1][reviews.featured][eq]=true`
-  - Nested includes: `GET /api/vulnerabilities?include=cve,cve.cvecomments&filter[cvecomments.companyCode][eq]=AA`
+- **Relationship-Based Primary Filtering (Dot Notation):**
+  Filter the **primary resource** based on attributes of related resources using dot notation. This is useful when you want to find records based on their relationships.
+
+  - `GET /api/books?filter[author.country][eq]=UK` - Returns only books by UK authors
+  - `GET /api/books?filter[publisher.name][like]=Penguin` - Returns only books from publishers containing "Penguin"
+  - OR chains: `GET /api/books?filter[or][0][author.country][eq]=UK&filter[or][1][author.country][eq]=US`
+
+> [!NOTE]
+> Dot notation filters always apply to the **primary resource**, even when the relationship is included in the response. The related data is still included, but only matching primary records are returned.
+
+- **Filtering on Includes (Bracket Syntax):**
+  Filter **included resources** using bracket syntax. This applies filters directly to what gets included, not what primary records are returned.
+
+  - `GET /api/books?include=reviews&filter[reviews][status][eq]=approved` - Returns all books, but only includes approved reviews
+  - Complex filters: `GET /api/books?include=reviews&filter[or][0][reviews][rating][gte]=4&filter[or][1][reviews][featured][eq]=true`
+  - Nested includes: `GET /api/authors?include=books,books.reviews&filter[reviews][verified][eq]=true`
+
+> [!TIP]
+> **Syntax Summary:**
+> - `filter[relationship.field][op]=value` (dot notation) → Filters the **primary resource**
+> - `filter[relationship][field][op]=value` (bracket syntax) → Filters **included resources**
 
 > [!NOTE]
 > Filtered includes currently support up to 2-level nesting (e.g., `parent.child`). Deeper nesting will fall back to unfiltered includes.
@@ -74,7 +90,10 @@ With this request, the toolkit will:
 - Return the first 10 results.
 - Include related author and reviews data in the response.
 
-**Note:** Filters without dot notation apply only to the main resource type (books in this example). Filters with dot notation (e.g., `filter[reviews.status][eq]=approved`) filter the included resources themselves.
+**Note:**
+- Filters without dot notation apply only to the main resource type (books in this example).
+- Filters with **dot notation** (e.g., `filter[author.name][eq]=Tolkien`) filter the **primary resource** based on relationship attributes.
+- Filters with **bracket syntax** (e.g., `filter[reviews][status][eq]=approved`) filter **what gets included** in the response.
 
 ## Limitations
 
