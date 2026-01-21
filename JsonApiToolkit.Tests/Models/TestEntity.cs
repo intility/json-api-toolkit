@@ -39,4 +39,5 @@ public class TestChildEntity
     public string Name { get; set; } = string.Empty;
     public int TestEntityId { get; set; }
     public TestEntity? TestEntity { get; set; }
+    public List<string> Tags { get; set; } = new();
 }

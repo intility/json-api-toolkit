@@ -658,6 +658,75 @@ public class QueryableExtensionsTests
         Assert.Equal(1, result[0].Id);
         Assert.Contains(result[0].Children, c => c.Name == "TargetChild");
     }
+
+    [Fact]
+    public void ApplyFilters_WithCollectionPropertyFilter_FiltersCorrectly()
+    {
+        // Test filtering where the final property is a collection: Entity.Children.Tags contains value
+        // This simulates: filter[children.tags][in]=important
+        var testData = new List<TestEntity>
+        {
+            new TestEntity
+            {
+                Id = 1,
+                Name = "Entity1",
+                Children = new List<TestChildEntity>
+                {
+                    new TestChildEntity
+                    {
+                        Id = 10,
+                        Name = "Child1",
+                        Tags = new List<string> { "important", "urgent" },
+                    },
+                    new TestChildEntity
+                    {
+                        Id = 11,
+                        Name = "Child2",
+                        Tags = new List<string> { "normal" },
+                    },
+                },
+            },
+            new TestEntity
+            {
+                Id = 2,
+                Name = "Entity2",
+                Children = new List<TestChildEntity>
+                {
+                    new TestChildEntity
+                    {
+                        Id = 20,
+                        Name = "Child3",
+                        Tags = new List<string> { "low-priority" },
+                    },
+                },
+            },
+            new TestEntity
+            {
+                Id = 3,
+                Name = "Entity3",
+                Children = new List<TestChildEntity>(), // Empty collection
+            },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "children.tags",
+                    Operator = FilterOperator.In,
+                    Value = "important",
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].Id);
+        Assert.Contains(result[0].Children, c => c.Tags.Contains("important"));
+    }
 }
 
 public static class TaskExtensions

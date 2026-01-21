@@ -129,8 +129,7 @@ internal static class NestedPropertyNavigator
             return type.GetGenericArguments()[0];
 
         // Check interfaces for IEnumerable<T>
-        Type? enumerableInterface = type
-            .GetInterfaces()
+        Type? enumerableInterface = type.GetInterfaces()
             .FirstOrDefault(i =>
                 i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
             );
@@ -193,19 +192,139 @@ internal static class NestedPropertyNavigator
         LambdaExpression predicate = Expression.Lambda(innerExpression, itemParam);
 
         // Get the Enumerable.Any<T>(IEnumerable<T>, Func<T, bool>) method
-        MethodInfo anyMethod =
-            typeof(Enumerable)
-                .GetMethods()
-                .First(m =>
-                    m.Name == "Any"
-                    && m.GetParameters().Length == 2
-                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
-                        == typeof(Func<,>)
-                )
-                .MakeGenericMethod(elementType);
+        MethodInfo anyMethod = typeof(Enumerable)
+            .GetMethods()
+            .First(m =>
+                m.Name == "Any"
+                && m.GetParameters().Length == 2
+                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Func<,>)
+            )
+            .MakeGenericMethod(elementType);
 
         // Build: collection.Any(item => predicate)
         return Expression.Call(anyMethod, collectionAccess, predicate);
+    }
+
+    /// <summary>
+    /// Builds a filter expression when the property itself is a collection.
+    /// e.g., entity.Tags.Contains("value") for filter[tags][in]=value
+    /// </summary>
+    private static Expression? BuildCollectionPropertyFilterExpression(
+        Expression collectionAccess,
+        Type elementType,
+        FilterParameter filter,
+        ILogger? logger
+    )
+    {
+        // For In/Eq operators: check if collection contains the value
+        // e.g., tags.Contains("important")
+        if (
+            filter.Operator == FilterOperator.In
+            || filter.Operator == FilterOperator.Eq
+            || filter.Operator == FilterOperator.Like
+        )
+        {
+            // For Like operator on collection, use Any() with Contains
+            if (filter.Operator == FilterOperator.Like)
+            {
+                // collection.Any(item => item.Contains(value))
+                ParameterExpression itemParam = Expression.Parameter(elementType, "item");
+
+                // Only strip % if value has both leading AND trailing %
+                string cleanValue =
+                    filter.Value.StartsWith('%')
+                    && filter.Value.EndsWith('%')
+                    && filter.Value.Length > 2
+                        ? filter.Value[1..^1]
+                        : filter.Value;
+
+                MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
+                Expression containsCall = Expression.Call(
+                    itemParam,
+                    containsMethod!,
+                    Expression.Constant(cleanValue)
+                );
+
+                LambdaExpression predicate = Expression.Lambda(containsCall, itemParam);
+
+                MethodInfo anyMethod = typeof(Enumerable)
+                    .GetMethods()
+                    .First(m =>
+                        m.Name == "Any"
+                        && m.GetParameters().Length == 2
+                        && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                            == typeof(Func<,>)
+                    )
+                    .MakeGenericMethod(elementType);
+
+                return Expression.Call(anyMethod, collectionAccess, predicate);
+            }
+
+            // For In/Eq: collection.Contains(value)
+            object? filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, elementType);
+            if (filterValue == null)
+            {
+                logger?.LogWarning(
+                    "Failed to convert '{Value}' to {ElementType} for collection filter",
+                    filter.Value,
+                    elementType.Name
+                );
+                return null;
+            }
+
+            // Get Contains method on IEnumerable<T> (via Enumerable.Contains)
+            MethodInfo containsMethodInfo = typeof(Enumerable)
+                .GetMethods()
+                .First(m => m.Name == "Contains" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(elementType);
+
+            return Expression.Call(
+                containsMethodInfo,
+                collectionAccess,
+                Expression.Constant(filterValue, elementType)
+            );
+        }
+
+        // For Nin/Ne operators: check if collection does NOT contain the value
+        if (filter.Operator == FilterOperator.Nin || filter.Operator == FilterOperator.Ne)
+        {
+            object? filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, elementType);
+            if (filterValue == null)
+            {
+                logger?.LogWarning(
+                    "Failed to convert '{Value}' to {ElementType} for collection filter",
+                    filter.Value,
+                    elementType.Name
+                );
+                return null;
+            }
+
+            MethodInfo containsMethodInfo = typeof(Enumerable)
+                .GetMethods()
+                .First(m => m.Name == "Contains" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(elementType);
+
+            return Expression.Not(
+                Expression.Call(
+                    containsMethodInfo,
+                    collectionAccess,
+                    Expression.Constant(filterValue, elementType)
+                )
+            );
+        }
+
+        // For IsNull/IsNotNull: check if collection is null
+        if (filter.Operator == FilterOperator.IsNull)
+            return Expression.Equal(collectionAccess, Expression.Constant(null));
+
+        if (filter.Operator == FilterOperator.IsNotNull)
+            return Expression.NotEqual(collectionAccess, Expression.Constant(null));
+
+        logger?.LogWarning(
+            "Operator '{Operator}' is not supported for collection properties",
+            filter.Operator
+        );
+        return null;
     }
 
     internal static Expression? BuildPropertyFilterExpression(
@@ -215,6 +334,18 @@ internal static class NestedPropertyNavigator
     )
     {
         Type targetType = propertyAccess.Type;
+
+        // Check if the property itself is a collection (e.g., List<string> for CVEs/Tags)
+        Type? collectionElementType = GetCollectionElementType(targetType);
+        if (collectionElementType != null)
+        {
+            return BuildCollectionPropertyFilterExpression(
+                propertyAccess,
+                collectionElementType,
+                filter,
+                logger
+            );
+        }
 
         if (filter.Operator == FilterOperator.IsNull)
             return Expression.Equal(propertyAccess, Expression.Constant(null));
