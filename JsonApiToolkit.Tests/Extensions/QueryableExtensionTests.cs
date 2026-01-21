@@ -134,6 +134,59 @@ public class QueryableExtensionsTests
     }
 
     [Fact]
+    public void ApplyFilters_WithLikeFilter_StripsPercentWildcards()
+    {
+        var query = GetTestData();
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Name",
+                    Operator = FilterOperator.Like,
+                    Value = "%lph%", // Should match "Alpha" after stripping %
+                },
+            },
+        };
+
+        var result = query.ApplyFilters(filterGroup).ToList();
+
+        Assert.Single(result);
+        Assert.Equal("Alpha", result[0].Name);
+    }
+
+    [Fact]
+    public void ApplyFilters_WithLikeFilter_PreservesLiteralPercent()
+    {
+        // Test that literal % in values is preserved when not in wildcard pattern
+        var testData = new List<TestEntity>
+        {
+            new TestEntity { Id = 1, Name = "100% Complete" },
+            new TestEntity { Id = 2, Name = "50% Done" },
+            new TestEntity { Id = 3, Name = "Finished" },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "Name",
+                    Operator = FilterOperator.Like,
+                    Value = "100%", // Should match literal "100%", not be stripped
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).ToList();
+
+        Assert.Single(result);
+        Assert.Equal("100% Complete", result[0].Name);
+    }
+
+    [Fact]
     public void ApplyFilters_WithLogicalAndGroup_FiltersCorrectly()
     {
         var query = GetTestData();
@@ -495,6 +548,115 @@ public class QueryableExtensionsTests
 
         Assert.Equal(2, result.Count);
         Assert.All(result, e => Assert.False(e.IsActive));
+    }
+
+    [Fact]
+    public void ApplyFilters_WithThreeLevelNestedFilter_FiltersCorrectly()
+    {
+        // Test three-level nesting: Entity.RelatedEntity.NestedEntity.Value
+        var testData = new List<TestEntity>
+        {
+            new TestEntity
+            {
+                Id = 1,
+                Name = "Entity1",
+                RelatedEntity = new TestRelatedEntity
+                {
+                    Id = 10,
+                    Name = "Related1",
+                    NestedEntity = new TestNestedEntity { Id = 100, Value = "TargetValue" },
+                },
+            },
+            new TestEntity
+            {
+                Id = 2,
+                Name = "Entity2",
+                RelatedEntity = new TestRelatedEntity
+                {
+                    Id = 20,
+                    Name = "Related2",
+                    NestedEntity = new TestNestedEntity { Id = 200, Value = "OtherValue" },
+                },
+            },
+            new TestEntity
+            {
+                Id = 3,
+                Name = "Entity3",
+                RelatedEntity = null, // No related entity
+            },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "relatedEntity.nestedEntity.value",
+                    Operator = FilterOperator.Eq,
+                    Value = "TargetValue",
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].Id);
+        Assert.Equal("TargetValue", result[0].RelatedEntity?.NestedEntity?.Value);
+    }
+
+    [Fact]
+    public void ApplyFilters_WithCollectionNestedFilter_FiltersCorrectly()
+    {
+        // Test filtering through a collection: Entity.Children.Name
+        var testData = new List<TestEntity>
+        {
+            new TestEntity
+            {
+                Id = 1,
+                Name = "Entity1",
+                Children = new List<TestChildEntity>
+                {
+                    new TestChildEntity { Id = 10, Name = "TargetChild" },
+                    new TestChildEntity { Id = 11, Name = "OtherChild" },
+                },
+            },
+            new TestEntity
+            {
+                Id = 2,
+                Name = "Entity2",
+                Children = new List<TestChildEntity>
+                {
+                    new TestChildEntity { Id = 20, Name = "DifferentChild" },
+                },
+            },
+            new TestEntity
+            {
+                Id = 3,
+                Name = "Entity3",
+                Children = new List<TestChildEntity>(), // Empty collection
+            },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "children.name",
+                    Operator = FilterOperator.Eq,
+                    Value = "TargetChild",
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].Id);
+        Assert.Contains(result[0].Children, c => c.Name == "TargetChild");
     }
 }
 

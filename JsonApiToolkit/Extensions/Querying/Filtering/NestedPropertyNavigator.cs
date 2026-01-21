@@ -32,6 +32,34 @@ internal static class NestedPropertyNavigator
 
             current = Expression.Property(current, prop);
 
+            // Check if this property is a collection (but not a string)
+            Type? elementType = GetCollectionElementType(prop.PropertyType);
+            if (elementType != null)
+            {
+                // Build collection filter using Any() for remaining path
+                string[] remainingParts = parts.Skip(i + 1).ToArray();
+                Expression? collectionFilter = BuildCollectionFilterExpression(
+                    current,
+                    elementType,
+                    remainingParts,
+                    filter,
+                    logger
+                );
+
+                if (collectionFilter == null)
+                    return null;
+
+                // Combine with null checks for the path so far
+                Expression result = collectionFilter;
+                // Add null check for the collection itself
+                nullChecks.Add(Expression.NotEqual(current, Expression.Constant(null)));
+
+                for (int j = nullChecks.Count - 1; j >= 0; j--)
+                    result = Expression.AndAlso(nullChecks[j], result);
+
+                return result;
+            }
+
             if (
                 !prop.PropertyType.IsValueType
                 || Nullable.GetUnderlyingType(prop.PropertyType) != null
@@ -57,7 +85,7 @@ internal static class NestedPropertyNavigator
         if (filterExpression == null)
             return null;
 
-        Expression result;
+        Expression result2;
         if (filter.Operator == FilterOperator.Ne || filter.Operator == FilterOperator.Nin)
         {
             if (nullChecks.Count > 0)
@@ -68,21 +96,116 @@ internal static class NestedPropertyNavigator
 
                 Expression anyNull = Expression.Not(allNotNull);
                 Expression notNullAndFilter = Expression.AndAlso(allNotNull, filterExpression);
-                result = Expression.OrElse(anyNull, notNullAndFilter);
+                result2 = Expression.OrElse(anyNull, notNullAndFilter);
             }
             else
             {
-                result = filterExpression;
+                result2 = filterExpression;
             }
         }
         else
         {
-            result = filterExpression;
-            foreach (Expression nullCheck in nullChecks)
-                result = Expression.AndAlso(nullCheck, result);
+            result2 = filterExpression;
+            // Iterate in reverse to ensure outer null checks are evaluated first
+            // e.g., e.A != null && e.A.B != null && filterExpression
+            for (int i = nullChecks.Count - 1; i >= 0; i--)
+                result2 = Expression.AndAlso(nullChecks[i], result2);
         }
 
-        return result;
+        return result2;
+    }
+
+    /// <summary>
+    /// Gets the element type if the type is a collection (but not string).
+    /// Returns null if not a collection.
+    /// </summary>
+    private static Type? GetCollectionElementType(Type type)
+    {
+        if (type == typeof(string))
+            return null;
+
+        // Check for IEnumerable<T>
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            return type.GetGenericArguments()[0];
+
+        // Check interfaces for IEnumerable<T>
+        Type? enumerableInterface = type
+            .GetInterfaces()
+            .FirstOrDefault(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+            );
+
+        return enumerableInterface?.GetGenericArguments()[0];
+    }
+
+    /// <summary>
+    /// Builds a filter expression for collection navigation using Any().
+    /// e.g., collection.Any(item => item.Property == value)
+    /// </summary>
+    private static Expression? BuildCollectionFilterExpression(
+        Expression collectionAccess,
+        Type elementType,
+        string[] remainingParts,
+        FilterParameter filter,
+        ILogger? logger
+    )
+    {
+        // Create parameter for the lambda: item =>
+        ParameterExpression itemParam = Expression.Parameter(elementType, "item");
+
+        // Build the inner filter expression for the remaining path
+        FilterParameter innerFilter = new FilterParameter
+        {
+            Field = string.Join(".", remainingParts),
+            Value = filter.Value,
+            Operator = filter.Operator,
+            IsIncludeFilter = filter.IsIncludeFilter,
+        };
+
+        Expression? innerExpression;
+        if (remainingParts.Length == 1)
+        {
+            // Simple property access on the element
+            PropertyInfo? prop = QueryHelpers.GetPropertyByJsonName(elementType, remainingParts[0]);
+            if (prop == null)
+            {
+                logger?.LogWarning(
+                    "Property '{PropertyName}' not found on {Type}",
+                    remainingParts[0],
+                    elementType.Name
+                );
+                return null;
+            }
+
+            Expression propertyAccess = Expression.Property(itemParam, prop);
+            innerExpression = BuildPropertyFilterExpression(propertyAccess, filter, logger);
+        }
+        else
+        {
+            // Nested property access - recursively build
+            innerExpression = BuildSafeNestedFilterExpression(itemParam, innerFilter, logger);
+        }
+
+        if (innerExpression == null)
+            return null;
+
+        // Create lambda: item => innerExpression
+        LambdaExpression predicate = Expression.Lambda(innerExpression, itemParam);
+
+        // Get the Enumerable.Any<T>(IEnumerable<T>, Func<T, bool>) method
+        MethodInfo anyMethod =
+            typeof(Enumerable)
+                .GetMethods()
+                .First(m =>
+                    m.Name == "Any"
+                    && m.GetParameters().Length == 2
+                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                        == typeof(Func<,>)
+                )
+                .MakeGenericMethod(elementType);
+
+        // Build: collection.Any(item => predicate)
+        return Expression.Call(anyMethod, collectionAccess, predicate);
     }
 
     internal static Expression? BuildPropertyFilterExpression(

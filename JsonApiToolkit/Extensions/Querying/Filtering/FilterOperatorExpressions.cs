@@ -8,10 +8,16 @@ internal static class FilterOperatorExpressions
 {
     internal static Expression BuildLikeExpression(Expression property, string value)
     {
+        // Only strip % if value has both leading AND trailing % (indicating wildcard intent)
+        // This preserves literal % in values like "100%" or "%discount"
+        string cleanValue = value.StartsWith('%') && value.EndsWith('%') && value.Length > 2
+            ? value[1..^1]
+            : value;
+
         if (property.Type == typeof(string))
         {
             MethodInfo? method = typeof(string).GetMethod("Contains", [typeof(string)]);
-            return Expression.Call(property, method!, Expression.Constant(value));
+            return Expression.Call(property, method!, Expression.Constant(cleanValue));
         }
 
         Type? underlyingType = Nullable.GetUnderlyingType(property.Type);
@@ -34,7 +40,7 @@ internal static class FilterOperatorExpressions
             Expression containsCall = Expression.Call(
                 toStringCall,
                 containsMethod!,
-                Expression.Constant(value)
+                Expression.Constant(cleanValue)
             );
 
             return Expression.AndAlso(notNullCheck, containsCall);
@@ -44,7 +50,7 @@ internal static class FilterOperatorExpressions
             MethodInfo? toStringMethod = property.Type.GetMethod("ToString", Type.EmptyTypes);
             MethodCallExpression toStringCall = Expression.Call(property, toStringMethod!);
             MethodInfo? containsMethod = typeof(string).GetMethod("Contains", [typeof(string)]);
-            return Expression.Call(toStringCall, containsMethod!, Expression.Constant(value));
+            return Expression.Call(toStringCall, containsMethod!, Expression.Constant(cleanValue));
         }
     }
 
