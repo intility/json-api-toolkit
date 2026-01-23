@@ -51,8 +51,10 @@ internal static class NestedPropertyNavigator
 
                 // Combine with null checks for the path so far
                 Expression result = collectionFilter;
-                // Add null check for the collection itself
-                nullChecks.Add(Expression.NotEqual(current, Expression.Constant(null)));
+                // Note: We don't add a null check for collection navigations because:
+                // 1. Collection navigations in EF Core are never truly null in SQL
+                // 2. Adding a null check forces MaterializeCollectionNavigation() which breaks many-to-many translation
+                // 3. The Any() predicate handles empty collections correctly (returns false)
 
                 for (int j = nullChecks.Count - 1; j >= 0; j--)
                     result = Expression.AndAlso(nullChecks[j], result);

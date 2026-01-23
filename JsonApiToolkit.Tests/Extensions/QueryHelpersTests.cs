@@ -147,4 +147,42 @@ public class QueryHelpersTests
 
         Assert.Null(property);
     }
+
+    [Fact]
+    public void GetPropertyByJsonName_WithJsonPropertyNameAttribute_ReturnsProperty()
+    {
+        var property = QueryHelpers.GetPropertyByJsonName(
+            typeof(TestEntityWithJsonPropertyName),
+            "customId"
+        );
+
+        Assert.NotNull(property);
+        Assert.Equal("ActualPropertyName", property.Name);
+    }
+
+    [Fact]
+    public void GetPropertyByJsonName_WithJsonPropertyNameAttribute_SnakeCase_ReturnsProperty()
+    {
+        var property = QueryHelpers.GetPropertyByJsonName(
+            typeof(TestEntityWithJsonPropertyName),
+            "display_name"
+        );
+
+        Assert.NotNull(property);
+        Assert.Equal("InternalName", property.Name);
+    }
+
+    [Fact]
+    public void GetPropertyByJsonName_PrefersPascalCaseOverJsonPropertyName()
+    {
+        // When a property name matches via PascalCase, it should be preferred over JsonPropertyName
+        // This ensures backward compatibility
+        var property = QueryHelpers.GetPropertyByJsonName(
+            typeof(TestEntityWithJsonPropertyName),
+            "id"
+        );
+
+        Assert.NotNull(property);
+        Assert.Equal("Id", property.Name);
+    }
 }
