@@ -25,8 +25,16 @@ public static class FilteredIncludeBuilder
         if (includePaths == null || includePaths.Count == 0)
             return query;
 
-        var filtersByRelationship = includeFilters
-            .ToDictionary(f => f.RelationshipPath, f => f.FilterGroup, StringComparer.OrdinalIgnoreCase);
+        // Use single query mode to prevent EF Core split query correlation issues.
+        // Without this, filtered includes on one relationship can break other includes
+        // because EF Core's split query correlation logic fails with mixed filtered/unfiltered includes.
+        query = query.AsSingleQuery();
+
+        var filtersByRelationship = includeFilters.ToDictionary(
+            f => f.RelationshipPath,
+            f => f.FilterGroup,
+            StringComparer.OrdinalIgnoreCase
+        );
 
         var sortedPaths = includePaths.OrderBy(p => p.Count(c => c == '.')).ToList();
 
@@ -63,7 +71,13 @@ public static class FilteredIncludeBuilder
             return query;
 
         if (pathSegments.Length == 1)
-            return ApplyFilteredIncludeWithFilters(query, pathSegments[0], filterGroup, rootType, logger);
+            return ApplyFilteredIncludeWithFilters(
+                query,
+                pathSegments[0],
+                filterGroup,
+                rootType,
+                logger
+            );
 
         if (pathSegments.Length == 2)
             return ApplyTwoLevelFilteredInclude(query, pathSegments, filterGroup, rootType, logger);
