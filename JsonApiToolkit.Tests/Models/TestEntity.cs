@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace JsonApiToolkit.Tests.Models;
 
 public class TestEntity
@@ -40,4 +42,15 @@ public class TestChildEntity
     public int TestEntityId { get; set; }
     public TestEntity? TestEntity { get; set; }
     public List<string> Tags { get; set; } = new();
+}
+
+public class TestEntityWithJsonPropertyName
+{
+    public int Id { get; set; }
+
+    [JsonPropertyName("customId")]
+    public string? ActualPropertyName { get; set; }
+
+    [JsonPropertyName("display_name")]
+    public string? InternalName { get; set; }
 }

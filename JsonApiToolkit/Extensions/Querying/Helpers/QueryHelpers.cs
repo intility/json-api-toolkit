@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace JsonApiToolkit.Extensions.Querying;
 
@@ -31,12 +32,22 @@ public static class QueryHelpers
 
                 string pascalCase = name.ToPascalCase();
                 property = type.GetProperty(pascalCase);
+                if (property != null)
+                    return property;
 
-                return property
-                    ?? type.GetProperties()
-                        .FirstOrDefault(p =>
-                            string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)
-                        );
+                // Check for [JsonPropertyName] attribute
+                property = type.GetProperties()
+                    .FirstOrDefault(p =>
+                        p.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name == name
+                    );
+                if (property != null)
+                    return property;
+
+                // Fallback: case-insensitive search
+                return type.GetProperties()
+                    .FirstOrDefault(p =>
+                        string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)
+                    );
             }
         );
     }

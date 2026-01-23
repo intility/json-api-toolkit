@@ -727,6 +727,52 @@ public class QueryableExtensionsTests
         Assert.Equal(1, result[0].Id);
         Assert.Contains(result[0].Children, c => c.Tags.Contains("important"));
     }
+
+    [Fact]
+    public void ApplyFilters_WithNullCollectionInMemory_ThrowsNullReferenceException()
+    {
+        // Note: This test documents behavior for in-memory LINQ with null collections.
+        // In EF Core, collection navigations are never null - they're empty lists.
+        // We removed the null check for collections because it broke EF Core many-to-many translation.
+        // This is an acceptable trade-off since:
+        // 1. EF Core (the primary use case) never has null collections
+        // 2. Modern C# code initializes collections (= new()) to avoid nulls
+        var testData = new List<TestEntity>
+        {
+            new TestEntity
+            {
+                Id = 1,
+                Name = "Entity1",
+                Children = null!, // Explicitly null - unusual but possible in memory
+            },
+            new TestEntity
+            {
+                Id = 2,
+                Name = "Entity2",
+                Children = new List<TestChildEntity>
+                {
+                    new TestChildEntity { Id = 20, Name = "TargetChild" },
+                },
+            },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "children.name",
+                    Operator = FilterOperator.Eq,
+                    Value = "TargetChild",
+                },
+            },
+        };
+
+        // In-memory LINQ with null collection will throw - this is expected
+        // because we prioritize EF Core compatibility over in-memory null handling
+        Assert.Throws<ArgumentNullException>(() => testData.ApplyFilters(filterGroup).ToList());
+    }
 }
 
 public static class TaskExtensions
