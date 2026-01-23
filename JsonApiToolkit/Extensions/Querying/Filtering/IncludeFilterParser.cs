@@ -95,7 +95,13 @@ public static class IncludeFilterParser
             }
             else
             {
-                newGroup.Filters.Add(filter);
+                // Only add to main filters if it's NOT a bracket syntax filter.
+                // Bracket syntax filters targeting non-included relationships should be silently dropped.
+                if (!filter.IsIncludeFilter)
+                {
+                    newGroup.Filters.Add(filter);
+                }
+                // else: silently ignore bracket syntax filters for non-included relationships
             }
         }
 

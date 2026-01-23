@@ -254,9 +254,9 @@ public class IncludeFilterParserTests
     }
 
     [Fact]
-    public void SeparateIncludeFilters_WithFilterOnNonIncludedRelationship_ReturnsAsMainFilter()
+    public void SeparateIncludeFilters_WithFilterOnNonIncludedRelationship_DropsFilter()
     {
-        // Arrange - Even with IsIncludeFilter=true, if relationship is not included, it becomes main filter
+        // Arrange - Bracket syntax filter targeting non-included relationship should be dropped
         var filters = new FilterGroup
         {
             Filters = new List<FilterParameter>
@@ -266,7 +266,7 @@ public class IncludeFilterParserTests
                     Field = "comments.status",
                     Operator = FilterOperator.Eq,
                     Value = "approved",
-                    IsIncludeFilter = true, // Marked as include filter but relationship not in includes
+                    IsIncludeFilter = true, // Bracket syntax filter but "comments" not in includes
                 },
             },
         };
@@ -278,12 +278,58 @@ public class IncludeFilterParserTests
             includePaths
         );
 
-        // Assert
-        // When the relationship is not included, the filter should be treated as a main filter
+        // Assert - Filter should be dropped, not converted to main filter
+        Assert.Null(mainFilters);
+        Assert.Empty(includeFilters);
+    }
+
+    [Fact]
+    public void SeparateIncludeFilters_WithMixedIncludedAndNonIncludedRelationships_DropsOnlyNonIncluded()
+    {
+        // Arrange - Mix of valid and invalid bracket syntax filters
+        var filters = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new()
+                {
+                    Field = "author.name",
+                    Operator = FilterOperator.Eq,
+                    Value = "John",
+                    IsIncludeFilter = true, // Valid - author IS in includes
+                },
+                new()
+                {
+                    Field = "comments.status",
+                    Operator = FilterOperator.Eq,
+                    Value = "approved",
+                    IsIncludeFilter = true, // Invalid - comments NOT in includes (dropped)
+                },
+                new()
+                {
+                    Field = "title",
+                    Operator = FilterOperator.Eq,
+                    Value = "Test",
+                    // Main filter (IsIncludeFilter defaults to false)
+                },
+            },
+        };
+        var includePaths = new List<string> { "author" };
+
+        // Act
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            filters,
+            includePaths
+        );
+
+        // Assert - Main filter only has "title", comments.status was dropped
         Assert.NotNull(mainFilters);
         Assert.Single(mainFilters.Filters);
-        Assert.Equal("comments.status", mainFilters.Filters[0].Field);
-        Assert.Empty(includeFilters);
+        Assert.Equal("title", mainFilters.Filters[0].Field);
+
+        // Include filter only has author
+        Assert.Single(includeFilters);
+        Assert.Equal("author", includeFilters[0].RelationshipPath);
     }
 
     [Fact]
