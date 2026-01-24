@@ -855,6 +855,127 @@ public class JsonApiQueryAsyncTests : IDisposable
 
     #endregion
 
+    #region Filtered Includes with Pagination Tests
+
+    [Fact]
+    public async Task GetArticles_FilteredIncludesWithPagination_ReturnsCorrectDataAsync()
+    {
+        // Filter on included resource + pagination
+        var response = await _client.GetAsync(
+            "/api/articles?filter[author.name]=Alice&include=author&page[number]=1&page[size]=2&sort=id"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        // Alice has 2 articles (ids 1 and 2), page size 2 should return both
+        Assert.Equal(2, document.Data.Count());
+
+        // Verify pagination metadata reflects filtered count
+        Assert.NotNull(document.Meta);
+        Assert.Equal(2, GetPaginationValue<int>(document.Meta, "totalResources"));
+        Assert.Equal(1, GetPaginationValue<int>(document.Meta, "totalPages"));
+
+        // Verify included author is Alice
+        Assert.NotNull(document.Included);
+        Assert.Single(document.Included);
+        Assert.Equal("Alice", document.Included.First().Attributes?["name"]?.ToString());
+    }
+
+    [Fact]
+    public async Task GetArticles_FilteredIncludesWithPaginationSecondPage_ReturnsCorrectDataAsync()
+    {
+        // Filter to published articles, include author, get second page
+        var response = await _client.GetAsync(
+            "/api/articles?filter[isPublished]=true&include=author&page[number]=2&page[size]=2&sort=id"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        // 4 published articles, page 2 with size 2 should return 2 articles
+        Assert.Equal(2, document.Data.Count());
+
+        // Verify pagination
+        Assert.NotNull(document.Meta);
+        Assert.Equal(4, GetPaginationValue<int>(document.Meta, "totalResources"));
+        Assert.Equal(2, GetPaginationValue<int>(document.Meta, "totalPages"));
+        Assert.Equal(2, GetPaginationValue<int>(document.Meta, "currentPage"));
+
+        // Verify includes are present
+        Assert.NotNull(document.Included);
+        Assert.NotEmpty(document.Included);
+    }
+
+    [Fact]
+    public async Task GetArticles_MultipleIncludesWithFilterAndPagination_ReturnsAllIncludedAsync()
+    {
+        // Complex query: filter + multiple includes + pagination
+        var response = await _client.GetAsync(
+            "/api/articles?filter[viewCount][ge]=50&include=author,comments&page[number]=1&page[size]=3&sort=-viewCount"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        // viewCount >= 50: articles with 50, 75, 100, 200 = 4 articles, page size 3
+        Assert.Equal(3, document.Data.Count());
+
+        // Verify sorted by viewCount descending
+        var ids = document.Data.Select(r => r.Id).ToList();
+        Assert.Equal("4", ids[0]); // viewCount: 200
+        Assert.Equal("1", ids[1]); // viewCount: 100
+        Assert.Equal("5", ids[2]); // viewCount: 75
+
+        // Verify includes contain both authors and comments
+        Assert.NotNull(document.Included);
+        Assert.Contains(document.Included, r => r.Type == "queryTestAuthor");
+    }
+
+    [Fact]
+    public async Task GetArticles_FilterOnIncludedResourceWithEmptyResult_ReturnsEmptyAsync()
+    {
+        // Filter on included resource that matches nothing
+        var response = await _client.GetAsync(
+            "/api/articles?filter[author.name]=NonexistentAuthor&include=author&page[number]=1&page[size]=10"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        Assert.Empty(document.Data);
+
+        // Pagination should reflect zero results
+        Assert.NotNull(document.Meta);
+        Assert.Equal(0, GetPaginationValue<int>(document.Meta, "totalResources"));
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _client?.Dispose();
