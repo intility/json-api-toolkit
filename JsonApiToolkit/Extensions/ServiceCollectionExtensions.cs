@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using JsonApiToolkit.Configuration;
 using JsonApiToolkit.Filters;
 using JsonApiToolkit.Services;
 using JsonApiToolkit.Validation;
@@ -17,10 +18,23 @@ namespace JsonApiToolkit.Extensions
     public static class ServiceCollectionExtensions
     {
         /// <summary>
-        /// Registers JsonApiToolkit services: JSON serialization, filters, query parser, and include validation.
+        /// Registers JsonApiToolkit services with default options.
         /// </summary>
-        public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services)
+        public static IServiceCollection AddJsonApiToolkit(this IServiceCollection services) =>
+            AddJsonApiToolkit(services, _ => { });
+
+        /// <summary>
+        /// Registers JsonApiToolkit services with custom options configuration.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configure">Action to configure JsonApiOptions.</param>
+        public static IServiceCollection AddJsonApiToolkit(
+            this IServiceCollection services,
+            Action<JsonApiOptions> configure
+        )
         {
+            // Register options
+            services.Configure(configure);
             // Configure JSON serialization options
             services.Configure<JsonOptions>(options =>
             {

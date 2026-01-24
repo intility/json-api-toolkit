@@ -1,3 +1,4 @@
+using JsonApiToolkit.Configuration;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
@@ -11,9 +12,7 @@ namespace JsonApiToolkit.Parsing;
 /// </summary>
 public static class JsonApiQueryParser
 {
-    private const int DEFAULT_PAGE_SIZE = 10;
     private const int MIN_PAGE_SIZE = 1;
-    private const int MAX_PAGE_SIZE = 100;
 
     /// <summary>
     /// Minimum length for a valid filter key: "filter[x]" = 9 characters.
@@ -21,10 +20,21 @@ public static class JsonApiQueryParser
     private const int MinFilterKeyLength = 9;
 
     /// <summary>
+    /// Parses JSON:API query parameters from an HTTP request using default options.
+    /// </summary>
+    public static QueryParameters Parse(HttpRequest request, ILogger? logger) =>
+        Parse(request, null, logger);
+
+    /// <summary>
     /// Parses JSON:API query parameters from an HTTP request.
     /// </summary>
-    public static QueryParameters Parse(HttpRequest request, ILogger? logger = null)
+    public static QueryParameters Parse(
+        HttpRequest request,
+        JsonApiOptions? options = null,
+        ILogger? logger = null
+    )
     {
+        options ??= new JsonApiOptions();
         var queryParams = new QueryParameters();
 
         // Check for pagination parameters - allow either or both to be specified
@@ -39,8 +49,8 @@ public static class JsonApiQueryParser
                     hasPageNumber && int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1, // Default to page 1 if not specified or invalid
                 Size =
                     hasPageSize && int.TryParse(pageSize, out int size)
-                        ? Math.Clamp(size, MIN_PAGE_SIZE, MAX_PAGE_SIZE)
-                        : DEFAULT_PAGE_SIZE, // Use default size if not specified or invalid
+                        ? Math.Clamp(size, MIN_PAGE_SIZE, options.MaxPageSize)
+                        : options.DefaultPageSize, // Use configured defaults
             };
         }
 
