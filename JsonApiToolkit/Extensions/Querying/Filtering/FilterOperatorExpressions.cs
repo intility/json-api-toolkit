@@ -10,9 +10,8 @@ internal static class FilterOperatorExpressions
     {
         // Only strip % if value has both leading AND trailing % (indicating wildcard intent)
         // This preserves literal % in values like "100%" or "%discount"
-        string cleanValue = value.StartsWith('%') && value.EndsWith('%') && value.Length > 2
-            ? value[1..^1]
-            : value;
+        string cleanValue =
+            value.StartsWith('%') && value.EndsWith('%') && value.Length > 2 ? value[1..^1] : value;
 
         if (property.Type == typeof(string))
         {
