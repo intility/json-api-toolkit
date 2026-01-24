@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using JsonApiToolkit.Helpers;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.Extensions.Logging;
 
@@ -219,14 +220,7 @@ internal static partial class NestedPropertyNavigator
         LambdaExpression predicate = Expression.Lambda(innerExpression, itemParam);
 
         // Get the Enumerable.Any<T>(IEnumerable<T>, Func<T, bool>) method
-        MethodInfo anyMethod = typeof(Enumerable)
-            .GetMethods()
-            .First(m =>
-                m.Name == "Any"
-                && m.GetParameters().Length == 2
-                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition() == typeof(Func<,>)
-            )
-            .MakeGenericMethod(elementType);
+        MethodInfo anyMethod = ReflectionMethodCache.GetEnumerableAnyWithPredicate(elementType);
 
         // Build: collection.Any(item => predicate)
         return Expression.Call(anyMethod, collectionAccess, predicate);
@@ -274,15 +268,9 @@ internal static partial class NestedPropertyNavigator
 
                 LambdaExpression predicate = Expression.Lambda(containsCall, itemParam);
 
-                MethodInfo anyMethod = typeof(Enumerable)
-                    .GetMethods()
-                    .First(m =>
-                        m.Name == "Any"
-                        && m.GetParameters().Length == 2
-                        && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
-                            == typeof(Func<,>)
-                    )
-                    .MakeGenericMethod(elementType);
+                MethodInfo anyMethod = ReflectionMethodCache.GetEnumerableAnyWithPredicate(
+                    elementType
+                );
 
                 return Expression.Call(anyMethod, collectionAccess, predicate);
             }
@@ -300,10 +288,9 @@ internal static partial class NestedPropertyNavigator
             }
 
             // Get Contains method on IEnumerable<T> (via Enumerable.Contains)
-            MethodInfo containsMethodInfo = typeof(Enumerable)
-                .GetMethods()
-                .First(m => m.Name == "Contains" && m.GetParameters().Length == 2)
-                .MakeGenericMethod(elementType);
+            MethodInfo containsMethodInfo = ReflectionMethodCache.GetEnumerableContains(
+                elementType
+            );
 
             return Expression.Call(
                 containsMethodInfo,
@@ -326,10 +313,9 @@ internal static partial class NestedPropertyNavigator
                 return null;
             }
 
-            MethodInfo containsMethodInfo = typeof(Enumerable)
-                .GetMethods()
-                .First(m => m.Name == "Contains" && m.GetParameters().Length == 2)
-                .MakeGenericMethod(elementType);
+            MethodInfo containsMethodInfo = ReflectionMethodCache.GetEnumerableContains(
+                elementType
+            );
 
             return Expression.Not(
                 Expression.Call(
