@@ -238,4 +238,73 @@ public class JsonApiExceptionFilterTests
         Assert.Equal(statusCode.ToString(), errorResponse.Errors[0].Status);
         Assert.Equal(expectedTitle, errorResponse.Errors[0].Title);
     }
+
+    [Fact]
+    public void OnException_WithFullMetadata_SerializesAllFields()
+    {
+        var exception = new JsonApiBadRequestException(
+            "Invalid filter value",
+            code: "INVALID_FILTER_VALUE",
+            errorSource: new ErrorSource { Parameter = "filter[age]" },
+            meta: new Dictionary<string, object>
+            {
+                ["field"] = "age",
+                ["expectedType"] = "Int32",
+                ["actualValue"] = "abc",
+            }
+        );
+        var context = CreateExceptionContext(exception);
+
+        _filter.OnException(context);
+
+        var result = Assert.IsType<ObjectResult>(context.Result);
+        var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
+        var error = errorResponse.Errors[0];
+
+        Assert.Equal("INVALID_FILTER_VALUE", error.Code);
+        Assert.NotNull(error.Source);
+        Assert.Equal("filter[age]", error.Source.Parameter);
+        Assert.NotNull(error.Meta);
+        Assert.Equal("age", error.Meta["field"]);
+        Assert.Equal("Int32", error.Meta["expectedType"]);
+        Assert.Equal("abc", error.Meta["actualValue"]);
+    }
+
+    [Fact]
+    public void OnException_WithFactoryException_SerializesCorrectly()
+    {
+        var exception = JsonApiErrors.NotFound("books", 123);
+        var context = CreateExceptionContext(exception);
+
+        _filter.OnException(context);
+
+        var result = Assert.IsType<ObjectResult>(context.Result);
+        Assert.Equal(404, result.StatusCode);
+
+        var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
+        var error = errorResponse.Errors[0];
+
+        Assert.Equal("RESOURCE_NOT_FOUND", error.Code);
+        Assert.NotNull(error.Meta);
+        Assert.Equal("books", error.Meta["resourceType"]);
+        Assert.Equal(123, error.Meta["id"]);
+    }
+
+    [Fact]
+    public void OnException_WithSourcePointer_SerializesCorrectly()
+    {
+        var exception = JsonApiErrors.AlreadyExists("users", "email", "test@example.com");
+        var context = CreateExceptionContext(exception);
+
+        _filter.OnException(context);
+
+        var result = Assert.IsType<ObjectResult>(context.Result);
+        Assert.Equal(409, result.StatusCode);
+
+        var errorResponse = Assert.IsType<JsonApiErrorResponse>(result.Value);
+        var error = errorResponse.Errors[0];
+
+        Assert.NotNull(error.Source);
+        Assert.Equal("/data/attributes/email", error.Source.Pointer);
+    }
 }
