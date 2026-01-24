@@ -296,15 +296,15 @@ public async Task<IActionResult> GetUsers()
 **Release Date:** TBD
 
 **Bug Fixes:**
-- [ ] Fixed exception swallowing in InclusionMapper (now properly logged)
-- [ ] Fixed unsafe string parsing in filter parser
-- [ ] Fixed potential division by zero in pagination
-- [ ] Added defensive checks for reflection method lookups
-- [ ] Removed dead code (`AddIncludedResourcesRecursive`)
+- [x] Fixed exception swallowing in InclusionMapper (dead code removed)
+- [x] Fixed unsafe string parsing in filter parser
+- [x] Fixed potential division by zero in pagination
+- [x] Added defensive checks for reflection method lookups
+- [x] Removed dead code (`AddIncludedResourcesRecursive`)
 
 **New Features:**
-- [ ] `JsonApiErrorCodes` - Standard error codes for consistent error identification
-- [ ] `JsonApiErrors` - Factory methods for creating rich, well-structured errors
+- [x] `JsonApiErrorCodes` - Standard error codes for consistent error identification
+- [x] `JsonApiErrors` - Factory methods for creating rich, well-structured errors
 
 **Usage:**
 ```csharp
