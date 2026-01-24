@@ -41,7 +41,7 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
     }
 
     /// <summary>
-    /// Validates requested includes against the allowed patterns.
+    /// Validates requested includes and filter paths against the allowed patterns.
     /// </summary>
     public override void OnActionExecuting(ActionExecutingContext context)
     {
@@ -63,45 +63,65 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
             ) as ILogger<AllowedIncludesAttribute>;
         var queryParams = JsonApiQueryParser.Parse(request, logger);
 
-        if (queryParams.Include == null || queryParams.Include.Count == 0)
+        // Validate includes
+        if (queryParams.Include != null && queryParams.Include.Count > 0)
         {
-            base.OnActionExecuting(context);
-            return;
+            // Empty array means no includes allowed
+            if (_allowedIncludes.Length == 0)
+            {
+                ThrowForbiddenIncludeException(
+                    queryParams.Include,
+                    queryParams.Include,
+                    _allowedIncludes,
+                    context,
+                    logger
+                );
+                return;
+            }
+
+            var validationResult = IncludeValidator.ValidateIncludes(
+                queryParams.Include,
+                _allowedIncludes
+            );
+
+            if (!validationResult.IsValid)
+            {
+                ThrowForbiddenIncludeException(
+                    queryParams.Include,
+                    validationResult.ForbiddenIncludes,
+                    _allowedIncludes,
+                    context,
+                    logger
+                );
+                return;
+            }
         }
 
-        // Empty array means no includes allowed
-        if (_allowedIncludes.Length == 0)
+        // Validate filter paths against allowed includes
+        // This prevents filtering on relationships not in the allowed list
+        if (queryParams.Filter != null && _allowedIncludes.Length > 0)
         {
-            ThrowForbiddenException(
-                queryParams.Include,
-                queryParams.Include,
-                _allowedIncludes,
-                context,
-                logger
+            var filterValidation = IncludeValidator.ValidateFilterPaths(
+                queryParams.Filter,
+                _allowedIncludes
             );
-            return;
-        }
 
-        var validationResult = IncludeValidator.ValidateIncludes(
-            queryParams.Include,
-            _allowedIncludes
-        );
-
-        if (!validationResult.IsValid)
-        {
-            ThrowForbiddenException(
-                queryParams.Include,
-                validationResult.ForbiddenIncludes,
-                _allowedIncludes,
-                context,
-                logger
-            );
+            if (!filterValidation.IsValid)
+            {
+                ThrowForbiddenFilterException(
+                    filterValidation.ForbiddenFilterPaths,
+                    _allowedIncludes,
+                    context,
+                    logger
+                );
+                return;
+            }
         }
 
         base.OnActionExecuting(context);
     }
 
-    private static void ThrowForbiddenException(
+    private static void ThrowForbiddenIncludeException(
         List<string> requestedIncludes,
         List<string> forbiddenIncludes,
         string[] allowedIncludes,
@@ -112,9 +132,8 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
         if (logger != null && forbiddenIncludes.Count > 0)
         {
             logger.LogWarning(
-                "Forbidden includes requested: {ForbiddenIncludes}. Allowed includes: {AllowedIncludes}",
-                string.Join(", ", forbiddenIncludes),
-                string.Join(", ", allowedIncludes)
+                "Include access denied for request {RequestId}",
+                context.HttpContext.TraceIdentifier
             );
         }
 
@@ -126,12 +145,58 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
         var error = new JsonApiError
         {
             Status = "403",
+            Code = JsonApiErrorCodes.IncludeNotAllowed,
             Title = "Forbidden Include",
             Detail = errorDetail,
+            Source = new ErrorSource { Parameter = "include" },
             Meta = new Dictionary<string, object>
             {
                 ["requestedIncludes"] = requestedIncludes,
                 ["forbiddenIncludes"] = forbiddenIncludes,
+                ["allowedIncludes"] =
+                    allowedIncludes.Length > 0 ? allowedIncludes : Array.Empty<string>(),
+            },
+        };
+
+        var errorResponse = new JsonApiErrorResponse { Errors = [error] };
+
+        context.Result = new ObjectResult(errorResponse)
+        {
+            StatusCode = 403,
+            ContentTypes = { "application/vnd.api+json" },
+        };
+    }
+
+    private static void ThrowForbiddenFilterException(
+        List<string> forbiddenFilterPaths,
+        string[] allowedIncludes,
+        ActionExecutingContext context,
+        ILogger? logger
+    )
+    {
+        if (logger != null && forbiddenFilterPaths.Count > 0)
+        {
+            logger.LogWarning(
+                "Filter path access denied for request {RequestId}",
+                context.HttpContext.TraceIdentifier
+            );
+        }
+
+        var errorDetail =
+            forbiddenFilterPaths.Count == 1
+                ? $"Filtering on relationship '{forbiddenFilterPaths[0]}' is not allowed"
+                : $"Filtering on relationships '{string.Join(", ", forbiddenFilterPaths)}' is not allowed";
+
+        var error = new JsonApiError
+        {
+            Status = "403",
+            Code = JsonApiErrorCodes.FilterNotAllowed,
+            Title = "Forbidden Filter",
+            Detail = errorDetail,
+            Source = new ErrorSource { Parameter = "filter" },
+            Meta = new Dictionary<string, object>
+            {
+                ["forbiddenFilterPaths"] = forbiddenFilterPaths,
                 ["allowedIncludes"] =
                     allowedIncludes.Length > 0 ? allowedIncludes : Array.Empty<string>(),
             },
