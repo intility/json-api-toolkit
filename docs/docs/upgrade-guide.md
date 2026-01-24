@@ -230,9 +230,9 @@ public static class JsonApiMapper { ... }
 **Release Date:** TBD
 
 **New Features:**
-- [ ] `JsonApiOptions` configuration class
-- [ ] Configurable query complexity limits
-- [ ] AllowedIncludes now validates filter paths (not just includes)
+- [x] `JsonApiOptions` configuration class
+- [x] Configurable query complexity limits
+- [x] AllowedIncludes now validates filter paths (not just includes)
 
 **Configuration:**
 ```csharp
@@ -241,7 +241,7 @@ services.AddJsonApiToolkit(options => {
     options.MaxFilterGroups = 10;      // Default: 10
     options.MaxFilterDepth = 3;        // Default: 3
     options.MaxFilterValueLength = 1000; // Default: 1000
-    options.MaxIncludeDepth = 4;       // Default: 4
+    options.MaxIncludeDepth = 3;       // Default: 3
     options.MaxPageSize = 100;         // Default: 100
     options.DefaultPageSize = 10;      // Default: 10
 });
