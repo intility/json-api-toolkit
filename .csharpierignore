@@ -1,0 +1,2 @@
+# Ignore csproj files - release-please XML updater reformats them
+**/*.csproj
