@@ -39,10 +39,10 @@ dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -p:PackageVersion=VERSION -c Re
 ```bash
 # Format code with CSharpier
 dotnet tool restore
-dotnet csharpier .
+dotnet csharpier format .
 
-# Check formatting
-dotnet csharpier . --check
+# Check formatting (CI uses this)
+dotnet csharpier check .
 ```
 
 ### Documentation
@@ -98,6 +98,7 @@ Enable detailed logging for query processing and troubleshooting:
 
 8. **Helpers** (`Helpers/`)
    - `EfIncludePathHelper`: Utilities for building EF Core Include expressions
+   - `ReflectionMethodCache`: Cached reflection method lookups with defensive checks and clear error messages
 
 ### Key Patterns
 
@@ -109,6 +110,7 @@ Enable detailed logging for query processing and troubleshooting:
 - **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
 - **Pagination safety**: Invalid page numbers are automatically clamped to valid ranges (page 1 for negative/zero, last page for overflow)
 - **Include whitelisting**: Use `AllowedIncludesAttribute` on controller actions to restrict which relationships can be included, preventing unauthorized data exposure
+- **Graceful error handling**: Malformed query parameters are logged and skipped rather than throwing exceptions
 
 ### Service Registration
 
@@ -140,10 +142,14 @@ JsonApiToolkit provides a comprehensive error handling system with standardized 
 
 Tests are organized by component:
 - `Controllers/`: Controller behavior tests
-- `Extensions/`: Query extension tests  
+- `Extensions/`: Query extension tests (filtering, sorting, pagination, includes)
 - `Mapping/`: Entity mapping tests
 - `Models/`: Model validation tests
-- `Parsing/`: Query parser tests
+- `Parsing/`: Query parser tests (including malformed input handling)
+- `Helpers/`: Helper class tests (ReflectionMethodCache, etc.)
+- `Integration/`: Full pipeline integration tests
+- `Filters/`: Exception filter tests
+- `Attributes/`: Attribute behavior tests (AllowedIncludes, etc.)
 
 ## Development Guidelines
 
@@ -167,3 +173,12 @@ Tests are organized by component:
 ## Package Publication
 
 The project publishes to GitHub Packages. Use semantic versioning for releases. The CI/CD pipeline automatically builds, tests, and publishes on GitHub releases.
+
+## Refactoring Roadmap
+
+The project has a structured refactoring plan in `.claude/`:
+- `REFACTORING_ROADMAP.md` - Phase-by-phase plan with checklists
+- `CODEBASE_ANALYSIS.md` - Analysis of issues found in the codebase
+- `REPO_IMPROVEMENTS.md` - Repository setup tasks (CI/CD, branch protection)
+
+Use `/roadmap` command to get current status and next tasks.

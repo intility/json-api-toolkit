@@ -57,7 +57,11 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
         }
 
         var request = context.HttpContext.Request;
-        var queryParams = JsonApiQueryParser.Parse(request);
+        var logger =
+            context.HttpContext.RequestServices.GetService(
+                typeof(ILogger<AllowedIncludesAttribute>)
+            ) as ILogger<AllowedIncludesAttribute>;
+        var queryParams = JsonApiQueryParser.Parse(request, logger);
 
         if (queryParams.Include == null || queryParams.Include.Count == 0)
         {
@@ -72,7 +76,8 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
                 queryParams.Include,
                 queryParams.Include,
                 _allowedIncludes,
-                context
+                context,
+                logger
             );
             return;
         }
@@ -88,25 +93,22 @@ public class AllowedIncludesAttribute : ActionFilterAttribute
                 queryParams.Include,
                 validationResult.ForbiddenIncludes,
                 _allowedIncludes,
-                context
+                context,
+                logger
             );
         }
 
         base.OnActionExecuting(context);
     }
 
-    private void ThrowForbiddenException(
+    private static void ThrowForbiddenException(
         List<string> requestedIncludes,
         List<string> forbiddenIncludes,
         string[] allowedIncludes,
-        ActionExecutingContext context
+        ActionExecutingContext context,
+        ILogger? logger
     )
     {
-        var logger =
-            context.HttpContext.RequestServices.GetService(
-                typeof(ILogger<AllowedIncludesAttribute>)
-            ) as ILogger<AllowedIncludesAttribute>;
-
         if (logger != null && forbiddenIncludes.Count > 0)
         {
             logger.LogWarning(
