@@ -2,7 +2,7 @@
 
 This document tracks all breaking changes, new features, and migration steps for each version of JsonApiToolkit.
 
-**Current Version:** 1.2.5
+**Current Version:** 1.4.0
 
 ---
 
@@ -227,12 +227,13 @@ public static class JsonApiMapper { ... }
 
 ### v1.4.0 - Security Hardening
 
-**Release Date:** TBD
+**Release Date:** January 2026
 
 **New Features:**
-- [x] `JsonApiOptions` configuration class
-- [x] Configurable query complexity limits
+- [x] `JsonApiOptions` configuration class for query limits
+- [x] Configurable query complexity limits (filters, groups, depth, page size)
 - [x] AllowedIncludes now validates filter paths (not just includes)
+- [x] Recursion depth guard for nested filter groups
 
 **Configuration:**
 ```csharp

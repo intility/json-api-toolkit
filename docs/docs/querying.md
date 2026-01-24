@@ -97,8 +97,23 @@ With this request, the toolkit will:
 
 ## Limitations
 
+JsonApiToolkit enforces the following query limits to ensure predictable performance and security:
+
+| Limit | Default | Description |
+|-------|---------|-------------|
+| Max Filters | 50 | Maximum number of filter conditions |
+| Max Filter Groups | 10 | Maximum OR/NOT logical blocks |
+| Max Filter Depth | 3 | Maximum nesting of filter groups |
+| Max Filter Value Length | 1000 | Maximum characters per filter value |
+| Max Include Depth | 3 | Maximum include path depth (e.g., `author.posts.comments`) |
+| Max Page Size | 100 | Maximum items per page (silently clamped) |
+
+These limits are configurable via `JsonApiOptions`. See the [Security](security.md#query-complexity-limits) documentation for configuration details.
+
+**Additional limitations:**
+
 - **Include filter validation**: Filters with dot notation can only be applied to relationships that are explicitly included in the request. Use the `AllowedIncludesAttribute` to control which relationships can be filtered.
-- **Complex nested filtering**: Maximum filter depth is 3 levels (e.g., `entity.relationship.property`).
+- **Filtered includes nesting**: Filtered includes currently support up to 2-level nesting (e.g., `parent.child`). Deeper nesting will fall back to unfiltered includes.
 
 ## Attribute Mapping
 
