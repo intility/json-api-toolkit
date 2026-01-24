@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using JsonApiToolkit.Helpers;
+using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +11,12 @@ namespace JsonApiToolkit.Extensions.Querying;
 internal static partial class NestedPropertyNavigator
 {
     private const int MaxLogValueLength = 100;
+
+    /// <summary>
+    /// Maximum recursion depth for nested collection navigations.
+    /// Prevents stack overflow from malicious deeply nested filter paths.
+    /// </summary>
+    private const int MaxRecursionDepth = 5;
 
     /// <summary>
     /// Sanitizes user input for safe logging by removing control characters
@@ -36,9 +43,26 @@ internal static partial class NestedPropertyNavigator
     internal static Expression? BuildSafeNestedFilterExpression(
         ParameterExpression parameter,
         FilterParameter filter,
-        ILogger? logger = null
+        ILogger? logger = null,
+        int depth = 0
     )
     {
+        if (depth > MaxRecursionDepth)
+        {
+            throw new JsonApiBadRequestException(
+                $"Filter path recursion depth exceeds maximum of {MaxRecursionDepth}. "
+                    + "Simplify the filter expression or reduce collection nesting.",
+                JsonApiErrorCodes.QueryTooComplex,
+                new ErrorSource { Parameter = $"filter[{filter.Field}]" },
+                new Dictionary<string, object>
+                {
+                    ["field"] = filter.Field,
+                    ["maxDepth"] = MaxRecursionDepth,
+                    ["actualDepth"] = depth,
+                }
+            );
+        }
+
         string[] parts = filter.Field.Split('.');
         Expression current = parameter;
         var nullChecks = new List<Expression>();
@@ -69,7 +93,8 @@ internal static partial class NestedPropertyNavigator
                     elementType,
                     remainingParts,
                     filter,
-                    logger
+                    logger,
+                    depth + 1
                 );
 
                 if (collectionFilter == null)
@@ -174,9 +199,25 @@ internal static partial class NestedPropertyNavigator
         Type elementType,
         string[] remainingParts,
         FilterParameter filter,
-        ILogger? logger
+        ILogger? logger,
+        int depth
     )
     {
+        if (depth > MaxRecursionDepth)
+        {
+            throw new JsonApiBadRequestException(
+                $"Filter path recursion depth exceeds maximum of {MaxRecursionDepth}. "
+                    + "Simplify the filter expression or reduce collection nesting.",
+                JsonApiErrorCodes.QueryTooComplex,
+                new ErrorSource { Parameter = $"filter[{filter.Field}]" },
+                new Dictionary<string, object>
+                {
+                    ["field"] = filter.Field,
+                    ["maxDepth"] = MaxRecursionDepth,
+                    ["actualDepth"] = depth,
+                }
+            );
+        }
         // Create parameter for the lambda: item =>
         ParameterExpression itemParam = Expression.Parameter(elementType, "item");
 
@@ -210,7 +251,12 @@ internal static partial class NestedPropertyNavigator
         else
         {
             // Nested property access - recursively build
-            innerExpression = BuildSafeNestedFilterExpression(itemParam, innerFilter, logger);
+            innerExpression = BuildSafeNestedFilterExpression(
+                itemParam,
+                innerFilter,
+                logger,
+                depth
+            );
         }
 
         if (innerExpression == null)
