@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.4.0...v1.5.0) (2026-01-24)
+
+
+### Features
+
+* complete Phase 3 with circular reference tests and documentation ([#75](https://github.com/intility/Intility.JsonApiToolkit/issues/75)) ([c09a0e1](https://github.com/intility/Intility.JsonApiToolkit/commit/c09a0e191ec0c74749c6d6164a09d7bc6122ed68))
+
 ## [1.4.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.3.1...v1.4.0) (2026-01-24)
 
 
