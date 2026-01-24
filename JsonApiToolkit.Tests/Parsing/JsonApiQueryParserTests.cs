@@ -373,4 +373,184 @@ public class JsonApiQueryParserTests
         var includeFilter = orGroup.Filters.First(f => f.Field == "comments.status");
         Assert.True(includeFilter.IsIncludeFilter);
     }
+
+    [Fact]
+    public void Parse_WithMalformedFilterKey_TooShort_IgnoresFilter()
+    {
+        // Arrange - filter key too short to be valid
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter["] = "value", // Too short, missing closing bracket
+                ["filter[name]"] = "valid", // Valid filter to ensure parsing continues
+            }
+        );
+
+        // Act
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        // Assert - should only have the valid filter
+        Assert.NotNull(parameters.Filter);
+        Assert.Single(parameters.Filter.Filters);
+        Assert.Equal("name", parameters.Filter.Filters[0].Field);
+    }
+
+    [Fact]
+    public void Parse_WithMalformedFilterKey_MissingClosingBracket_IgnoresFilter()
+    {
+        // Arrange - filter key without closing bracket
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter[name"] = "value", // Missing closing bracket
+                ["filter[age]"] = "25", // Valid filter
+            }
+        );
+
+        // Act
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        // Assert - should only have the valid filter
+        Assert.NotNull(parameters.Filter);
+        Assert.Single(parameters.Filter.Filters);
+        Assert.Equal("age", parameters.Filter.Filters[0].Field);
+    }
+
+    [Fact]
+    public void Parse_WithMalformedOrGroupIndex_NonNumeric_IgnoresFilter()
+    {
+        // Arrange - OR group with non-numeric index
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter[or][abc][name][eq]"] = "value", // Non-numeric index
+                ["filter[or][0][age][eq]"] = "25", // Valid OR filter
+            }
+        );
+
+        // Act
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        // Assert - should only have the valid OR filter
+        Assert.NotNull(parameters.Filter);
+        Assert.Single(parameters.Filter.Groups);
+        Assert.Single(parameters.Filter.Groups[0].Filters);
+        Assert.Equal("age", parameters.Filter.Groups[0].Filters[0].Field);
+    }
+
+    [Fact]
+    public void Parse_WithMalformedOrGroupKey_MissingParts_IgnoresFilter()
+    {
+        // Arrange - OR group key with missing parts
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter[or][0]"] = "value", // Too short, missing field parts
+                ["filter[or][1][name][eq]"] = "test", // Valid OR filter
+            }
+        );
+
+        // Act
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        // Assert - should only have the valid OR filter
+        Assert.NotNull(parameters.Filter);
+        Assert.Single(parameters.Filter.Groups);
+        Assert.Single(parameters.Filter.Groups[0].Filters);
+        Assert.Equal("name", parameters.Filter.Groups[0].Filters[0].Field);
+    }
+
+    [Fact]
+    public void Parse_WithAllMalformedFilters_ReturnsEmptyFilterGroup()
+    {
+        // Arrange - all filters are malformed
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter["] = "value",
+                ["filter[name"] = "test",
+                ["filter"] = "invalid",
+            }
+        );
+
+        // Act
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        // Assert - should have no filters
+        Assert.Null(parameters.Filter);
+    }
+}
+
+public class JsonApiFilterParserMalformedInputTests
+{
+    [Theory]
+    [InlineData("filter[")] // Too short
+    [InlineData("filter[x")] // Missing closing bracket
+    [InlineData("filter")] // No brackets at all
+    [InlineData("filte[x]")] // Wrong prefix
+    [InlineData("")] // Empty string
+    public void ParseComplexFilter_WithMalformedKey_IgnoresFilter(string key)
+    {
+        // Arrange
+        var group = new FilterGroup();
+
+        // Act
+        JsonApiFilterParser.ParseComplexFilter(key, "value", group);
+
+        // Assert - should not add any filter
+        Assert.Empty(group.Filters);
+    }
+
+    [Fact]
+    public void ParseComplexFilter_WithValidKey_AddsFilter()
+    {
+        // Arrange
+        var group = new FilterGroup();
+
+        // Act
+        JsonApiFilterParser.ParseComplexFilter("filter[name][eq]", "value", group);
+
+        // Assert
+        Assert.Single(group.Filters);
+        Assert.Equal("name", group.Filters[0].Field);
+    }
+
+    [Fact]
+    public void ParseLogicalGroup_WithMalformedIndices_SkipsInvalidFilters()
+    {
+        // Arrange
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter[or][invalid][name][eq]"] = "bad", // Non-numeric index
+                ["filter[or][-1][name][eq]"] = "negative", // Negative index (valid int, but unusual)
+                ["filter[or][0][status][eq]"] = "active", // Valid
+            }
+        );
+
+        var parentGroup = new FilterGroup();
+
+        // Act
+        JsonApiFilterParser.ParseLogicalGroup(
+            httpContext.Request,
+            "or",
+            LogicalOperator.Or,
+            parentGroup
+        );
+
+        // Assert - should have filters from valid indices only
+        Assert.Single(parentGroup.Groups);
+        var orGroup = parentGroup.Groups[0];
+
+        // -1 is a valid integer, so it should be parsed (just unusual)
+        // "invalid" should be skipped
+        Assert.True(orGroup.Filters.Count >= 1); // At least the valid one
+        Assert.Contains(orGroup.Filters, f => f.Field == "status");
+    }
 }

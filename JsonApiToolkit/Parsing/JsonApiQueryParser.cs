@@ -1,7 +1,7 @@
-using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 namespace JsonApiToolkit.Parsing;
@@ -16,9 +16,14 @@ public static class JsonApiQueryParser
     private const int MAX_PAGE_SIZE = 100;
 
     /// <summary>
+    /// Minimum length for a valid filter key: "filter[x]" = 9 characters.
+    /// </summary>
+    private const int MinFilterKeyLength = 9;
+
+    /// <summary>
     /// Parses JSON:API query parameters from an HTTP request.
     /// </summary>
-    public static QueryParameters Parse(HttpRequest request)
+    public static QueryParameters Parse(HttpRequest request, ILogger? logger = null)
     {
         var queryParams = new QueryParameters();
 
@@ -48,12 +53,20 @@ public static class JsonApiQueryParser
                 JsonApiFilterParser.ParseComplexFilter(
                     key,
                     request.Query[key].ToString(),
-                    filterGroup
+                    filterGroup,
+                    logger
                 );
             }
             else
             {
-                string field = key.Substring(7, key.Length - 8);
+                // Validate simple filter key format: filter[field]
+                if (key.Length < MinFilterKeyLength || !key.EndsWith("]"))
+                {
+                    logger?.LogWarning("Malformed filter key ignored: {Key}", key);
+                    continue;
+                }
+
+                string field = key[7..^1];
                 filterGroup.Filters.Add(
                     new FilterParameter
                     {
@@ -65,9 +78,21 @@ public static class JsonApiQueryParser
             }
         }
 
-        JsonApiFilterParser.ParseLogicalGroup(request, "or", LogicalOperator.Or, filterGroup);
+        JsonApiFilterParser.ParseLogicalGroup(
+            request,
+            "or",
+            LogicalOperator.Or,
+            filterGroup,
+            logger
+        );
 
-        JsonApiFilterParser.ParseLogicalGroup(request, "not", LogicalOperator.Not, filterGroup);
+        JsonApiFilterParser.ParseLogicalGroup(
+            request,
+            "not",
+            LogicalOperator.Not,
+            filterGroup,
+            logger
+        );
 
         if (filterGroup.Filters.Count > 0 || filterGroup.Groups.Count > 0)
             queryParams.Filter = filterGroup;

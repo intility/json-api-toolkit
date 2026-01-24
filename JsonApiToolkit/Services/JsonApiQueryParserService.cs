@@ -25,7 +25,7 @@ public class JsonApiQueryParserService : IJsonApiQueryParser
     /// </summary>
     public QueryParameters Parse(HttpRequest request)
     {
-        var queryParams = JsonApiQueryParser.Parse(request);
+        var queryParams = JsonApiQueryParser.Parse(request, _logger);
 
         if (
             request.Query.Keys.Any(k => k.StartsWith("filter", StringComparison.OrdinalIgnoreCase))

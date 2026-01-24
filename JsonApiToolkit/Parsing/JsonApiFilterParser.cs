@@ -1,5 +1,6 @@
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Parsing;
 
@@ -12,6 +13,17 @@ public static class JsonApiFilterParser
     /// Separator used for parsing filter syntax.
     /// </summary>
     public static readonly string[] s_separator = ["]["];
+
+    /// <summary>
+    /// Minimum length for a valid filter key: "filter[x]" = 9 characters.
+    /// </summary>
+    private const int MinFilterKeyLength = 9;
+
+    /// <summary>
+    /// Validates that a filter key has the expected format: filter[...]
+    /// </summary>
+    private static bool IsValidFilterKey(string key) =>
+        key.Length >= MinFilterKeyLength && key.StartsWith("filter[") && key.EndsWith("]");
 
     private static FilterOperator ParseFilterOperator(string operatorStr)
     {
@@ -37,9 +49,20 @@ public static class JsonApiFilterParser
     /// - Primary filter: filter[field][operator]=value or filter[rel.field][operator]=value (dot notation)
     /// - Include filter: filter[rel][field][operator]=value (bracket syntax for filtering included relationships)
     /// </summary>
-    public static void ParseComplexFilter(string key, string value, FilterGroup group)
+    public static void ParseComplexFilter(
+        string key,
+        string value,
+        FilterGroup group,
+        ILogger? logger = null
+    )
     {
-        string[] keyParts = key.Substring(7, key.Length - 8).Split("][");
+        if (!IsValidFilterKey(key))
+        {
+            logger?.LogWarning("Malformed filter key ignored: {Key}", key);
+            return;
+        }
+
+        string[] keyParts = key[7..^1].Split("][");
 
         // Standard primary filter: filter[field][operator]=value
         if (keyParts.Length == 2)
@@ -88,36 +111,44 @@ public static class JsonApiFilterParser
         HttpRequest request,
         string groupName,
         LogicalOperator op,
-        FilterGroup parentGroup
+        FilterGroup parentGroup,
+        ILogger? logger = null
     )
     {
-        var orKeys = request.Query.Keys.Where(k => k.StartsWith($"filter[{groupName}][")).ToList();
+        string prefix = $"filter[{groupName}][";
+        var groupKeys = request.Query.Keys.Where(k => k.StartsWith(prefix)).ToList();
 
-        if (orKeys.Count == 0)
+        if (groupKeys.Count == 0)
             return;
 
         var newGroup = new FilterGroup { LogicalOperator = op };
 
-        var indexGroups = orKeys
-            .Select(k => new
-            {
-                Key = k,
-                Index = int.Parse(k.Substring($"filter[{groupName}][".Length).Split(']')[0]),
-            })
+        var indexGroups = groupKeys
+            .Select(k => TryParseGroupIndex(k, prefix, logger))
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
             .GroupBy(x => x.Index);
 
         foreach (var indexGroup in indexGroups)
         {
-            // Create a new FilterParameter for each filter in the group
+            string itemPrefix = $"{prefix}{indexGroup.Key}][";
+
             foreach (var item in indexGroup)
             {
-                var condition = new FilterParameter();
+                // Validate key length before substring
+                if (item.Key.Length <= itemPrefix.Length)
+                {
+                    logger?.LogWarning(
+                        "Malformed logical group filter key ignored: {Key}",
+                        item.Key
+                    );
+                    continue;
+                }
 
-                string restOfKey = item.Key.Substring(
-                    $"filter[{groupName}][{indexGroup.Key}][".Length
-                );
-
+                string restOfKey = item.Key[itemPrefix.Length..];
                 string[] parts = restOfKey.Split(s_separator, StringSplitOptions.None);
+
+                var condition = new FilterParameter();
 
                 if (parts.Length == 2)
                 {
@@ -145,17 +176,59 @@ public static class JsonApiFilterParser
                 else
                 {
                     // Unsupported format, skip
+                    logger?.LogWarning(
+                        "Unsupported logical group filter format ignored: {Key}",
+                        item.Key
+                    );
                     continue;
                 }
 
                 condition.Value = request.Query[item.Key].ToString();
-
-                // Add each condition to the group
                 newGroup.Filters.Add(condition);
             }
         }
 
         if (newGroup.Filters.Count > 0)
             parentGroup.Groups.Add(newGroup);
+    }
+
+    /// <summary>
+    /// Safely extracts the group index from a logical group filter key.
+    /// Returns null if the key is malformed.
+    /// </summary>
+    private static (string Key, int Index)? TryParseGroupIndex(
+        string key,
+        string prefix,
+        ILogger? logger
+    )
+    {
+        if (key.Length <= prefix.Length)
+        {
+            logger?.LogWarning("Malformed logical group filter key ignored: {Key}", key);
+            return null;
+        }
+
+        string afterPrefix = key[prefix.Length..];
+        int closeBracketIndex = afterPrefix.IndexOf(']');
+
+        if (closeBracketIndex <= 0)
+        {
+            logger?.LogWarning("Malformed logical group filter key ignored: {Key}", key);
+            return null;
+        }
+
+        string indexStr = afterPrefix[..closeBracketIndex];
+
+        if (!int.TryParse(indexStr, out int index))
+        {
+            logger?.LogWarning(
+                "Invalid group index '{IndexStr}' in filter key ignored: {Key}",
+                indexStr,
+                key
+            );
+            return null;
+        }
+
+        return (key, index);
     }
 }
