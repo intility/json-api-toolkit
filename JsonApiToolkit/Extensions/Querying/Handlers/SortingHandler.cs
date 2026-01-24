@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using JsonApiToolkit.Helpers;
 using JsonApiToolkit.Models.Querying;
 using Microsoft.Extensions.Logging;
 
@@ -46,31 +47,23 @@ public static class SortingHandler
             if (i == 0)
             {
                 methodName = sortParam.IsDescending ? "OrderByDescending" : "OrderBy";
-                orderedQuery = (IOrderedQueryable<T>?)
-                    typeof(Queryable)
-                        .GetMethods()
-                        .Single(method =>
-                            method.Name == methodName
-                            && method.IsGenericMethodDefinition
-                            && method.GetParameters().Length == 2
-                        )
-                        .MakeGenericMethod(entityType, property.PropertyType)
-                        .Invoke(null, [query, lambda]);
+                var orderMethod = ReflectionMethodCache.GetQueryableOrderingMethod(
+                    methodName,
+                    entityType,
+                    property.PropertyType
+                );
+                orderedQuery = (IOrderedQueryable<T>?)orderMethod.Invoke(null, [query, lambda]);
             }
             else
             {
                 methodName = sortParam.IsDescending ? "ThenByDescending" : "ThenBy";
-
+                var thenMethod = ReflectionMethodCache.GetQueryableOrderingMethod(
+                    methodName,
+                    entityType,
+                    property.PropertyType
+                );
                 orderedQuery = (IOrderedQueryable<T>?)
-                    typeof(Queryable)
-                        .GetMethods()
-                        .Single(method =>
-                            method.Name == methodName
-                            && method.IsGenericMethodDefinition
-                            && method.GetParameters().Length == 2
-                        )
-                        .MakeGenericMethod(entityType, property.PropertyType)
-                        .Invoke(null, [orderedQuery, lambda]);
+                    thenMethod.Invoke(null, [orderedQuery, lambda]);
             }
         }
 

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using JsonApiToolkit.Helpers;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -127,15 +128,10 @@ public static class FilteredIncludeBuilder
             var firstNavAccess = Expression.Property(rootParam, firstProperty);
             var includeLambda = Expression.Lambda(firstNavAccess, rootParam);
 
-            var includeMethod = typeof(EntityFrameworkQueryableExtensions)
-                .GetMethods()
-                .First(m =>
-                    m.Name == "Include"
-                    && m.GetParameters().Length == 2
-                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
-                        == typeof(Expression<>)
-                )
-                .MakeGenericMethod(rootType, firstProperty.PropertyType);
+            var includeMethod = ReflectionMethodCache.GetEfCoreIncludeMethod(
+                rootType,
+                firstProperty.PropertyType
+            );
 
             var includedQuery = includeMethod.Invoke(null, new object[] { query, includeLambda });
 
@@ -156,10 +152,7 @@ public static class FilteredIncludeBuilder
             {
                 var whereLambda = Expression.Lambda(filterExpr, filterParam);
 
-                var whereMethod = typeof(Enumerable)
-                    .GetMethods()
-                    .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
-                    .MakeGenericMethod(elementType);
+                var whereMethod = ReflectionMethodCache.GetEnumerableWhere(elementType);
 
                 var filteredCollection = Expression.Call(whereMethod, secondNavAccess, whereLambda);
                 var thenIncludeLambda = Expression.Lambda(filteredCollection, navParam);
@@ -281,10 +274,7 @@ public static class FilteredIncludeBuilder
 
         var whereLambda = Expression.Lambda(filterExpression, elementParameter);
 
-        var whereMethod = typeof(Enumerable)
-            .GetMethods()
-            .First(m => m.Name == "Where" && m.GetParameters().Length == 2)
-            .MakeGenericMethod(elementType);
+        var whereMethod = ReflectionMethodCache.GetEnumerableWhere(elementType);
 
         var filteredCollection = Expression.Call(whereMethod, navigationAccess, whereLambda);
 
