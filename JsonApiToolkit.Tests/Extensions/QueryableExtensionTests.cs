@@ -372,6 +372,32 @@ public class QueryableExtensionsTests
     }
 
     [Fact]
+    public void ApplyPagination_WithSizeZero_TreatsAsSize1()
+    {
+        var query = GetTestData();
+        var pagination = new PaginationParameters { Number = 1, Size = 0 };
+
+        var result = query.ApplyPagination(pagination).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].Id);
+    }
+
+    [Fact]
+    public async Task CreatePaginationMetaAsync_WithSizeZero_TreatsAsSize1Async()
+    {
+        var query = GetTestData();
+        var pagination = new PaginationParameters { Number = 1, Size = 0 };
+
+        var meta = await query.CreatePaginationMetaAsync(pagination);
+
+        Assert.Equal(5, meta.TotalResources);
+        Assert.Equal(5, meta.TotalPages); // 5 items / size 1 = 5 pages
+        Assert.Equal(1, meta.CurrentPage);
+        Assert.Equal(1, meta.PageSize); // Clamped to 1
+    }
+
+    [Fact]
     public void ApplyFilters_WithInFilter_FiltersCorrectly()
     {
         var query = GetTestData();
