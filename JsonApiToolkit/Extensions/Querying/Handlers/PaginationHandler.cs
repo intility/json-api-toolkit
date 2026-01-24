@@ -18,12 +18,13 @@ public static class PaginationHandler
         PaginationParameters pagination
     )
     {
+        int size = Math.Max(1, pagination.Size);
         int totalCount = query.Count();
-        int totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
+        int totalPages = (int)Math.Ceiling(totalCount / (double)size);
         int effectivePage = Math.Max(1, Math.Min(pagination.Number, Math.Max(totalPages, 1)));
 
-        int skip = (effectivePage - 1) * pagination.Size;
-        return query.Skip(skip).Take(pagination.Size);
+        int skip = (effectivePage - 1) * size;
+        return query.Skip(skip).Take(size);
     }
 
     /// <summary>
@@ -44,7 +45,8 @@ public static class PaginationHandler
             totalCount = query.Count(); // Fallback for in-memory queryables
         }
 
-        int totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
+        int size = Math.Max(1, pagination.Size);
+        int totalPages = (int)Math.Ceiling(totalCount / (double)size);
         int effectivePage = Math.Max(1, Math.Min(pagination.Number, Math.Max(totalPages, 1)));
 
         return new PaginationMeta
@@ -52,7 +54,7 @@ public static class PaginationHandler
             TotalResources = totalCount,
             TotalPages = totalPages,
             CurrentPage = effectivePage,
-            PageSize = pagination.Size,
+            PageSize = size,
         };
     }
 }
