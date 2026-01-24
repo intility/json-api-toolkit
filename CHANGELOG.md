@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.3.1...v1.4.0) (2026-01-24)
+
+
+### Features
+
+* add `JsonApiOptions` for configurable query limits ([#63](https://github.com/intility/Intility.JsonApiToolkit/issues/63)) ([eb6e886](https://github.com/intility/Intility.JsonApiToolkit/commit/eb6e8869901cf10266f96c47587041ba679dc593))
+* add recursion depth guard for nested collection filters ([#66](https://github.com/intility/Intility.JsonApiToolkit/issues/66)) ([36e2c5a](https://github.com/intility/Intility.JsonApiToolkit/commit/36e2c5a75f99d57375ec121f7133ab98ac87b878))
+* validate filter paths against `AllowedIncludes` ([#65](https://github.com/intility/Intility.JsonApiToolkit/issues/65)) ([df411fe](https://github.com/intility/Intility.JsonApiToolkit/commit/df411fe6b0da25b7dffae36303b7adf1d3b4b485))
+
+
+### Documentation
+
+* update documentation for v1.4.0 security features ([4d3df54](https://github.com/intility/Intility.JsonApiToolkit/commit/4d3df542630030e14ca27d6b48826e72cfa3e485))
+
 ## [1.3.1](https://github.com/intility/Intility.JsonApiToolkit/compare/Intility.JsonApiToolkit-v1.3.0...Intility.JsonApiToolkit-v1.3.1) (2026-01-24)
 
 
