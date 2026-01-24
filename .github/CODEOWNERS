@@ -1,0 +1,5 @@
+# Default owner for everything
+* @erlendellefsen
+
+# Security-sensitive files require extra review
+.github/workflows/** @erlendellefsen
