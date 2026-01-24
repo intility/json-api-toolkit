@@ -1,12 +1,37 @@
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Extensions.Querying;
 
-internal static class NestedPropertyNavigator
+internal static partial class NestedPropertyNavigator
 {
+    private const int MaxLogValueLength = 100;
+
+    /// <summary>
+    /// Sanitizes user input for safe logging by removing control characters
+    /// and truncating long values to prevent log forging attacks.
+    /// </summary>
+    private static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "(empty)";
+
+        // Remove control characters (newlines, tabs, etc.) that could forge log entries
+        string sanitized = ControlCharRegex().Replace(value, " ");
+
+        // Truncate long values
+        if (sanitized.Length > MaxLogValueLength)
+            return string.Concat(sanitized.AsSpan(0, MaxLogValueLength), "...(truncated)");
+
+        return sanitized;
+    }
+
+    [GeneratedRegex(@"[\x00-\x1F\x7F]")]
+    private static partial Regex ControlCharRegex();
+
     internal static Expression? BuildSafeNestedFilterExpression(
         ParameterExpression parameter,
         FilterParameter filter,
@@ -268,7 +293,7 @@ internal static class NestedPropertyNavigator
             {
                 logger?.LogWarning(
                     "Failed to convert '{Value}' to {ElementType} for collection filter",
-                    filter.Value,
+                    SanitizeForLog(filter.Value),
                     elementType.Name
                 );
                 return null;
@@ -295,7 +320,7 @@ internal static class NestedPropertyNavigator
             {
                 logger?.LogWarning(
                     "Failed to convert '{Value}' to {ElementType} for collection filter",
-                    filter.Value,
+                    SanitizeForLog(filter.Value),
                     elementType.Name
                 );
                 return null;
@@ -412,7 +437,7 @@ internal static class NestedPropertyNavigator
         {
             logger?.LogWarning(
                 "Failed to convert '{Value}' to {PropertyType}",
-                filter.Value,
+                SanitizeForLog(filter.Value),
                 targetType.Name
             );
             return null;
