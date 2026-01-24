@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/intility/Intility.JsonApiToolkit/compare/Intility.JsonApiToolkit-v1.3.0...Intility.JsonApiToolkit-v1.3.1) (2026-01-24)
+
+
+### Bug Fixes
+
+* **ci:** read version from csproj instead of parsing tag ([a881cba](https://github.com/intility/Intility.JsonApiToolkit/commit/a881cba744df51cc6a419e9f06643aa054e0391b))
+
 ## [1.3.0](https://github.com/intility/Intility.JsonApiToolkit/compare/Intility.JsonApiToolkit-v1.2.5...Intility.JsonApiToolkit-v1.3.0) (2026-01-24)
 
 
