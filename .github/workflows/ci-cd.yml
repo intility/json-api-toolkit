@@ -1,13 +1,6 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".claude/**"
   pull_request:
     branches: [main]
     paths-ignore:
@@ -24,6 +17,7 @@ concurrency:
 
 jobs:
   build-and-test:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,22 +30,15 @@ jobs:
         with:
           dotnet-version: 9.x
 
-      - name: Restore dependencies
-        run: dotnet restore
-
       - name: Check formatting
         run: |
           dotnet tool restore
           dotnet csharpier check .
 
-      - name: Build
-        run: dotnet build --no-restore --configuration Release
-
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: dotnet test --configuration Release --verbosity normal
 
   publish:
-    needs: build-and-test
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
@@ -72,7 +59,6 @@ jobs:
       - name: Build and Pack
         run: |
           VERSION="${{ github.event.release.tag_name }}"
-          # Remove v prefix if present
           [[ "$VERSION" =~ ^v ]] && VERSION="${VERSION:1}"
           dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -p:PackageVersion=$VERSION -c Release
 
