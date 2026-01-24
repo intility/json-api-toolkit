@@ -24,8 +24,8 @@ public class QueryHelpersTests
     [Fact]
     public void ConvertToPropertyType_WithInvalidEnum_ThrowsArgumentException()
     {
-        var exception = Assert.Throws<FormatException>(
-            () => QueryHelpers.ConvertToPropertyType("InvalidStatus", typeof(TestStatus))
+        var exception = Assert.Throws<FormatException>(() =>
+            QueryHelpers.ConvertToPropertyType("InvalidStatus", typeof(TestStatus))
         );
 
         Assert.Contains(
@@ -45,8 +45,8 @@ public class QueryHelpersTests
     [Fact]
     public void ConvertToPropertyType_WithEmptyStringForEnum_ThrowsArgumentException()
     {
-        var exception = Assert.Throws<FormatException>(
-            () => QueryHelpers.ConvertToPropertyType("", typeof(TestStatus))
+        var exception = Assert.Throws<FormatException>(() =>
+            QueryHelpers.ConvertToPropertyType("", typeof(TestStatus))
         );
 
         Assert.Contains("Invalid enum value '' for type 'TestStatus'", exception.Message);
@@ -71,8 +71,8 @@ public class QueryHelpersTests
     [Fact]
     public void ConvertToPropertyType_WithInvalidInt_ThrowsFormatException()
     {
-        var exception = Assert.Throws<FormatException>(
-            () => QueryHelpers.ConvertToPropertyType("not-a-number", typeof(int))
+        var exception = Assert.Throws<FormatException>(() =>
+            QueryHelpers.ConvertToPropertyType("not-a-number", typeof(int))
         );
 
         Assert.Contains(

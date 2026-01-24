@@ -352,8 +352,8 @@ public class IncludeFilterParserTests
         var includePaths = new List<string> { "a.b.c.d" };
 
         // Act & Assert
-        var exception = Assert.Throws<JsonApiBadRequestException>(
-            () => IncludeFilterParser.SeparateIncludeFilters(filters, includePaths)
+        var exception = Assert.Throws<JsonApiBadRequestException>(() =>
+            IncludeFilterParser.SeparateIncludeFilters(filters, includePaths)
         );
 
         Assert.Contains("Filter depth exceeds maximum", exception.Message);
