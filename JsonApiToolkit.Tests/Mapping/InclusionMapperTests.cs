@@ -604,4 +604,134 @@ public class InclusionMapperTests
     }
 
     #endregion
+
+    #region Circular Reference Handling
+
+    [Fact]
+    public void AddIncludedResources_CircularReference_DoesNotCauseInfiniteLoop()
+    {
+        // Create circular reference: author -> books -> author
+        var author = new Author { Id = 1, Name = "John" };
+        var book = new Book
+        {
+            Id = 100,
+            Title = "Test Book",
+            Author = author,
+        };
+        author.Books.Add(book); // Circular: author.Books[0].Author == author
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "books", "books.author" };
+
+        // Should not throw or infinite loop
+        InclusionMapper.AddIncludedResources(author, includePaths, included);
+
+        // Should have book and author (author deduplicated - not added again via books.author)
+        Assert.Equal(2, included.Count);
+        Assert.Contains(included, r => r.Type == "book" && r.Id == "100");
+        Assert.Contains(included, r => r.Type == "author" && r.Id == "1");
+    }
+
+    [Fact]
+    public void AddIncludedResources_DeepCircularReference_HandlesCorrectly()
+    {
+        // Create deeper circular: author -> books -> chapters, books -> author
+        var author = new Author { Id = 1, Name = "John" };
+        var chapter = new Chapter { Id = 10, Title = "Chapter 1" };
+        var book = new Book
+        {
+            Id = 100,
+            Title = "Test Book",
+            Author = author,
+            Chapters = new List<Chapter> { chapter },
+        };
+        author.Books.Add(book);
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "books", "books.author", "books.chapters" };
+
+        InclusionMapper.AddIncludedResources(author, includePaths, included);
+
+        // Should have: book, author (via books.author - but deduplicated), chapter
+        Assert.Equal(3, included.Count);
+        Assert.Single(included, r => r.Type == "book");
+        Assert.Single(included, r => r.Type == "author");
+        Assert.Single(included, r => r.Type == "chapter");
+    }
+
+    [Fact]
+    public void AddIncludedResources_MutualCircularReference_HandlesCorrectly()
+    {
+        // Two books referencing the same author, author referencing both books
+        var author = new Author { Id = 1, Name = "John" };
+        var book1 = new Book
+        {
+            Id = 100,
+            Title = "Book 1",
+            Author = author,
+        };
+        var book2 = new Book
+        {
+            Id = 200,
+            Title = "Book 2",
+            Author = author,
+        };
+        author.Books.Add(book1);
+        author.Books.Add(book2);
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "author", "author.books" };
+
+        InclusionMapper.AddIncludedResources(
+            new List<Book> { book1, book2 },
+            includePaths,
+            included
+        );
+
+        // Author appears once (deduplicated), both books appear
+        Assert.Equal(3, included.Count);
+        Assert.Single(included, r => r.Type == "author");
+        Assert.Equal(2, included.Count(r => r.Type == "book"));
+    }
+
+    [Fact]
+    public void AddIncludedResources_SelfReferencingEntity_HandlesCorrectly()
+    {
+        // Simulate a self-referencing entity (e.g., parent-child)
+        var parent = new Author { Id = 1, Name = "Parent" };
+        var child = new Author { Id = 2, Name = "Child" };
+
+        // Simulate parent.Books containing "child" as if it were a hierarchical relationship
+        // Using the existing model, we'll test through the books relationship
+        var parentBook = new Book
+        {
+            Id = 100,
+            Title = "Parent's Book",
+            Author = parent,
+        };
+        var childBook = new Book
+        {
+            Id = 200,
+            Title = "Child's Book",
+            Author = child,
+        };
+        parent.Books.Add(parentBook);
+        child.Books.Add(childBook);
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "books", "books.author" };
+
+        InclusionMapper.AddIncludedResources(
+            new List<Author> { parent, child },
+            includePaths,
+            included
+        );
+
+        // 2 books + 2 authors (each author referenced via their own book.author)
+        Assert.Equal(4, included.Count);
+        Assert.Equal(2, included.Count(r => r.Type == "book"));
+        Assert.Equal(2, included.Count(r => r.Type == "author"));
+    }
+
+    #endregion
 }

@@ -215,13 +215,28 @@ public static class JsonApiMapper { ... }
 
 ### v1.5.0 - Test Coverage
 
-**Release Date:** TBD
+**Release Date:** January 2026
 
 **Changes:**
-- [ ] Comprehensive test suite added
-- [ ] No API changes
+- [x] Comprehensive test suite with 570+ tests
+- [x] Handler tests: SortingHandler, PaginationHandler, InclusionMapper, NestedPropertyNavigator
+- [x] Integration tests: JsonApiQueryAsync full pipeline
+- [x] Security tests: DoS protection, query limit enforcement
+- [x] Type conversion tests: All 15+ supported filter types
+- [x] Edge case tests: Circular references, boundary values, error conditions
+- [x] No API changes
 
 **Breaking Changes:** None
+
+**What's Tested:**
+| Category | Tests | Coverage |
+|----------|-------|----------|
+| Filtering | 50+ | All operators, nested properties, type conversions |
+| Sorting | 20+ | Multi-field, invalid fields, direction |
+| Pagination | 30+ | Boundary values (0, -1, MAX_INT), clamping |
+| Includes | 40+ | Nested, circular references, deduplication |
+| Security | 26 | DoS limits, bypass attempts, stress tests |
+| Integration | 40+ | Full HTTP pipeline, combined operations |
 
 ---
 
