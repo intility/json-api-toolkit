@@ -2,55 +2,74 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".claude/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".claude/**"
   release:
-    types: [ published ]
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.x.x
-    
-    - name: Restore dependencies
-      run: dotnet restore
-    
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
-    
-    - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Check formatting
+        run: |
+          dotnet tool restore
+          dotnet csharpier . --check
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
 
   publish:
     needs: build-and-test
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.x.x
-        source-url: https://nuget.pkg.github.com/Intility/index.json
-      env:
-        NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }}
-    
-    - name: Build and Pack
-      run: |
-        VERSION="${{ github.event.release.tag_name }}"
-        # Remove v prefix if present
-        [[ "$VERSION" =~ ^v ]] && VERSION="${VERSION:1}"
-        dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -p:PackageVersion=$VERSION -c Release
-    
-    - name: Publish to GitHub Packages
-      run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_AUTH_TOKEN }}
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+          source-url: https://nuget.pkg.github.com/Intility/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }}
+
+      - name: Build and Pack
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          # Remove v prefix if present
+          [[ "$VERSION" =~ ^v ]] && VERSION="${VERSION:1}"
+          dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -p:PackageVersion=$VERSION -c Release
+
+      - name: Publish to GitHub Packages
+        run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_AUTH_TOKEN }}
