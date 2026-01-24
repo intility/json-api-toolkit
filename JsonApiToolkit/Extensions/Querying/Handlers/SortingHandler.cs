@@ -44,7 +44,8 @@ public static class SortingHandler
 
             string methodName;
 
-            if (i == 0)
+            // Use OrderBy for the first valid sort field, ThenBy for subsequent ones
+            if (orderedQuery == null)
             {
                 methodName = sortParam.IsDescending ? "OrderByDescending" : "OrderBy";
                 var orderMethod = ReflectionMethodCache.GetQueryableOrderingMethod(
