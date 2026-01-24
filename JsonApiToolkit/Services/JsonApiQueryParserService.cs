@@ -1,7 +1,9 @@
+using JsonApiToolkit.Configuration;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Parsing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace JsonApiToolkit.Services;
 
@@ -11,13 +13,18 @@ namespace JsonApiToolkit.Services;
 public class JsonApiQueryParserService : IJsonApiQueryParser
 {
     private readonly ILogger<JsonApiQueryParserService> _logger;
+    private readonly JsonApiOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the query parser service.
     /// </summary>
-    public JsonApiQueryParserService(ILogger<JsonApiQueryParserService> logger)
+    public JsonApiQueryParserService(
+        ILogger<JsonApiQueryParserService> logger,
+        IOptions<JsonApiOptions> options
+    )
     {
         _logger = logger;
+        _options = options.Value;
     }
 
     /// <summary>
@@ -25,7 +32,7 @@ public class JsonApiQueryParserService : IJsonApiQueryParser
     /// </summary>
     public QueryParameters Parse(HttpRequest request)
     {
-        var queryParams = JsonApiQueryParser.Parse(request, _logger);
+        var queryParams = JsonApiQueryParser.Parse(request, _options, _logger);
 
         if (
             request.Query.Keys.Any(k => k.StartsWith("filter", StringComparison.OrdinalIgnoreCase))
@@ -56,6 +63,9 @@ public class JsonApiQueryParserService : IJsonApiQueryParser
                 "Page parameters detected but no pagination parsed. Use: page[number]=1&page[size]=10"
             );
         }
+
+        // Validate query complexity against configured limits
+        QueryComplexityAnalyzer.Validate(queryParams, _options);
 
         return queryParams;
     }
