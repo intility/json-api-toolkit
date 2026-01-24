@@ -155,10 +155,13 @@ public enum PatternType
 {
     /// <summary>Exact match with no wildcards.</summary>
     Exact,
+
     /// <summary>Top-level wildcard (*).</summary>
     TopLevelWildcard,
+
     /// <summary>Single-level wildcard (e.g., author.*).</summary>
     SingleLevelWildcard,
+
     /// <summary>Complex wildcard pattern.</summary>
     ComplexWildcard,
 }

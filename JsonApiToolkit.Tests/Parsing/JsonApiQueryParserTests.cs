@@ -303,11 +303,14 @@ public class JsonApiQueryParserTests
         Assert.Equal(2, orGroup.Filters.Count);
 
         // Both should be primary filters (dot notation)
-        Assert.All(orGroup.Filters, f =>
-        {
-            Assert.Equal("vulnerability.severity", f.Field);
-            Assert.False(f.IsIncludeFilter);
-        });
+        Assert.All(
+            orGroup.Filters,
+            f =>
+            {
+                Assert.Equal("vulnerability.severity", f.Field);
+                Assert.False(f.IsIncludeFilter);
+            }
+        );
     }
 
     [Fact]
@@ -333,11 +336,14 @@ public class JsonApiQueryParserTests
         Assert.Equal(2, orGroup.Filters.Count);
 
         // Both should be include filters (bracket syntax)
-        Assert.All(orGroup.Filters, f =>
-        {
-            Assert.Equal("vulnerability.severity", f.Field);
-            Assert.True(f.IsIncludeFilter);
-        });
+        Assert.All(
+            orGroup.Filters,
+            f =>
+            {
+                Assert.Equal("vulnerability.severity", f.Field);
+                Assert.True(f.IsIncludeFilter);
+            }
+        );
     }
 
     [Fact]

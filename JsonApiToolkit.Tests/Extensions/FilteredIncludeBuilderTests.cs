@@ -74,9 +74,9 @@ public class FilteredIncludeBuilderTests
                             Field = "status",
                             Operator = FilterOperator.Eq,
                             Value = "approved",
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
         };
 
@@ -114,9 +114,9 @@ public class FilteredIncludeBuilderTests
                             Field = "priority",
                             Operator = FilterOperator.Gt,
                             Value = "5",
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
         };
 
@@ -162,9 +162,9 @@ public class FilteredIncludeBuilderTests
                             Field = "status",
                             Operator = FilterOperator.Eq,
                             Value = "approved",
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             // tags and author have no filters
         };

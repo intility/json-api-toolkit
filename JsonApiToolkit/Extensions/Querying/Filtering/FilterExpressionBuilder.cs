@@ -71,7 +71,12 @@ public static class FilterExpressionBuilder
 
         foreach (FilterGroup nestedGroup in group.Groups)
         {
-            Expression? nestedExpr = BuildFilterExpression(nestedGroup, parameter, entityType, logger);
+            Expression? nestedExpr = BuildFilterExpression(
+                nestedGroup,
+                parameter,
+                entityType,
+                logger
+            );
             if (nestedExpr != null)
                 expressions.Add(nestedExpr);
         }
