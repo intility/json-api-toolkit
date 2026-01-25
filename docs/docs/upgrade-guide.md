@@ -2,13 +2,13 @@
 
 This document tracks all breaking changes, new features, and migration steps for each version of JsonApiToolkit.
 
-**Current Version:** 1.4.0
+**Current Version:** 1.5.0
 
 ---
 
 ## .NET 10 Upgrade (November 2025)
 
-**Target Version:** 2.3.0 or 3.0.0 (TBD)
+**Target Version:** 2.0.0
 
 **Timeline:** After .NET 10 GA release (November 2025)
 
@@ -32,9 +32,9 @@ If there's demand, we may multi-target `net9.0;net10.0` for one release cycle to
 
 ---
 
-## Version 2.x (Upcoming - Breaking Changes)
+## Upcoming Features
 
-### v2.2.0 - Database Projection
+### v1.7.0 - Database Projection
 
 **Release Date:** TBD
 
@@ -56,7 +56,7 @@ services.AddJsonApiToolkit(options => {
 
 ---
 
-### v2.1.0 - Sparse Fieldsets
+### v1.6.0 - Sparse Fieldsets
 
 **Release Date:** TBD
 
@@ -97,121 +97,7 @@ GET /articles?fields[articles]=title,body&include=author&fields[author]=name
 
 ---
 
-### v2.0.0 - Architecture Refactor (MAJOR BREAKING CHANGE)
-
-**Release Date:** TBD
-
-**New Features:**
-- [ ] Full dependency injection support
-- [ ] All core components now injectable and mockable
-- [ ] Interfaces for all handlers (`IFilterHandler`, `ISortHandler`, etc.)
-- [ ] Extended `JsonApiOptions` (introduced in v1.4.0) with more configuration
-
-**Breaking Changes:**
-
-#### 1. Controller Constructor Signature Changed
-
-**Before (v1.x):**
-```csharp
-public class BooksController : JsonApiController
-{
-    private readonly AppDbContext _db;
-
-    public BooksController(AppDbContext db)
-    {
-        _db = db;
-    }
-}
-```
-
-**After (v2.0):**
-```csharp
-public class BooksController : JsonApiController
-{
-    private readonly AppDbContext _db;
-
-    public BooksController(
-        AppDbContext db,
-        ILogger<BooksController> logger,
-        IJsonApiMapper mapper,
-        IJsonApiQueryParser queryParser,
-        IOptions<JsonApiOptions> options)
-        : base(logger, mapper, queryParser, options)
-    {
-        _db = db;
-    }
-}
-```
-
-#### 2. Static Extension Methods Changed
-
-Most users won't notice this change - the base controller methods (`JsonApiQueryAsync`, `JsonApiOk`, etc.) continue to work as before. However, if you were calling static methods directly:
-
-**Before (v1.x):**
-```csharp
-var document = JsonApiMapper.ToDocument(entity, "books");
-```
-
-**After (v2.0):**
-```csharp
-// Use the inherited Mapper property from JsonApiController
-var document = Mapper.ToDocument(entity, "books");
-```
-
-**For advanced usage** - if you need direct handler access outside controller methods:
-```csharp
-public class BooksController : JsonApiController
-{
-    private readonly IFilterHandler _filterHandler;
-
-    public BooksController(
-        AppDbContext db,
-        IFilterHandler filterHandler,  // Inject directly if needed
-        ILogger<BooksController> logger,
-        IJsonApiMapper mapper,
-        IJsonApiQueryParser queryParser,
-        IOptions<JsonApiOptions> options)
-        : base(logger, mapper, queryParser, options)
-    {
-        _db = db;
-        _filterHandler = filterHandler;
-    }
-}
-```
-
-#### 3. New Service Registrations
-
-All services are now automatically registered by `AddJsonApiToolkit()`, but if you were manually resolving services, the types have changed:
-
-| Before (v1.x) | After (v2.0) |
-|---------------|--------------|
-| `JsonApiMapper` (static) | `IJsonApiMapper` (scoped) |
-| `EntityMapper` (static) | `IEntityMapper` (scoped) |
-| N/A | `IFilterHandler` (scoped) |
-| N/A | `ISortHandler` (scoped) |
-| N/A | `IPaginationHandler` (scoped) |
-| N/A | `IIncludeHandler` (scoped) |
-
-**Migration Steps:**
-
-1. Update all controller constructors to accept required dependencies
-2. Call `base(...)` with the new parameters
-3. Replace static method calls with injected service calls
-4. Update any manual service resolutions
-
-**Compatibility Helper (Deprecated):**
-
-For easier migration, v2.0 includes deprecated static wrappers that will be removed in v3.0:
-
-```csharp
-// These work but emit deprecation warnings
-[Obsolete("Use IJsonApiMapper instead")]
-public static class JsonApiMapper { ... }
-```
-
----
-
-## Version 1.x
+## Released Versions
 
 ### v1.5.0 - Test Coverage
 
@@ -363,31 +249,17 @@ Produces:
 
 ---
 
-### v1.2.5 - Current Release
+### v1.2.5
 
-Current stable version.
-
----
-
-## Deprecation Schedule
-
-| Feature | Deprecated In | Removed In | Replacement |
-|---------|---------------|------------|-------------|
-| Static `JsonApiMapper` class | v2.0.0 | v3.0.0 | `IJsonApiMapper` service |
-| Static `EntityMapper` class | v2.0.0 | v3.0.0 | `IEntityMapper` service |
-| Static extension methods | v2.0.0 | v3.0.0 | Injected handler services |
+Previous stable version before refactoring began.
 
 ---
 
 ## FAQ
 
-### Q: Do I need to update all my controllers at once for v2.0?
-
-No. The deprecated static methods will continue to work in v2.0 (with warnings). You can migrate controllers incrementally. However, they will be removed in v3.0.
-
 ### Q: Will sparse fieldsets slow down my API?
 
-In v2.1, sparse fieldsets only filter at serialization time - the database still loads all columns. In v2.2 with projection enabled, the database query itself is optimized.
+In v1.6, sparse fieldsets only filter at serialization time - the database still loads all columns. In v1.7 with projection enabled, the database query itself is optimized.
 
 ### Q: How do I know if my queries exceed the new limits?
 
