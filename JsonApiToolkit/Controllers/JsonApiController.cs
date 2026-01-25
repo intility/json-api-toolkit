@@ -269,19 +269,12 @@ public abstract class JsonApiController : ControllerBase
         }
 
         if (parameters.Pagination != null)
-            filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination);
+            filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination, totalCount);
 
-        PaginationMeta? paginationMeta = null;
-        if (parameters.Pagination != null)
-        {
-            paginationMeta = new PaginationMeta
-            {
-                TotalResources = totalCount,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)parameters.Pagination.Size),
-                CurrentPage = parameters.Pagination.Number,
-                PageSize = parameters.Pagination.Size,
-            };
-        }
+        PaginationMeta? paginationMeta =
+            parameters.Pagination != null
+                ? PaginationHandler.CreatePaginationMeta(parameters.Pagination, totalCount)
+                : null;
 
         Logger.LogDebug(
             "Executing query for {EntityType}: TotalCount={TotalCount}, Returning={ReturnCount}",
