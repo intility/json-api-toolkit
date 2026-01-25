@@ -2,7 +2,7 @@
 
 This document tracks all breaking changes, new features, and migration steps for each version of JsonApiToolkit.
 
-**Current Version:** 1.5.0
+**Current Version:** 1.6.0
 
 ---
 
@@ -34,7 +34,7 @@ If there's demand, we may multi-target `net9.0;net10.0` for one release cycle to
 
 ## Upcoming Features
 
-### v1.7.0 - Database Projection
+### v1.8.0 - Database Projection
 
 **Release Date:** TBD
 
@@ -56,7 +56,7 @@ services.AddJsonApiToolkit(options => {
 
 ---
 
-### v1.6.0 - Sparse Fieldsets
+### v1.7.0 - Sparse Fieldsets
 
 **Release Date:** TBD
 
@@ -98,6 +98,51 @@ GET /articles?fields[articles]=title,body&include=author&fields[author]=name
 ---
 
 ## Released Versions
+
+### v1.6.0 - Query Builder API
+
+**Release Date:** January 2026
+
+**New Features:**
+- [x] `BuildJsonApiQueryAsync<T>()` method for custom query execution
+- [x] Returns processed `IQueryable<T>` with filters, includes, and sorting applied
+- [x] Pagination is intentionally NOT applied - use for exports, aggregations, projections
+- [x] Optional `includeCount` parameter to skip COUNT query for performance
+
+**Usage:**
+
+```csharp
+[HttpGet("export")]
+public async Task<IActionResult> ExportBooks()
+{
+    // Get processed query WITHOUT pagination
+    var result = await BuildJsonApiQueryAsync(_context.Books, "books");
+
+    // Execute however you need
+    var books = await result.Query.ToListAsync();
+
+    // result.TotalCount has the filtered count
+    // result.Parameters has parsed query params
+    return Ok(books);
+}
+```
+
+**Use Cases:**
+- CSV/Excel exports - need all matching records
+- Aggregations - GROUP BY after filtering
+- Custom projections - Select specific columns
+- Streaming large datasets
+
+**New Types:**
+- `JsonApiQueryResult<T>` - Result class with `Query`, `Parameters`, and `TotalCount` properties
+
+**Breaking Changes:** None (additive only)
+
+**Migration:** None required
+
+**Documentation:** See [Building Custom Queries](build-query.md)
+
+---
 
 ### v1.5.0 - Test Coverage
 
