@@ -48,10 +48,19 @@ public async Task<IActionResult> ExportBooks()
 
     foreach (var book in books)
     {
-        csv.AppendLine($"{book.Id},{book.Title},{book.Author},{book.PublishedDate:yyyy-MM-dd}");
+        csv.AppendLine($"{book.Id},{CsvSafe(book.Title)},{CsvSafe(book.Author)},{book.PublishedDate:yyyy-MM-dd}");
     }
 
     return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "books.csv");
+}
+
+// Prevent CSV injection - Excel treats =, +, -, @ as formula prefixes
+private static string CsvSafe(string? value)
+{
+    if (string.IsNullOrEmpty(value)) return "";
+    if (value.StartsWith('=') || value.StartsWith('+') || value.StartsWith('-') || value.StartsWith('@'))
+        return "'" + value;
+    return value.Contains(',') ? $"\"{value}\"" : value;
 }
 ```
 
