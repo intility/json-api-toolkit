@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.5.0...v1.5.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* **pagination:** eliminate redundant sync COUNT query ([#77](https://github.com/intility/Intility.JsonApiToolkit/issues/77)) ([cd4d84f](https://github.com/intility/Intility.JsonApiToolkit/commit/cd4d84f6d4683c8a21c41300755ba9e978910c5e))
+
 ## [1.5.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.4.0...v1.5.0) (2026-01-24)
 
 
