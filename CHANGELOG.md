@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.5.1...v1.6.0) (2026-01-25)
+
+
+### Features
+
+* add `BuildJsonApiQueryAsync` for custom query execution ([#79](https://github.com/intility/Intility.JsonApiToolkit/issues/79)) ([66a8a00](https://github.com/intility/Intility.JsonApiToolkit/commit/66a8a00b8580a789464b2d782b4a60c8ce7dbd71))
+
 ## [1.5.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.5.0...v1.5.1) (2026-01-25)
 
 
