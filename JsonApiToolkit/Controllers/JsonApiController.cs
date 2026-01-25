@@ -298,6 +298,107 @@ public abstract class JsonApiController : ControllerBase
     }
 
     /// <summary>
+    /// Builds a JSON:API query with filters, includes, and sorting applied, but WITHOUT pagination.
+    /// Use this for custom operations like CSV exports, aggregations, or projections.
+    /// </summary>
+    /// <typeparam name="T">The entity type to query.</typeparam>
+    /// <param name="queryable">The queryable to process.</param>
+    /// <param name="resourceType">The JSON:API resource type name.</param>
+    /// <param name="includeCount">Whether to execute a COUNT query. Set to false to skip for performance.</param>
+    /// <returns>A result containing the processed query, parameters, and optional count.</returns>
+    protected async Task<JsonApiQueryResult<T>> BuildJsonApiQueryAsync<T>(
+        IQueryable<T> queryable,
+        string resourceType,
+        bool includeCount = true
+    )
+        where T : class
+    {
+        QueryParameters parameters = GetJsonApiQueryParameters();
+
+        Logger.LogDebug(
+            "BuildQuery for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}",
+            typeof(T).Name,
+            parameters.Filter?.Filters?.Count ?? 0,
+            parameters.Sort?.Count ?? 0,
+            parameters.Include?.Count ?? 0
+        );
+
+        var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
+            parameters.Include
+        );
+
+        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
+        {
+            Logger.LogWarning(
+                "No valid includes for {EntityType}. Requested: {Includes}",
+                typeof(T).Name,
+                string.Join(", ", parameters.Include)
+            );
+        }
+
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            parameters.Filter,
+            parameters.Include
+        );
+
+        IQueryable<T> processedQuery = queryable;
+
+        // Apply main entity filters
+        if (mainFilters != null)
+            processedQuery = processedQuery.ApplyFilters(mainFilters, Logger);
+
+        // Apply includes (with or without filters)
+        if (includeFilters.Count > 0)
+        {
+            Logger.LogDebug(
+                "Applying {FilterCount} filtered includes for {EntityType}",
+                includeFilters.Count,
+                typeof(T).Name
+            );
+            processedQuery = processedQuery.ApplyFilteredIncludes(
+                mappedIncludes,
+                includeFilters,
+                Logger
+            );
+        }
+        else if (mappedIncludes.Count > 0)
+        {
+            // Use standard includes (no pagination optimization needed since we're not paginating)
+            processedQuery = processedQuery.ApplyIncludes(mappedIncludes);
+
+            Logger.LogDebug(
+                "Applied {IncludeCount} includes for {EntityType}",
+                mappedIncludes.Count,
+                typeof(T).Name
+            );
+        }
+
+        // Apply sorting
+        if (parameters.Sort?.Count > 0)
+            processedQuery = processedQuery.ApplySorting(parameters.Sort, Logger);
+
+        // Get count if requested
+        int totalCount = 0;
+        if (includeCount)
+        {
+            totalCount = await processedQuery.CountAsync().ConfigureAwait(false);
+
+            Logger.LogDebug(
+                "BuildQuery for {EntityType}: TotalCount={TotalCount}",
+                typeof(T).Name,
+                totalCount
+            );
+        }
+
+        return new JsonApiQueryResult<T>
+        {
+            Query = processedQuery,
+            Parameters = parameters,
+            TotalCount = totalCount,
+        };
+    }
+
+    /// <summary>
     /// Returns 201 Created with new resource and Location header.
     /// </summary>
     protected IActionResult JsonApiCreated<T>(T entity, string resourceType, string id)

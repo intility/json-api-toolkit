@@ -4,8 +4,8 @@
   href: getting-started.md
 - name: Querying
   href: querying.md
-- name: Statistics and Aggregations
-  href: statistics-and-aggregations.md
+- name: Building Custom Queries
+  href: build-query.md
 - name: Enhanced Error Handling
   href: enhanced-error-handling.md
 - name: Security
@@ -14,5 +14,9 @@
   href: api-controller-examples.md
 - name: Debugging
   href: debugging.md
+- name: Upgrade Guide
+  href: upgrade-guide.md
+- name: Contributing
+  href: contributing.md
 - name: Integrations
   href: integrations/toc.yml
