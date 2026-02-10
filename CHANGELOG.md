@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.7.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.6.0...v1.7.0) (2026-02-10)
+
+
+### Features
+
+* implement sparse fieldsets (`fields[type]`) per JSON:API spec ([#82](https://github.com/intility/Intility.JsonApiToolkit/issues/82)) ([d03136b](https://github.com/intility/Intility.JsonApiToolkit/commit/d03136bb307ee3c1998bc5ac57e756c724e9eb44))
+
+
+### Bug Fixes
+
+* update editorconfig ([#84](https://github.com/intility/Intility.JsonApiToolkit/issues/84)) ([1931137](https://github.com/intility/Intility.JsonApiToolkit/commit/1931137bcd7f5d14ee77ffb3993d7087fbf5deeb))
+
+
+### Dependencies
+
+* **nuget:** Bump csharpier from 1.2.5 to 1.2.6 ([#81](https://github.com/intility/Intility.JsonApiToolkit/issues/81)) ([5f63735](https://github.com/intility/Intility.JsonApiToolkit/commit/5f6373589722810fb3d85e6ff8b7ca204766617d))
+
 ## [1.6.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.5.1...v1.6.0) (2026-01-25)
 
 
