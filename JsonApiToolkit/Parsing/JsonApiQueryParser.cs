@@ -20,6 +20,11 @@ public static class JsonApiQueryParser
     private const int MinFilterKeyLength = 9;
 
     /// <summary>
+    /// Minimum length for a valid fields key: "fields[x]" = 9 characters.
+    /// </summary>
+    private const int MinFieldsKeyLength = 9;
+
+    /// <summary>
     /// Parses JSON:API query parameters from an HTTP request using default options.
     /// </summary>
     public static QueryParameters Parse(HttpRequest request, ILogger? logger) =>
@@ -142,6 +147,41 @@ public static class JsonApiQueryParser
             {
                 queryParams.Include = includes;
             }
+        }
+
+        var fieldsDictionary = new Dictionary<string, List<string>>(
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        foreach (string? key in request.Query.Keys.Where(k => k.StartsWith("fields[")))
+        {
+            if (key.Length < MinFieldsKeyLength || !key.EndsWith("]"))
+            {
+                logger?.LogWarning("Malformed fields key ignored: {Key}", key);
+                continue;
+            }
+
+            string resourceType = key[7..^1];
+            string value = request.Query[key].ToString();
+
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            var fieldNames = value
+                .Split(',')
+                .Select(f => f.Trim())
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .ToList();
+
+            if (fieldNames.Count > 0)
+            {
+                fieldsDictionary[resourceType] = fieldNames;
+            }
+        }
+
+        if (fieldsDictionary.Count > 0)
+        {
+            queryParams.Fields = fieldsDictionary;
         }
 
         return queryParams;

@@ -245,6 +245,30 @@ public class JsonApiQueryParserServiceTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Sparse Fieldsets
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_WithValidFields_ParsesFieldsThroughService()
+    {
+        var service = CreateService();
+        var request = CreateRequest(
+            new Dictionary<string, StringValues>
+            {
+                ["fields[articles]"] = "title,content",
+                ["fields[authors]"] = "name",
+            }
+        );
+
+        var result = service.Parse(request);
+
+        Assert.NotNull(result.Fields);
+        Assert.Equal(2, result.Fields.Count);
+        Assert.Equal(2, result.Fields["articles"].Count);
+        Assert.Single(result.Fields["authors"]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Disabled limits (int.MaxValue)
     // ─────────────────────────────────────────────────────────────────────────
 

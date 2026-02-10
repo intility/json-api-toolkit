@@ -58,12 +58,12 @@ services.AddJsonApiToolkit(options => {
 
 ### v1.7.0 - Sparse Fieldsets
 
-**Release Date:** TBD
+**Release Date:** February 2026
 
 **New Features:**
-- [ ] `fields[type]` query parameter support (JSON:API sparse fieldsets)
-- [ ] Reduces response payload size by returning only requested attributes
-- [ ] Works with included resources: `fields[author]=name,email`
+- [x] `fields[type]` query parameter support (JSON:API sparse fieldsets)
+- [x] Reduces response payload size by returning only requested attributes
+- [x] Works with included resources: `fields[author]=name,email`
 
 **Usage:**
 ```
