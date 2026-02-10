@@ -855,6 +855,171 @@ public class JsonApiQueryAsyncTests : IDisposable
 
     #endregion
 
+    #region Sparse Fieldsets Tests
+
+    [Fact]
+    public async Task GetArticles_WithSparseFieldset_ReturnsOnlyRequestedAttributesAsync()
+    {
+        var response = await _client.GetAsync("/api/articles?fields[articles]=title,viewCount");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        Assert.Equal(5, document.Data.Count());
+
+        var firstResource = document.Data.First();
+        Assert.NotNull(firstResource.Attributes);
+        Assert.True(firstResource.Attributes.ContainsKey("title"));
+        Assert.True(firstResource.Attributes.ContainsKey("viewCount"));
+        Assert.False(firstResource.Attributes.ContainsKey("content"));
+        Assert.False(firstResource.Attributes.ContainsKey("isPublished"));
+    }
+
+    [Fact]
+    public async Task GetArticles_WithSparseFieldsetAndInclude_FiltersBothPrimaryAndIncludedAsync()
+    {
+        var response = await _client.GetAsync(
+            "/api/articles?fields[articles]=title&fields[queryTestAuthor]=name&include=author"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+
+        // Primary resources: only title attribute
+        var firstResource = document.Data.First();
+        Assert.NotNull(firstResource.Attributes);
+        Assert.True(firstResource.Attributes.ContainsKey("title"));
+        Assert.False(firstResource.Attributes.ContainsKey("content"));
+        Assert.False(firstResource.Attributes.ContainsKey("viewCount"));
+
+        // Included resources: only name attribute
+        Assert.NotNull(document.Included);
+        Assert.NotEmpty(document.Included);
+        var includedAuthor = document.Included.First(r => r.Type == "queryTestAuthor");
+        Assert.NotNull(includedAuthor.Attributes);
+        Assert.True(includedAuthor.Attributes.ContainsKey("name"));
+        Assert.False(includedAuthor.Attributes.ContainsKey("email"));
+    }
+
+    [Fact]
+    public async Task GetArticles_WithNoFields_ReturnsAllAttributesAsync()
+    {
+        var response = await _client.GetAsync("/api/articles");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        var firstResource = document.Data.First();
+        Assert.NotNull(firstResource.Attributes);
+        Assert.Contains("title", firstResource.Attributes.Keys);
+        Assert.Contains("content", firstResource.Attributes.Keys);
+        Assert.Contains("isPublished", firstResource.Attributes.Keys);
+        Assert.Contains("viewCount", firstResource.Attributes.Keys);
+    }
+
+    [Fact]
+    public async Task GetArticles_WithFieldsPaginationAndSort_CombinesCorrectlyAsync()
+    {
+        var response = await _client.GetAsync(
+            "/api/articles?fields[articles]=title,viewCount&sort=-viewCount&page[number]=1&page[size]=2"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        Assert.Equal(2, document.Data.Count());
+
+        // Check sorting
+        var ids = document.Data.Select(r => r.Id).ToList();
+        Assert.Equal("4", ids[0]); // viewCount: 200
+        Assert.Equal("1", ids[1]); // viewCount: 100
+
+        // Check sparse attributes
+        var firstResource = document.Data.First();
+        Assert.NotNull(firstResource.Attributes);
+        Assert.True(firstResource.Attributes.ContainsKey("title"));
+        Assert.True(firstResource.Attributes.ContainsKey("viewCount"));
+        Assert.False(firstResource.Attributes.ContainsKey("content"));
+
+        // Check pagination
+        Assert.NotNull(document.Meta);
+        Assert.Equal(5, GetPaginationValue<int>(document.Meta, "totalResources"));
+    }
+
+    [Fact]
+    public async Task GetArticles_WithInvalidFieldName_FieldAbsentFromResponseAsync()
+    {
+        var response = await _client.GetAsync(
+            "/api/articles?fields[articles]=title,nonexistentField"
+        );
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document?.Data);
+        var firstResource = document.Data.First();
+        Assert.NotNull(firstResource.Attributes);
+        Assert.True(firstResource.Attributes.ContainsKey("title"));
+        Assert.False(firstResource.Attributes.ContainsKey("nonexistentField"));
+        Assert.False(firstResource.Attributes.ContainsKey("content"));
+    }
+
+    [Fact]
+    public async Task GetArticles_WithSparseFieldset_ResponseStructureIsValidJsonApiAsync()
+    {
+        var response = await _client.GetAsync("/api/articles?fields[articles]=title");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var document = JsonSerializer.Deserialize<JsonApiCollectionDocument<ResourceObject>>(
+            content,
+            _jsonOptions
+        );
+
+        Assert.NotNull(document);
+        Assert.NotNull(document.Data);
+        Assert.NotNull(document.Links);
+
+        var firstResource = document.Data.First();
+        Assert.NotNull(firstResource.Id);
+        Assert.NotNull(firstResource.Type);
+        Assert.Equal("articles", firstResource.Type);
+        Assert.NotNull(firstResource.Attributes);
+    }
+
+    #endregion
+
     #region Filtered Includes with Pagination Tests
 
     [Fact]
@@ -1055,7 +1220,7 @@ public class QueryTestArticlesController : JsonApiController
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetArticles()
+    public async Task<IActionResult> GetArticlesAsync()
     {
         return await JsonApiQueryAsync(_context.Articles, "articles");
     }

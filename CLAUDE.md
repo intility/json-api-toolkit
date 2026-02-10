@@ -107,6 +107,7 @@ Enable detailed logging for query processing and troubleshooting:
 - **Async-first**: Main controller method `JsonApiQueryAsync()` is async and works with `IQueryable<T>`
 - **Entity Framework integration**: Uses EF Core's `Include()` and query building capabilities
 - **Filter expressions**: Complex filtering with operators (eq, ne, gt, lt, contains, etc.), logical grouping, enum support, and filtering on included resources via dot notation (e.g., `filter[author.name]=John` with `include=author`)
+- **Sparse fieldsets**: `fields[type]=field1,field2` reduces response payload by returning only requested attributes per resource type. Works for primary and included resources. `id` and `type` are always present.
 - **JSON column detection**: Collections and complex objects without ID properties are automatically mapped as JSON attributes instead of relationships (useful for EF Core owned entities stored as JSON columns)
 - **Pagination safety**: Invalid page numbers are automatically clamped to valid ranges (page 1 for negative/zero, last page for overflow)
 - **Include whitelisting**: Use `AllowedIncludesAttribute` on controller actions to restrict which relationships can be included, preventing unauthorized data exposure

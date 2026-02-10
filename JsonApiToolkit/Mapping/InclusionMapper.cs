@@ -21,7 +21,8 @@ public static class InclusionMapper
         List<string> includePaths,
         List<ResourceObject> included,
         ILogger? logger = null,
-        HashSet<string>? processedEntities = null
+        HashSet<string>? processedEntities = null,
+        Dictionary<string, List<string>>? fields = null
     )
     {
         if (entityOrCollection == null || includePaths == null || includePaths.Count == 0)
@@ -48,7 +49,8 @@ public static class InclusionMapper
                         nestedPaths,
                         included,
                         processedEntities,
-                        logger
+                        logger,
+                        fields
                     );
                 }
             }
@@ -60,7 +62,8 @@ public static class InclusionMapper
                     nestedPaths,
                     included,
                     processedEntities,
-                    logger
+                    logger,
+                    fields
                 );
             }
         }
@@ -72,7 +75,8 @@ public static class InclusionMapper
         List<string> nestedPaths,
         List<ResourceObject> included,
         HashSet<string> processedEntities,
-        ILogger? logger = null
+        ILogger? logger = null,
+        Dictionary<string, List<string>>? fields = null
     )
     {
         if (entity == null)
@@ -102,12 +106,19 @@ public static class InclusionMapper
         {
             foreach (object? relEntity in relCollection)
             {
-                AddSingleIncluded(relEntity, included, processedEntities, nestedPaths, logger);
+                AddSingleIncluded(
+                    relEntity,
+                    included,
+                    processedEntities,
+                    nestedPaths,
+                    logger,
+                    fields
+                );
             }
         }
         else
         {
-            AddSingleIncluded(relValue, included, processedEntities, nestedPaths, logger);
+            AddSingleIncluded(relValue, included, processedEntities, nestedPaths, logger, fields);
         }
     }
 
@@ -116,7 +127,8 @@ public static class InclusionMapper
         List<ResourceObject> included,
         HashSet<string> processedEntities,
         List<string> nestedPaths,
-        ILogger? logger = null
+        ILogger? logger = null,
+        Dictionary<string, List<string>>? fields = null
     )
     {
         if (relEntity == null)
@@ -141,12 +153,24 @@ public static class InclusionMapper
         if (!processedEntities.Add(key))
             return; // Already processed
 
-        var resourceObject = JsonApiMapper.ToResourceObject(relEntity, resourceType, nestedPaths);
+        var resourceObject = JsonApiMapper.ToResourceObject(
+            relEntity,
+            resourceType,
+            nestedPaths,
+            fields: fields
+        );
         included.Add(resourceObject);
 
         if (nestedPaths?.Count > 0)
         {
-            AddIncludedResources(relEntity, nestedPaths, included, logger, processedEntities);
+            AddIncludedResources(
+                relEntity,
+                nestedPaths,
+                included,
+                logger,
+                processedEntities,
+                fields
+            );
         }
     }
 }

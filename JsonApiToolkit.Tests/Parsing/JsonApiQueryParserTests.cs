@@ -374,6 +374,159 @@ public class JsonApiQueryParserTests
         Assert.True(includeFilter.IsIncludeFilter);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sparse Fieldsets Tests
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Parse_WithSingleFieldset_ParsesCorrectly()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields[articles]"] = "title,content",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.NotNull(parameters.Fields);
+        Assert.Single(parameters.Fields);
+        Assert.True(parameters.Fields.ContainsKey("articles"));
+        Assert.Equal(2, parameters.Fields["articles"].Count);
+        Assert.Contains("title", parameters.Fields["articles"]);
+        Assert.Contains("content", parameters.Fields["articles"]);
+    }
+
+    [Fact]
+    public void Parse_WithMultipleFieldsets_ParsesAllTypes()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields[articles]"] = "title,content",
+                ["fields[authors]"] = "name",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.NotNull(parameters.Fields);
+        Assert.Equal(2, parameters.Fields.Count);
+        Assert.Equal(2, parameters.Fields["articles"].Count);
+        Assert.Single(parameters.Fields["authors"]);
+        Assert.Contains("name", parameters.Fields["authors"]);
+    }
+
+    [Fact]
+    public void Parse_WithNoFieldsets_FieldsIsNull()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["filter[name]"] = "test",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.Null(parameters.Fields);
+    }
+
+    [Fact]
+    public void Parse_WithMalformedFieldsKey_TooShort_IgnoresFields()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields["] = "title",
+                ["fields[articles]"] = "name",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.NotNull(parameters.Fields);
+        Assert.Single(parameters.Fields);
+        Assert.Contains("articles", parameters.Fields.Keys);
+    }
+
+    [Fact]
+    public void Parse_WithMalformedFieldsKey_MissingClosingBracket_IgnoresFields()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields[articles"] = "title",
+                ["fields[authors]"] = "name",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.NotNull(parameters.Fields);
+        Assert.Single(parameters.Fields);
+        Assert.Contains("authors", parameters.Fields.Keys);
+    }
+
+    [Fact]
+    public void Parse_WithEmptyFieldsValue_IgnoresFieldset()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields[articles]"] = "",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.Null(parameters.Fields);
+    }
+
+    [Fact]
+    public void Parse_WithWhitespaceInFields_TrimsFieldNames()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields[articles]"] = " title , content ",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.NotNull(parameters.Fields);
+        Assert.Equal(2, parameters.Fields["articles"].Count);
+        Assert.Contains("title", parameters.Fields["articles"]);
+        Assert.Contains("content", parameters.Fields["articles"]);
+    }
+
+    [Fact]
+    public void Parse_WithFieldsCaseInsensitiveLookup_FindsType()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Query = new QueryCollection(
+            new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
+            {
+                ["fields[Articles]"] = "title",
+            }
+        );
+
+        QueryParameters parameters = JsonApiQueryParser.Parse(httpContext.Request);
+
+        Assert.NotNull(parameters.Fields);
+        // Case-insensitive dictionary: "articles" lookup should match "Articles" key
+        Assert.True(parameters.Fields.ContainsKey("articles"));
+    }
+
     [Fact]
     public void Parse_WithMalformedFilterKey_TooShort_IgnoresFilter()
     {
