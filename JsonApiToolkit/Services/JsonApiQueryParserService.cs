@@ -64,6 +64,16 @@ public class JsonApiQueryParserService : IJsonApiQueryParser
             );
         }
 
+        if (
+            request.Query.Keys.Any(k => k.StartsWith("fields", StringComparison.OrdinalIgnoreCase))
+            && queryParams.Fields == null
+        )
+        {
+            _logger.LogWarning(
+                "Fields parameters detected but no valid fields parsed. Check syntax: fields[type]=field1,field2"
+            );
+        }
+
         // Validate query complexity against configured limits
         QueryComplexityAnalyzer.Validate(queryParams, _options);
 

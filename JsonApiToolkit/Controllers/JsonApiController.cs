@@ -86,7 +86,8 @@ public abstract class JsonApiController : ControllerBase
             resourceType,
             baseUrl,
             mappedIncludes,
-            Logger
+            Logger,
+            parameters.Fields
         );
         return Ok(document);
     }
@@ -164,7 +165,8 @@ public abstract class JsonApiController : ControllerBase
             baseUrl,
             paginationMeta,
             mappedIncludes,
-            Logger
+            Logger,
+            parameters.Fields
         );
         return Ok(document);
     }
@@ -181,12 +183,13 @@ public abstract class JsonApiController : ControllerBase
         QueryParameters parameters = GetJsonApiQueryParameters();
 
         Logger.LogDebug(
-            "Query for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}",
+            "Query for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}, Fields={FieldsCount}",
             typeof(T).Name,
             parameters.Filter?.Filters?.Count ?? 0,
             parameters.Sort?.Count ?? 0,
             parameters.Include?.Count ?? 0,
-            parameters.Pagination != null
+            parameters.Pagination != null,
+            parameters.Fields?.Count ?? 0
         );
 
         if (parameters.Filter?.Filters?.Count > 20)
@@ -291,7 +294,8 @@ public abstract class JsonApiController : ControllerBase
             baseUrl,
             paginationMeta,
             mappedIncludes,
-            Logger
+            Logger,
+            parameters.Fields
         );
 
         return Ok(document);
@@ -316,11 +320,12 @@ public abstract class JsonApiController : ControllerBase
         QueryParameters parameters = GetJsonApiQueryParameters();
 
         Logger.LogDebug(
-            "BuildQuery for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}",
+            "BuildQuery for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Fields={FieldsCount}",
             typeof(T).Name,
             parameters.Filter?.Filters?.Count ?? 0,
             parameters.Sort?.Count ?? 0,
-            parameters.Include?.Count ?? 0
+            parameters.Include?.Count ?? 0,
+            parameters.Fields?.Count ?? 0
         );
 
         var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
@@ -416,7 +421,8 @@ public abstract class JsonApiController : ControllerBase
             resourceType,
             selfUrl,
             mappedIncludes,
-            Logger
+            Logger,
+            parameters.Fields
         );
         return Created(selfUrl, document);
     }

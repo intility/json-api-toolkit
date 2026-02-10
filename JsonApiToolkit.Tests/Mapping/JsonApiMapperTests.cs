@@ -179,6 +179,178 @@ public class JsonApiMapperTests
         Assert.True(document.Meta.ContainsKey("pagination"));
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sparse Fieldsets Tests
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ToResourceObject_WithSparseFieldset_ReturnsOnlyRequestedAttributes()
+    {
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            Description = "Test Description",
+            CreatedAt = new DateTime(2023, 1, 1),
+            IsActive = true,
+        };
+
+        var fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["testEntities"] = ["name", "isActive"],
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities", fields: fields);
+
+        Assert.NotNull(resourceObject.Attributes);
+        Assert.Equal(2, resourceObject.Attributes.Count);
+        Assert.True(resourceObject.Attributes.ContainsKey("name"));
+        Assert.True(resourceObject.Attributes.ContainsKey("isActive"));
+        Assert.False(resourceObject.Attributes.ContainsKey("description"));
+        Assert.False(resourceObject.Attributes.ContainsKey("createdAt"));
+    }
+
+    [Fact]
+    public void ToResourceObject_WithSparseFieldset_AlwaysIncludesIdAndType()
+    {
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            Description = "Test Description",
+        };
+
+        var fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["testEntities"] = ["name"],
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities", fields: fields);
+
+        Assert.Equal("1", resourceObject.Id);
+        Assert.Equal("testEntities", resourceObject.Type);
+        Assert.Single(resourceObject.Attributes!);
+        Assert.True(resourceObject.Attributes!.ContainsKey("name"));
+    }
+
+    [Fact]
+    public void ToResourceObject_WithNoFieldsetForType_ReturnsAllAttributes()
+    {
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            Description = "Test Description",
+            IsActive = true,
+        };
+
+        var fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["otherType"] = ["name"],
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities", fields: fields);
+
+        Assert.NotNull(resourceObject.Attributes);
+        Assert.True(resourceObject.Attributes.ContainsKey("name"));
+        Assert.True(resourceObject.Attributes.ContainsKey("description"));
+        Assert.True(resourceObject.Attributes.ContainsKey("isActive"));
+    }
+
+    [Fact]
+    public void ToResourceObject_WithNullFields_ReturnsAllAttributes()
+    {
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            Description = "Test Description",
+            IsActive = true,
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities", fields: null);
+
+        Assert.NotNull(resourceObject.Attributes);
+        Assert.True(resourceObject.Attributes.ContainsKey("name"));
+        Assert.True(resourceObject.Attributes.ContainsKey("description"));
+        Assert.True(resourceObject.Attributes.ContainsKey("isActive"));
+    }
+
+    [Fact]
+    public void ToResourceObject_WithSparseFieldset_RelationshipsNotFiltered()
+    {
+        var relatedEntity = new TestRelatedEntity { Id = 2, Name = "Related Entity" };
+
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            RelatedEntity = relatedEntity,
+            RelatedEntityId = 2,
+        };
+
+        var fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["testEntities"] = ["name"],
+        };
+
+        var resourceObject = JsonApiMapper.ToResourceObject(
+            entity,
+            "testEntities",
+            ["RelatedEntity"],
+            fields: fields
+        );
+
+        // Attributes should be filtered
+        Assert.Single(resourceObject.Attributes!);
+        Assert.True(resourceObject.Attributes!.ContainsKey("name"));
+
+        // Relationships should NOT be filtered
+        Assert.NotNull(resourceObject.Relationships);
+        Assert.True(resourceObject.Relationships.ContainsKey("relatedEntity"));
+    }
+
+    [Fact]
+    public void ToDocument_WithSparseFieldset_FiltersIncludedResources()
+    {
+        var relatedEntity = new TestRelatedEntity { Id = 2, Name = "Related Entity" };
+
+        var entity = new TestEntity
+        {
+            Id = 1,
+            Name = "Test Entity",
+            Description = "Desc",
+            RelatedEntity = relatedEntity,
+            RelatedEntityId = 2,
+        };
+
+        var fields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["testEntities"] = ["name"],
+            ["testRelatedEntity"] = ["name"],
+        };
+
+        JsonApiDocument<ResourceObject> document = JsonApiMapper.ToDocument(
+            entity,
+            "testEntities",
+            "https://api.example.com/test/1",
+            ["RelatedEntity"],
+            fields: fields
+        );
+
+        // Primary resource should be filtered
+        Assert.Single(document.Data!.Attributes!);
+        Assert.True(document.Data!.Attributes!.ContainsKey("name"));
+
+        // Included resource should also be filtered
+        Assert.NotNull(document.Included);
+        Assert.Single(document.Included);
+        var included = document.Included.First();
+        Assert.Equal("testRelatedEntity", included.Type);
+        Assert.NotNull(included.Attributes);
+        Assert.True(included.Attributes.ContainsKey("name"));
+    }
+
     [Fact]
     public void ToResourceObject_ExcludesJsonIgnoreProperties()
     {
