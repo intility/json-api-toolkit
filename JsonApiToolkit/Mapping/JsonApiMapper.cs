@@ -22,7 +22,8 @@ public static class JsonApiMapper
         object entity,
         string resourceType,
         List<string>? includedRelationships = null,
-        ILogger? logger = null
+        ILogger? logger = null,
+        Dictionary<string, List<string>>? fields = null
     )
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -42,12 +43,23 @@ public static class JsonApiMapper
             Attributes = [],
         };
 
+        List<string>? allowedFields = null;
+        fields?.TryGetValue(resourceType, out allowedFields);
+
         foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(type))
         {
+            string camelName = prop.Name.ToCamelCase();
+
+            if (
+                allowedFields != null
+                && !allowedFields.Contains(camelName, StringComparer.OrdinalIgnoreCase)
+            )
+                continue;
+
             object? value = prop.GetValue(entity);
             if (value != null)
             {
-                resourceObject.Attributes![prop.Name.ToCamelCase()] = value;
+                resourceObject.Attributes![camelName] = value;
             }
         }
 
@@ -155,6 +167,7 @@ public static class JsonApiMapper
     /// <param name="selfLink">The self link URL for the resource</param>
     /// <param name="includedRelationships">Optional list of relationship paths to include</param>
     /// <param name="logger">Optional logger for debugging and tracing</param>
+    /// <param name="fields">Optional sparse fieldsets per resource type</param>
     /// <returns>A fully populated JSON:API document representing the entity</returns>
     /// <remarks>
     /// <para>
@@ -178,7 +191,8 @@ public static class JsonApiMapper
         string resourceType,
         string selfLink,
         List<string>? includedRelationships = null,
-        ILogger? logger = null
+        ILogger? logger = null,
+        Dictionary<string, List<string>>? fields = null
     )
         where T : class
     {
@@ -192,7 +206,8 @@ public static class JsonApiMapper
             entity,
             resourceType,
             includedRelationships,
-            logger
+            logger,
+            fields
         );
         resource.Links = new Links { Self = selfLink };
 
@@ -210,7 +225,13 @@ public static class JsonApiMapper
             );
 
             var included = new List<ResourceObject>();
-            InclusionMapper.AddIncludedResources(entity, includedRelationships, included, logger);
+            InclusionMapper.AddIncludedResources(
+                entity,
+                includedRelationships,
+                included,
+                logger,
+                fields: fields
+            );
 
             logger?.LogDebug(
                 "Include processing completed for single entity: {IncludedCount} resources added to included section",
@@ -243,6 +264,7 @@ public static class JsonApiMapper
     /// <param name="paginationMeta">Optional pagination metadata.</param>
     /// <param name="includedRelationships">Optional list of relationship paths to include.</param>
     /// <param name="logger">Optional logger for debugging and tracing</param>
+    /// <param name="fields">Optional sparse fieldsets per resource type</param>
     /// <returns>The JSON:API collection document.</returns>
     public static JsonApiCollectionDocument<ResourceObject> ToCollectionDocument<T>(
         IEnumerable<T> entities,
@@ -250,7 +272,8 @@ public static class JsonApiMapper
         string selfLink,
         PaginationMeta? paginationMeta = null,
         List<string>? includedRelationships = null,
-        ILogger? logger = null
+        ILogger? logger = null,
+        Dictionary<string, List<string>>? fields = null
     )
         where T : class
     {
@@ -269,7 +292,8 @@ public static class JsonApiMapper
                     e,
                     resourceType,
                     includedRelationships,
-                    logger
+                    logger,
+                    fields
                 );
                 resource.Links = new Links { Self = $"{baseUrl}/{resource.Id}" };
                 return resource;
@@ -323,7 +347,13 @@ public static class JsonApiMapper
             );
 
             var included = new List<ResourceObject>();
-            InclusionMapper.AddIncludedResources(entities, includedRelationships, included, logger);
+            InclusionMapper.AddIncludedResources(
+                entities,
+                includedRelationships,
+                included,
+                logger,
+                fields: fields
+            );
 
             logger?.LogDebug(
                 "Include processing completed: {IncludedCount} resources added to included section",

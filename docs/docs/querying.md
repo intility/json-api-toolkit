@@ -65,6 +65,16 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
 > [!NOTE]
 > Filtered includes currently support up to 2-level nesting (e.g., `parent.child`). Deeper nesting will fall back to unfiltered includes.
 
+- **Sparse Fieldsets (`fields[type]`):**
+  Request only specific attributes per resource type to reduce response payload size. The `id` and `type` fields are always returned. Relationships are not affected by sparse fieldsets.
+
+  - Single type: `GET /api/books?fields[books]=title,publishedDate`
+  - Multiple types: `GET /api/books?fields[books]=title&fields[author]=name&include=author`
+  - Combined: `GET /api/books?fields[books]=title,genre&sort=-publishedDate&page[number]=1&page[size]=10`
+
+> [!NOTE]
+> Sparse fieldsets filter attributes at serialization time. The database still loads full entities. This reduces JSON payload size but does not optimize database queries.
+
 ## How It Works
 
 JsonApiToolkit automatically parses these parameters through its built-in query parser and applies them to your Entity Framework queries. This is accomplished by extension methods such as:

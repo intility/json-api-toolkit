@@ -26,4 +26,9 @@ public class QueryParameters
     /// Relationships to include in the response.
     /// </summary>
     public List<string>? Include { get; set; }
+
+    /// <summary>
+    /// Sparse fieldsets per resource type (e.g., fields[articles]=title,body).
+    /// </summary>
+    public Dictionary<string, List<string>>? Fields { get; set; }
 }
