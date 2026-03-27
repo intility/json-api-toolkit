@@ -37,7 +37,7 @@ internal static class ProjectionPropertySelector
         );
         foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(sourceType))
         {
-            if (fieldSet.Contains(prop.Name.ToCamelCase()))
+            if (fieldSet.Contains(EntityMapper.GetAttributeName(prop)))
                 result.Add(prop);
         }
 

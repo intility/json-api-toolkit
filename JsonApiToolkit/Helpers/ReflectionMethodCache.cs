@@ -15,6 +15,11 @@ internal static class ReflectionMethodCache
     private static MethodInfo? s_enumerableContains;
     private static MethodInfo? s_enumerableWhere;
     private static MethodInfo? s_efCoreIncludeExpression;
+    private static MethodInfo? s_queryableSelect;
+    private static readonly ConcurrentDictionary<
+        (Type Source, Type Projection),
+        MethodInfo
+    > s_queryableSelectInstances = new();
     private static MethodInfo? s_efCoreToListAsync;
     private static readonly ConcurrentDictionary<Type, MethodInfo> s_efCoreToListAsyncInstances =
         new();
@@ -157,32 +162,45 @@ internal static class ReflectionMethodCache
 
     /// <summary>
     /// Gets Queryable.Select&lt;TSource, TResult&gt;(IQueryable&lt;TSource&gt;, Expression&lt;Func&lt;TSource, TResult&gt;&gt;) method.
+    /// The open generic method is cached once; the closed instantiation is cached per (sourceType, projectionType) pair.
     /// </summary>
     internal static MethodInfo GetQueryableSelectMethod(Type sourceType, Type projectionType)
     {
-        MethodInfo method =
-            typeof(Queryable)
-                .GetMethods()
-                .FirstOrDefault(m =>
-                    m.Name == "Select"
-                    && m.GetParameters().Length == 2
-                    && m.GetParameters()[1].ParameterType.IsGenericType
-                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
-                        == typeof(Expression<>)
-                    // Distinguish Select<T,R>(expr) from Select<T,R>(indexExpr):
-                    // the non-indexed overload has Func<T,R> (2 type args), the other has Func<T,int,R> (3)
-                    && m.GetParameters()[1]
-                        .ParameterType.GetGenericArguments()[0]
-                        .GetGenericArguments()
-                        .Length == 2
-                )
-            ?? throw new InvalidOperationException(
-                "Could not find Queryable.Select<TSource, TResult>(IQueryable<TSource>, Expression<Func<TSource, TResult>>) method. "
-                    + "This is a core .NET method that should always exist. "
-                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
-            );
+        return s_queryableSelectInstances.GetOrAdd(
+            (sourceType, projectionType),
+            key =>
+            {
+                if (s_queryableSelect == null)
+                {
+                    lock (s_lock)
+                    {
+                        s_queryableSelect ??=
+                            typeof(Queryable)
+                                .GetMethods()
+                                .FirstOrDefault(m =>
+                                    m.Name == "Select"
+                                    && m.GetParameters().Length == 2
+                                    && m.GetParameters()[1].ParameterType.IsGenericType
+                                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                                        == typeof(Expression<>)
+                                    // Distinguish Select<T,R>(expr) from Select<T,R>(indexExpr):
+                                    // the non-indexed overload has Func<T,R> (2 type args), the other has Func<T,int,R> (3)
+                                    && m.GetParameters()[1]
+                                        .ParameterType.GetGenericArguments()[0]
+                                        .GetGenericArguments()
+                                        .Length == 2
+                                )
+                            ?? throw new InvalidOperationException(
+                                "Could not find Queryable.Select<TSource, TResult>(IQueryable<TSource>, Expression<Func<TSource, TResult>>) method. "
+                                    + "This is a core .NET method that should always exist. "
+                                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                            );
+                    }
+                }
 
-        return method.MakeGenericMethod(sourceType, projectionType);
+                return s_queryableSelect.MakeGenericMethod(key.Source, key.Projection);
+            }
+        );
     }
 
     /// <summary>

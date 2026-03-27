@@ -116,6 +116,13 @@ public static class EntityMapper
     }
 
     /// <summary>
+    /// Gets the JSON:API attribute name for a property.
+    /// Centralizes name resolution so that the serializer and projection field matching
+    /// always use the same logic and cannot silently diverge.
+    /// </summary>
+    public static string GetAttributeName(PropertyInfo property) => property.Name.ToCamelCase();
+
+    /// <summary>
     /// Checks if a type has an ID property.
     /// </summary>
     /// <param name="type">The type to check</param>

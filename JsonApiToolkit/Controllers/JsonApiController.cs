@@ -298,9 +298,18 @@ public abstract class JsonApiController : ControllerBase
             parameters.Pagination?.Size ?? totalCount
         );
 
+        bool hasNestedIncludes = mappedIncludes.Any(p => p.Contains('.'));
+
         if (Options.EnableDatabaseProjection && parameters.Fields != null)
         {
-            if (
+            if (hasNestedIncludes)
+            {
+                Logger.LogDebug(
+                    "Database projection skipped for {EntityType}: nested includes are not compatible with Select() projection",
+                    typeof(T).Name
+                );
+            }
+            else if (
                 parameters.Fields.TryGetValue(resourceType, out List<string>? requestedFields)
                 && requestedFields.Count > 0
             )
