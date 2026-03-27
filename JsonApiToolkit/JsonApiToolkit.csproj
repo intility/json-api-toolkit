@@ -14,6 +14,7 @@
     <RepositoryUrl>https://github.com/intility/Intility.JsonApiToolkit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
     <!-- Generate XML documentation -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
