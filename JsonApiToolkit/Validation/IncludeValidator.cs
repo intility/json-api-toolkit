@@ -17,15 +17,7 @@ public static class IncludeValidator
     )
     {
         var patterns = allowedPatterns.Select(p => new IncludePattern(p)).ToList();
-        var forbidden = new List<string>();
-
-        foreach (var requested in requestedIncludes)
-        {
-            if (!IsIncludeAllowed(requested, patterns))
-            {
-                forbidden.Add(requested);
-            }
-        }
+        var forbidden = requestedIncludes.Where(r => !IsIncludeAllowed(r, patterns)).ToList();
 
         return new ValidationResult
         {
@@ -65,17 +57,17 @@ public static class IncludeValidator
         List<string> forbidden
     )
     {
-        foreach (var filter in group.Filters)
+        foreach (
+            var relationshipPath in group
+                .Filters.Select(f => ExtractRelationshipPath(f.Field))
+                .OfType<string>()
+                .Where(path =>
+                    !IsIncludeAllowed(path, patterns)
+                    && !forbidden.Contains(path, StringComparer.OrdinalIgnoreCase)
+                )
+        )
         {
-            var relationshipPath = ExtractRelationshipPath(filter.Field);
-            if (relationshipPath != null && !IsIncludeAllowed(relationshipPath, patterns))
-            {
-                // Only add if not already in the list
-                if (!forbidden.Contains(relationshipPath, StringComparer.OrdinalIgnoreCase))
-                {
-                    forbidden.Add(relationshipPath);
-                }
-            }
+            forbidden.Add(relationshipPath);
         }
 
         foreach (var nestedGroup in group.Groups)
