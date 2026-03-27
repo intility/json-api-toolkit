@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.0...v1.7.1) (2026-03-24)
+
+
+### Dependencies
+
+* **actions:** bump actions/create-github-app-token from 2.2.1 to 3.0.0 ([#86](https://github.com/intility/Intility.JsonApiToolkit/issues/86)) ([e7bd739](https://github.com/intility/Intility.JsonApiToolkit/commit/e7bd7392b655e281373b5002af7ed047e361f9a3))
+* **nuget:** Bump coverlet.collector from 6.0.2 to 8.0.1 ([#90](https://github.com/intility/Intility.JsonApiToolkit/issues/90)) ([c8f3243](https://github.com/intility/Intility.JsonApiToolkit/commit/c8f3243a922e2d647217584227c0119f52ef0874))
+* **nuget:** Bump Intility.Logging.AspNetCore from 3.0.3 to 3.1.4 ([#89](https://github.com/intility/Intility.JsonApiToolkit/issues/89)) ([7634ef7](https://github.com/intility/Intility.JsonApiToolkit/commit/7634ef7d0539ab156176694f98188158de366082))
+* **nuget:** Bump Microsoft.AspNetCore.JsonPatch from 9.0.2 to 10.0.5 ([#91](https://github.com/intility/Intility.JsonApiToolkit/issues/91)) ([fd94546](https://github.com/intility/Intility.JsonApiToolkit/commit/fd945469b75c9d5dd7da7a9ecaeaf658ade6274a))
+* **nuget:** Bump Microsoft.Extensions.DependencyInjection.Abstractions from 9.0.13 to 10.0.5 ([#92](https://github.com/intility/Intility.JsonApiToolkit/issues/92)) ([a2f2d73](https://github.com/intility/Intility.JsonApiToolkit/commit/a2f2d7388d388e76c855939f966c19b0105a260b))
+* **nuget:** Bump Microsoft.NET.Test.Sdk from 17.11.1 to 18.3.0 ([#93](https://github.com/intility/Intility.JsonApiToolkit/issues/93)) ([d4bf186](https://github.com/intility/Intility.JsonApiToolkit/commit/d4bf1864fda790367cc5026a39f361416d46568d))
+* **nuget:** Bump the microsoft group with 8 updates ([#87](https://github.com/intility/Intility.JsonApiToolkit/issues/87)) ([e6ecca2](https://github.com/intility/Intility.JsonApiToolkit/commit/e6ecca2539b47375331225a3d43fc4585a147cea))
+* **nuget:** Bump the testing group with 2 updates ([#88](https://github.com/intility/Intility.JsonApiToolkit/issues/88)) ([06329e6](https://github.com/intility/Intility.JsonApiToolkit/commit/06329e620dff7f70feb4a7d4d40dad8710983376))
+* **nuget:** Bump xunit.runner.visualstudio from 2.8.2 to 3.1.5 ([#94](https://github.com/intility/Intility.JsonApiToolkit/issues/94)) ([5d7b81a](https://github.com/intility/Intility.JsonApiToolkit/commit/5d7b81adbc59aeb68f6befd2df873a061810fe06))
+
 ## [1.7.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.6.0...v1.7.0) (2026-02-10)
 
 
