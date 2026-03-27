@@ -6,7 +6,7 @@
 
     <!-- Package metadata -->
     <PackageId>Intility.JsonApiToolkit</PackageId>
-    <Version>1.7.1</Version>
+    <Version>1.7.2</Version>
     <Authors>Intility</Authors>
     <Company>Intility</Company>
     <Description>A toolkit for implementing JSON:API specification in .NET applications</Description>
