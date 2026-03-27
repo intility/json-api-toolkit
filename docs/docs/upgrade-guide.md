@@ -2,7 +2,36 @@
 
 This document tracks all breaking changes, new features, and migration steps for each version of JsonApiToolkit.
 
-**Current Version:** 1.6.0
+**Current Version:** 1.8.0
+
+---
+
+## v1.8.0 - Database Projection
+
+**New Features:**
+- Database-level column filtering via EF Core `Select()` projection.
+  When `fields[type]` is specified and `EnableDatabaseProjection` is enabled, the toolkit
+  generates a runtime projection type and applies it as a `Select()` before executing the
+  query. Only the requested columns are fetched from the database instead of loading full
+  entities and filtering in memory.
+- Navigation properties not in `include=` are also excluded from the projection, so EF Core
+  skips the corresponding JOINs entirely.
+
+**Configuration (opt-in, disabled by default):**
+```csharp
+services.AddJsonApiToolkit(options =>
+{
+    options.EnableDatabaseProjection = true;
+});
+```
+
+**Breaking Changes:** None. The feature is disabled by default and has no effect unless opted in.
+
+**Limitations:**
+- Not compatible with NativeAOT compilation (uses `Reflection.Emit`).
+- Nested include projections (projecting related entities to fewer columns) are not supported;
+  included entities are still fully loaded.
+- Falls back to full entity load automatically if projection fails for any reason.
 
 ---
 
@@ -32,31 +61,7 @@ If there's demand, we may multi-target `net9.0;net10.0` for one release cycle to
 
 ---
 
-## Upcoming Features
-
-### v1.8.0 - Database Projection
-
-**Release Date:** TBD
-
-**New Features:**
-- [ ] Database-level projection - only fetch requested columns from database
-- [ ] Opt-in via `EnableDatabaseProjection` option
-- [ ] Massive performance improvement for entities with JSON columns
-
-**Configuration:**
-```csharp
-services.AddJsonApiToolkit(options => {
-    options.EnableDatabaseProjection = true;
-});
-```
-
-**Breaking Changes:** None (opt-in feature)
-
-**Migration:** None required
-
----
-
-### v1.7.0 - Sparse Fieldsets
+## v1.7.0 - Sparse Fieldsets
 
 **Release Date:** February 2026
 

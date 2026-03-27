@@ -46,4 +46,12 @@ public class JsonApiOptions
     /// Default: 10.
     /// </summary>
     public int DefaultPageSize { get; set; } = 10;
+
+    /// <summary>
+    /// When true, applies database-level column filtering via EF Core Select() projection
+    /// when fields[type] is specified in the request. Only fetches requested columns from
+    /// the database instead of loading full entities and filtering in memory.
+    /// Not compatible with NativeAOT compilation. Default: false.
+    /// </summary>
+    public bool EnableDatabaseProjection { get; set; } = false;
 }

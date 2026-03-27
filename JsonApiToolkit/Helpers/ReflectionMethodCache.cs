@@ -151,6 +151,60 @@ internal static class ReflectionMethodCache
     }
 
     /// <summary>
+    /// Gets Queryable.Select&lt;TSource, TResult&gt;(IQueryable&lt;TSource&gt;, Expression&lt;Func&lt;TSource, TResult&gt;&gt;) method.
+    /// </summary>
+    internal static MethodInfo GetQueryableSelectMethod(Type sourceType, Type projectionType)
+    {
+        MethodInfo method =
+            typeof(Queryable)
+                .GetMethods()
+                .FirstOrDefault(m =>
+                    m.Name == "Select"
+                    && m.GetParameters().Length == 2
+                    && m.GetParameters()[1].ParameterType.IsGenericType
+                    && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                        == typeof(Expression<>)
+                    // Distinguish Select<T,R>(expr) from Select<T,R>(indexExpr):
+                    // the non-indexed overload has Func<T,R> (2 type args), the other has Func<T,int,R> (3)
+                    && m.GetParameters()[1]
+                        .ParameterType.GetGenericArguments()[0]
+                        .GetGenericArguments()
+                        .Length == 2
+                )
+            ?? throw new InvalidOperationException(
+                "Could not find Queryable.Select<TSource, TResult>(IQueryable<TSource>, Expression<Func<TSource, TResult>>) method. "
+                    + "This is a core .NET method that should always exist. "
+                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+            );
+
+        return method.MakeGenericMethod(sourceType, projectionType);
+    }
+
+    /// <summary>
+    /// Gets EntityFrameworkQueryableExtensions.ToListAsync&lt;T&gt;(IQueryable&lt;T&gt;, CancellationToken) method.
+    /// </summary>
+    internal static MethodInfo GetEfCoreToListAsyncMethod(Type elementType)
+    {
+        MethodInfo method =
+            typeof(EntityFrameworkQueryableExtensions)
+                .GetMethods()
+                .FirstOrDefault(m =>
+                    m.Name == "ToListAsync"
+                    && m.GetParameters().Length == 2
+                    && m.GetParameters()[0].ParameterType.IsGenericType
+                    && m.GetParameters()[0].ParameterType.GetGenericTypeDefinition()
+                        == typeof(IQueryable<>)
+                )
+            ?? throw new InvalidOperationException(
+                "Could not find EntityFrameworkQueryableExtensions.ToListAsync<T>(IQueryable<T>, CancellationToken) method. "
+                    + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
+                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+            );
+
+        return method.MakeGenericMethod(elementType);
+    }
+
+    /// <summary>
     /// Gets EntityFrameworkQueryableExtensions.ThenInclude method for either collection or reference navigation.
     /// </summary>
     internal static MethodInfo GetEfCoreThenIncludeMethod(
