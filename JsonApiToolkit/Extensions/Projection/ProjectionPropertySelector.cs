@@ -1,26 +1,25 @@
 using System.Reflection;
-using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Mapping;
 
 namespace JsonApiToolkit.Extensions.Projection;
 
 /// <summary>
 /// Determines which source properties should be included in a database projection.
+/// Projection is only applied when no includes are active, so only scalar attributes
+/// (plus the ID) are ever projected.
 /// </summary>
 internal static class ProjectionPropertySelector
 {
     /// <summary>
     /// Returns the properties from <paramref name="sourceType"/> to project into.
-    /// Always includes the ID property, plus requested scalar attributes and navigations
-    /// needed for active includes.
+    /// Always includes the ID property, plus the scalar attributes requested via
+    /// <c>fields[type]</c>.
     /// </summary>
     /// <param name="sourceType">The entity type being projected.</param>
     /// <param name="requestedFieldsCamelCase">Field names from <c>fields[type]</c> (camelCase).</param>
-    /// <param name="mappedIncludesCLRPaths">CLR property paths from mapped includes (e.g., "Author", "Author.Posts").</param>
     internal static IReadOnlyList<PropertyInfo> Determine(
         Type sourceType,
-        List<string> requestedFieldsCamelCase,
-        List<string> mappedIncludesCLRPaths
+        List<string> requestedFieldsCamelCase
     )
     {
         var result = new List<PropertyInfo>();
@@ -38,19 +37,6 @@ internal static class ProjectionPropertySelector
         foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(sourceType))
         {
             if (fieldSet.Contains(EntityMapper.GetAttributeName(prop)))
-                result.Add(prop);
-        }
-
-        // Navigation (relationship) properties needed for active includes.
-        // mappedIncludesCLRPaths may be nested (e.g., "Author.Posts") — only the first
-        // segment is a direct property on sourceType.
-        var topLevelIncludes = mappedIncludesCLRPaths
-            .Select(path => path.Split('.')[0])
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (PropertyInfo prop in EntityMapper.GetRelationshipProperties(sourceType))
-        {
-            if (topLevelIncludes.Contains(prop.Name))
                 result.Add(prop);
         }
 

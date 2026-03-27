@@ -318,8 +318,7 @@ public abstract class JsonApiController : ControllerBase
                 {
                     var projectionProperties = ProjectionPropertySelector.Determine(
                         typeof(T),
-                        requestedFields,
-                        mappedIncludes
+                        requestedFields
                     );
 
                     var (projectionType, projectionExpression) = ProjectionTypeCache.GetOrCreate(

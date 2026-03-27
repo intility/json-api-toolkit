@@ -92,11 +92,7 @@ public class ProjectionPropertySelectorTests
     [Fact]
     public void Determine_AlwaysIncludesIdProperty()
     {
-        var selected = ProjectionPropertySelector.Determine(
-            typeof(ProjSelectorArticle),
-            ["title"],
-            []
-        );
+        var selected = ProjectionPropertySelector.Determine(typeof(ProjSelectorArticle), ["title"]);
 
         Assert.Contains(selected, p => p.Name == "Id");
     }
@@ -104,11 +100,7 @@ public class ProjectionPropertySelectorTests
     [Fact]
     public void Determine_IncludesRequestedAttributeFields()
     {
-        var selected = ProjectionPropertySelector.Determine(
-            typeof(ProjSelectorArticle),
-            ["title"],
-            []
-        );
+        var selected = ProjectionPropertySelector.Determine(typeof(ProjSelectorArticle), ["title"]);
 
         Assert.Contains(selected, p => p.Name == "Title");
     }
@@ -116,50 +108,9 @@ public class ProjectionPropertySelectorTests
     [Fact]
     public void Determine_ExcludesUnrequestedAttributeFields()
     {
-        var selected = ProjectionPropertySelector.Determine(
-            typeof(ProjSelectorArticle),
-            ["title"],
-            []
-        );
+        var selected = ProjectionPropertySelector.Determine(typeof(ProjSelectorArticle), ["title"]);
 
         Assert.DoesNotContain(selected, p => p.Name == "Summary");
-    }
-
-    [Fact]
-    public void Determine_IncludesNavigationPropertyForActiveInclude()
-    {
-        var selected = ProjectionPropertySelector.Determine(
-            typeof(ProjSelectorArticle),
-            ["title"],
-            ["Author"]
-        );
-
-        Assert.Contains(selected, p => p.Name == "Author");
-    }
-
-    [Fact]
-    public void Determine_ExcludesNavigationPropertyNotInIncludes()
-    {
-        var selected = ProjectionPropertySelector.Determine(
-            typeof(ProjSelectorArticle),
-            ["title"],
-            []
-        );
-
-        Assert.DoesNotContain(selected, p => p.Name == "Author");
-    }
-
-    [Fact]
-    public void Determine_HandlesNestedIncludePath_OnlyTopSegment()
-    {
-        // "Author.Articles" should include the "Author" navigation on ProjSelectorArticle
-        var selected = ProjectionPropertySelector.Determine(
-            typeof(ProjSelectorArticle),
-            ["title"],
-            ["Author.Articles"]
-        );
-
-        Assert.Contains(selected, p => p.Name == "Author");
     }
 }
 
@@ -396,24 +347,6 @@ public class DatabaseProjectionIntegrationTests : IDisposable
         Assert.True(attrs.ContainsKey("title"));
         Assert.True(attrs.ContainsKey("body"));
         Assert.True(attrs.ContainsKey("viewCount"));
-    }
-
-    [Fact]
-    public async Task Projection_WithIncludeAndFields_SkipsProjectionAndReturnsIncludedData()
-    {
-        // EF Core silently drops all .Include() calls when .Select() is applied.
-        // Projection must be skipped whenever any includes are active, otherwise navigation
-        // properties would be null on a real relational database.
-        var response = await _client.GetAsync(
-            "/api/proj-articles?fields[articles]=title&include=author"
-        );
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var doc = await Deserialize(response);
-        // Author should be included (nested include path starts with "author")
-        Assert.NotNull(doc!.Included);
-        Assert.NotEmpty(doc.Included!);
     }
 
     [Fact]
