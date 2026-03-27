@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.2](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.1...v1.7.2) (2026-03-27)
+
+
+### Documentation
+
+* add MIT license ([#96](https://github.com/intility/Intility.JsonApiToolkit/issues/96)) ([20b7544](https://github.com/intility/Intility.JsonApiToolkit/commit/20b7544dbc68eb63e4d4ed21a1e311dfa0e4a2e9))
+
 ## [1.7.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.0...v1.7.1) (2026-03-24)
 
 
