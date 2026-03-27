@@ -1,11 +1,6 @@
 name: CodeQL
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "**.cs"
-      - "**.csproj"
   schedule:
     - cron: "0 6 * * 1" # Monday 6am UTC
 
