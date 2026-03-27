@@ -52,12 +52,7 @@ internal static class DatabaseProjectionApplicator
         await task.ConfigureAwait(false);
 
         // Task<List<ProjectionType>>.Result returns List<ProjectionType> boxed as object
-        PropertyInfo resultProperty =
-            task.GetType().GetProperty("Result")
-            ?? throw new InvalidOperationException(
-                $"Could not access Result property on Task<List<{projectionType.Name}>>. "
-                    + "This is unexpected and may indicate a runtime compatibility issue."
-            );
+        PropertyInfo resultProperty = ReflectionMethodCache.GetTaskResultProperty(projectionType);
 
         var list = (IList)resultProperty.GetValue(task)!;
 

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -10,10 +9,11 @@ namespace JsonApiToolkit.Extensions.Projection;
 /// </summary>
 internal static class ProjectionTypeCache
 {
-    private static readonly ConcurrentDictionary<
+    private static readonly Dictionary<
         string,
         (Type ProjectionType, LambdaExpression Expression)
     > s_cache = new();
+    private static readonly Lock s_cacheLock = new();
 
     /// <summary>
     /// Returns a cached or newly generated (projectionType, expression) pair for the given
@@ -26,22 +26,24 @@ internal static class ProjectionTypeCache
     {
         string key = BuildCacheKey(sourceType, sourceProperties);
 
-        return s_cache.GetOrAdd(
-            key,
-            _ =>
-            {
-                var properties = sourceProperties.Select(p => (p.Name, p.PropertyType)).ToList();
+        lock (s_cacheLock)
+        {
+            if (s_cache.TryGetValue(key, out var cached))
+                return cached;
 
-                Type projectionType = DynamicTypeBuilder.Build(properties);
-                LambdaExpression expression = ProjectionExpressionBuilder.Build(
-                    sourceType,
-                    projectionType,
-                    sourceProperties
-                );
+            var properties = sourceProperties.Select(p => (p.Name, p.PropertyType)).ToList();
 
-                return (projectionType, expression);
-            }
-        );
+            Type projectionType = DynamicTypeBuilder.Build(properties);
+            LambdaExpression expression = ProjectionExpressionBuilder.Build(
+                sourceType,
+                projectionType,
+                sourceProperties
+            );
+
+            var result = (projectionType, expression);
+            s_cache[key] = result;
+            return result;
+        }
     }
 
     // Sort by name so that {Name, Email} and {Email, Name} share the same cache entry.

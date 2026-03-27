@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,10 @@ internal static class ReflectionMethodCache
     private static MethodInfo? s_enumerableContains;
     private static MethodInfo? s_enumerableWhere;
     private static MethodInfo? s_efCoreIncludeExpression;
+    private static MethodInfo? s_efCoreToListAsync;
+    private static readonly ConcurrentDictionary<Type, MethodInfo> s_efCoreToListAsyncInstances =
+        new();
+    private static readonly ConcurrentDictionary<Type, PropertyInfo> s_taskResultProperties = new();
     private static readonly Lock s_lock = new();
 
     /// <summary>
@@ -182,26 +187,61 @@ internal static class ReflectionMethodCache
 
     /// <summary>
     /// Gets EntityFrameworkQueryableExtensions.ToListAsync&lt;T&gt;(IQueryable&lt;T&gt;, CancellationToken) method.
+    /// The open generic method is cached once; the closed instantiation is cached per element type.
     /// </summary>
     internal static MethodInfo GetEfCoreToListAsyncMethod(Type elementType)
     {
-        MethodInfo method =
-            typeof(EntityFrameworkQueryableExtensions)
-                .GetMethods()
-                .FirstOrDefault(m =>
-                    m.Name == "ToListAsync"
-                    && m.GetParameters().Length == 2
-                    && m.GetParameters()[0].ParameterType.IsGenericType
-                    && m.GetParameters()[0].ParameterType.GetGenericTypeDefinition()
-                        == typeof(IQueryable<>)
-                )
-            ?? throw new InvalidOperationException(
-                "Could not find EntityFrameworkQueryableExtensions.ToListAsync<T>(IQueryable<T>, CancellationToken) method. "
-                    + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
-                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
-            );
+        return s_efCoreToListAsyncInstances.GetOrAdd(
+            elementType,
+            type =>
+            {
+                if (s_efCoreToListAsync == null)
+                {
+                    lock (s_lock)
+                    {
+                        s_efCoreToListAsync ??=
+                            typeof(EntityFrameworkQueryableExtensions)
+                                .GetMethods()
+                                .FirstOrDefault(m =>
+                                    m.Name == "ToListAsync"
+                                    && m.GetParameters().Length == 2
+                                    && m.GetParameters()[0].ParameterType.IsGenericType
+                                    && m.GetParameters()[0].ParameterType.GetGenericTypeDefinition()
+                                        == typeof(IQueryable<>)
+                                )
+                            ?? throw new InvalidOperationException(
+                                "Could not find EntityFrameworkQueryableExtensions.ToListAsync<T>(IQueryable<T>, CancellationToken) method. "
+                                    + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
+                                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                            );
+                    }
+                }
 
-        return method.MakeGenericMethod(elementType);
+                return s_efCoreToListAsync.MakeGenericMethod(type);
+            }
+        );
+    }
+
+    /// <summary>
+    /// Gets the Result property of Task&lt;List&lt;T&gt;&gt; for the given projection type.
+    /// Cached per projection type to avoid per-request reflection overhead.
+    /// </summary>
+    internal static PropertyInfo GetTaskResultProperty(Type projectionType)
+    {
+        return s_taskResultProperties.GetOrAdd(
+            projectionType,
+            type =>
+            {
+                var taskListType = typeof(Task<>).MakeGenericType(
+                    typeof(List<>).MakeGenericType(type)
+                );
+                return taskListType.GetProperty("Result")
+                    ?? throw new InvalidOperationException(
+                        $"Could not access Result property on Task<List<{type.Name}>>. "
+                            + "This is unexpected and may indicate a runtime compatibility issue."
+                    );
+            }
+        );
     }
 
     /// <summary>

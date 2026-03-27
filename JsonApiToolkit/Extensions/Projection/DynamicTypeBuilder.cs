@@ -32,7 +32,7 @@ internal static class DynamicTypeBuilder
         // ModuleBuilder is not thread-safe; serialize type creation
         lock (s_buildLock)
         {
-            int id = Interlocked.Increment(ref s_typeCounter);
+            int id = ++s_typeCounter;
             string typeName = $"JsonApiProjection_{id}";
 
             TypeBuilder typeBuilder = s_moduleBuilder.DefineType(
