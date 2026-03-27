@@ -298,14 +298,14 @@ public abstract class JsonApiController : ControllerBase
             parameters.Pagination?.Size ?? totalCount
         );
 
-        bool hasNestedIncludes = mappedIncludes.Any(p => p.Contains('.'));
-
         if (Options.EnableDatabaseProjection && parameters.Fields != null)
         {
-            if (hasNestedIncludes)
+            if (mappedIncludes.Count > 0)
             {
+                // EF Core silently drops all .Include() hints when a .Select() projection
+                // is applied to the same query, so navigation properties would be null.
                 Logger.LogDebug(
-                    "Database projection skipped for {EntityType}: nested includes are not compatible with Select() projection",
+                    "Database projection skipped for {EntityType}: includes are not compatible with Select() projection",
                     typeof(T).Name
                 );
             }

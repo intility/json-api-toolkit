@@ -120,7 +120,9 @@ public static class EntityMapper
     /// Centralizes name resolution so that the serializer and projection field matching
     /// always use the same logic and cannot silently diverge.
     /// </summary>
-    public static string GetAttributeName(PropertyInfo property) => property.Name.ToCamelCase();
+    public static string GetAttributeName(PropertyInfo property) =>
+        property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
+        ?? property.Name.ToCamelCase();
 
     /// <summary>
     /// Checks if a type has an ID property.

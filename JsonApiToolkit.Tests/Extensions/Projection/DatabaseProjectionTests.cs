@@ -399,13 +399,13 @@ public class DatabaseProjectionIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task Projection_WithNestedInclude_SkipsProjectionAndReturnsIncludedData()
+    public async Task Projection_WithIncludeAndFields_SkipsProjectionAndReturnsIncludedData()
     {
-        // Nested includes (dot notation) must skip projection: EF Core ignores .Include()
-        // when .Select() is applied, so nested navigation properties would be silently null
-        // on a real relational database. Projection is bypassed and the full entity load runs.
+        // EF Core silently drops all .Include() calls when .Select() is applied.
+        // Projection must be skipped whenever any includes are active, otherwise navigation
+        // properties would be null on a real relational database.
         var response = await _client.GetAsync(
-            "/api/proj-articles?fields[articles]=title&include=author.articles"
+            "/api/proj-articles?fields[articles]=title&include=author"
         );
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
