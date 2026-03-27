@@ -6,14 +6,16 @@
       "package-name": "Intility.JsonApiToolkit",
       "include-component-in-tag": false,
       "changelog-sections": [
-        { "type": "feat", "section": "Features", "hidden": false },
-        { "type": "fix", "section": "Bug Fixes", "hidden": false },
-        { "type": "perf", "section": "Performance", "hidden": false },
-        { "type": "refactor", "section": "Refactoring", "hidden": false },
-        { "type": "docs", "section": "Documentation", "hidden": false },
-        { "type": "test", "section": "Tests", "hidden": true },
-        { "type": "chore", "section": "Maintenance", "hidden": true },
-        { "type": "deps", "section": "Dependencies", "hidden": false }
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance Improvements" },
+        { "type": "refactor", "section": "Code Refactoring" },
+        { "type": "docs", "section": "Documentation" },
+        { "type": "build", "section": "Build System" },
+        { "type": "ci", "section": "CI" },
+        { "type": "style", "section": "Styles" },
+        { "type": "test", "section": "Tests" },
+        { "type": "chore", "section": "Miscellaneous", "hidden": true }
       ],
       "extra-files": [
         {
