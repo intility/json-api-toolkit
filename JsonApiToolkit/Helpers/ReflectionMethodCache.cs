@@ -15,6 +15,8 @@ internal static class ReflectionMethodCache
     private static MethodInfo? s_enumerableContains;
     private static MethodInfo? s_enumerableWhere;
     private static MethodInfo? s_efCoreIncludeExpression;
+    private static MethodInfo? s_thenIncludeCollection;
+    private static MethodInfo? s_thenIncludeReference;
     private static MethodInfo? s_queryableSelect;
     private static readonly ConcurrentDictionary<
         (Type Source, Type Projection),
@@ -264,6 +266,7 @@ internal static class ReflectionMethodCache
 
     /// <summary>
     /// Gets EntityFrameworkQueryableExtensions.ThenInclude method for either collection or reference navigation.
+    /// The two overloads (collection and reference) are each cached once in static fields.
     /// </summary>
     internal static MethodInfo GetEfCoreThenIncludeMethod(
         bool isPreviousCollection,
@@ -272,47 +275,64 @@ internal static class ReflectionMethodCache
         Type newPropertyType
     )
     {
-        var thenIncludeMethods = typeof(EntityFrameworkQueryableExtensions)
-            .GetMethods()
-            .Where(m => m.Name == "ThenInclude" && m.GetGenericArguments().Length == 3)
-            .ToList();
-
-        foreach (var method in thenIncludeMethods)
+        if (s_thenIncludeCollection == null || s_thenIncludeReference == null)
         {
-            var parameters = method.GetParameters();
-            if (parameters.Length != 2)
-                continue;
+            lock (s_lock)
+            {
+                if (s_thenIncludeCollection == null || s_thenIncludeReference == null)
+                {
+                    var candidates = typeof(EntityFrameworkQueryableExtensions)
+                        .GetMethods()
+                        .Where(m =>
+                            m.Name == "ThenInclude"
+                            && m.GetGenericArguments().Length == 3
+                            && m.GetParameters().Length == 2
+                            && m.GetParameters()[0].ParameterType.IsGenericType
+                            && m.GetParameters()[0].ParameterType.GetGenericTypeDefinition().Name
+                                == "IIncludableQueryable`2"
+                        )
+                        .ToList();
 
-            var firstParamType = parameters[0].ParameterType;
-            if (
-                !firstParamType.IsGenericType
-                || firstParamType.GetGenericTypeDefinition().Name != "IIncludableQueryable`2"
-            )
-                continue;
+                    if (candidates.Count == 0)
+                        throw new InvalidOperationException(
+                            "Could not find EntityFrameworkQueryableExtensions.ThenInclude method. "
+                                + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
+                                + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                        );
 
-            var genericArgs = firstParamType.GetGenericArguments();
-            if (genericArgs.Length != 2)
-                continue;
+                    foreach (var candidate in candidates)
+                    {
+                        var secondGenericArg = candidate
+                            .GetParameters()[0]
+                            .ParameterType.GetGenericArguments()[1];
 
-            var secondGenericArg = genericArgs[1];
+                        bool isCollection =
+                            secondGenericArg.IsGenericType
+                            && secondGenericArg.GetGenericTypeDefinition() == typeof(IEnumerable<>);
 
-            bool isCollectionOverload =
-                secondGenericArg.IsGenericType
-                && secondGenericArg.GetGenericTypeDefinition() == typeof(IEnumerable<>);
+                        if (isCollection)
+                            s_thenIncludeCollection = candidate;
+                        else
+                            s_thenIncludeReference = candidate;
+                    }
 
-            if (isCollectionOverload == isPreviousCollection)
-                return method.MakeGenericMethod(entityType, previousPropertyType, newPropertyType);
+                    // Fallback: if only one overload was found, use it for both
+                    s_thenIncludeCollection ??=
+                        s_thenIncludeReference
+                        ?? throw new InvalidOperationException(
+                            "Could not find EntityFrameworkQueryableExtensions.ThenInclude method. "
+                                + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
+                                + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                        );
+                    s_thenIncludeReference ??= s_thenIncludeCollection;
+                }
+            }
         }
 
-        // Fallback with defensive check
-        var fallbackMethod =
-            thenIncludeMethods.FirstOrDefault()
-            ?? throw new InvalidOperationException(
-                "Could not find EntityFrameworkQueryableExtensions.ThenInclude method. "
-                    + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
-                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
-            );
+        MethodInfo openMethod = isPreviousCollection
+            ? s_thenIncludeCollection!
+            : s_thenIncludeReference!;
 
-        return fallbackMethod.MakeGenericMethod(entityType, previousPropertyType, newPropertyType);
+        return openMethod.MakeGenericMethod(entityType, previousPropertyType, newPropertyType);
     }
 }
