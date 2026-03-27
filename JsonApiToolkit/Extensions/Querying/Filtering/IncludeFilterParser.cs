@@ -106,27 +106,19 @@ public static class IncludeFilterParser
         }
 
         // Process nested groups
-        foreach (var nestedGroup in group.Groups)
-        {
-            var processedNestedGroup = ExtractIncludeFilters(
-                nestedGroup,
-                normalizedIncludePaths,
-                filtersByRelationship
-            );
-
-            if (
-                processedNestedGroup != null
-                && (processedNestedGroup.Filters.Count > 0 || processedNestedGroup.Groups.Count > 0)
-            )
-            {
-                newGroup.Groups.Add(processedNestedGroup);
-            }
-        }
+        newGroup.Groups.AddRange(
+            group
+                .Groups.Select(g =>
+                    ExtractIncludeFilters(g, normalizedIncludePaths, filtersByRelationship)
+                )
+                .OfType<FilterGroup>()
+                .Where(g => g.Filters.Count > 0 || g.Groups.Count > 0)
+        );
 
         // Merge local include filters into the global dictionary
         foreach (var kvp in localIncludeFilters)
         {
-            if (!filtersByRelationship.ContainsKey(kvp.Key))
+            if (!filtersByRelationship.TryGetValue(kvp.Key, out var existing))
             {
                 // First time seeing this relationship - use its logical operator directly
                 filtersByRelationship[kvp.Key] = kvp.Value;
@@ -134,7 +126,6 @@ public static class IncludeFilterParser
             else
             {
                 // Already have filters for this relationship - need to merge
-                var existing = filtersByRelationship[kvp.Key];
 
                 // If both groups have the same operator and no nested groups, merge filters
                 if (
@@ -230,19 +221,11 @@ public static class IncludeFilterParser
         return false;
     }
 
-    private static HashSet<string> NormalizeIncludePaths(List<string> includePaths)
-    {
-        var normalized = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var path in includePaths)
-        {
-            // Convert kebab-case to camelCase for comparison
-            var normalizedPath = ConvertKebabToCamelCase(path);
-            normalized.Add(normalizedPath);
-        }
-
-        return normalized;
-    }
+    private static HashSet<string> NormalizeIncludePaths(List<string> includePaths) =>
+        new HashSet<string>(
+            includePaths.Select(ConvertKebabToCamelCase),
+            StringComparer.OrdinalIgnoreCase
+        );
 
     private static string ConvertKebabToCamelCase(string kebabCase)
     {
@@ -256,19 +239,18 @@ public static class IncludeFilterParser
                 return part;
 
             var segments = part.Split('-');
-            var result = segments[0].ToLowerInvariant();
+            var sb = new System.Text.StringBuilder(segments[0].ToLowerInvariant());
 
             for (int i = 1; i < segments.Length; i++)
             {
                 if (segments[i].Length > 0)
                 {
-                    result +=
-                        char.ToUpperInvariant(segments[i][0])
-                        + segments[i].Substring(1).ToLowerInvariant();
+                    sb.Append(char.ToUpperInvariant(segments[i][0]));
+                    sb.Append(segments[i].Substring(1).ToLowerInvariant());
                 }
             }
 
-            return result;
+            return sb.ToString();
         });
 
         return string.Join(".", convertedParts);

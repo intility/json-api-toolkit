@@ -506,20 +506,15 @@ public class JsonApiQueryAsyncTests : IDisposable
         Assert.Equal(2, GetPaginationValue<int>(document.Meta, "pageSize"));
     }
 
-    private static T GetPaginationValue<T>(Dictionary<string, object> meta, string key)
+    private static int GetPaginationValue<T>(Dictionary<string, object> meta, string key)
     {
         if (
             meta.TryGetValue("pagination", out var pagination)
             && pagination is JsonElement paginationElement
+            && paginationElement.TryGetProperty(key, out var property)
         )
         {
-            if (paginationElement.TryGetProperty(key, out var property))
-            {
-                if (typeof(T) == typeof(int))
-                    return (T)(object)property.GetInt32();
-                if (typeof(T) == typeof(string))
-                    return (T)(object)property.GetString()!;
-            }
+            return property.GetInt32();
         }
 
         throw new InvalidOperationException(

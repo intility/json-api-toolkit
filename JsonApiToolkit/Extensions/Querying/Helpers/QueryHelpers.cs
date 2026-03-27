@@ -135,6 +135,13 @@ public static class QueryHelpers
             );
         }
         catch (Exception ex)
+            when (ex
+                    is FormatException
+                        or OverflowException
+                        or InvalidCastException
+                        or ArgumentException
+                        or NotSupportedException
+            )
         {
             throw new FormatException(
                 $"Failed to convert filter value '{value}' to type '{targetType.FullName}'. "

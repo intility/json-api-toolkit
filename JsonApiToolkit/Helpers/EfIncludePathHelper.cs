@@ -23,11 +23,8 @@ public static class EfIncludePathHelper
         var type = typeof(T);
         var mapped = new List<string>(includePaths.Count);
 
-        foreach (var path in includePaths)
+        foreach (var path in includePaths.Where(p => !string.IsNullOrWhiteSpace(p)))
         {
-            if (string.IsNullOrWhiteSpace(path))
-                continue;
-
             var mappedPath = s_includePathCache.GetOrAdd(
                 (type, path),
                 key => MapSinglePath(key.Item1, key.Item2)

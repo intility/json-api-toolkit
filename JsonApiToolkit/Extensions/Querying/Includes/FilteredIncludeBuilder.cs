@@ -43,17 +43,11 @@ public static class FilteredIncludeBuilder
         {
             var segments = includePath.Split('.');
 
-            if (
+            query =
                 filtersByRelationship.TryGetValue(includePath, out var filterGroup)
                 && (filterGroup.Filters.Count > 0 || filterGroup.Groups.Count > 0)
-            )
-            {
-                query = ApplyFilteredIncludeChain(query, segments, filterGroup, typeof(T), logger);
-            }
-            else
-            {
-                query = query.Include(includePath);
-            }
+                    ? ApplyFilteredIncludeChain(query, segments, filterGroup, typeof(T), logger)
+                    : query.Include(includePath);
         }
 
         return query;
@@ -191,6 +185,12 @@ public static class FilteredIncludeBuilder
             }
         }
         catch (Exception ex)
+            when (ex
+                    is InvalidOperationException
+                        or TargetInvocationException
+                        or ArgumentException
+                        or NotSupportedException
+            )
         {
             logger?.LogWarning(
                 ex,

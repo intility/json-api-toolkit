@@ -76,7 +76,7 @@ internal static class FilterOperatorExpressions
                 if (converted != null)
                     convertedValues.Add(converted);
             }
-            catch (Exception)
+            catch (FormatException)
             {
                 failedValues.Add(rawValue);
             }

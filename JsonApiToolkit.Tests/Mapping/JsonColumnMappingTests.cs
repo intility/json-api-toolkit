@@ -133,21 +133,22 @@ public class JsonColumnMappingTests
         Assert.Equal("Test Entity", resource.Attributes["name"]);
 
         // JSON columns should be in attributes
-        Assert.True(resource.Attributes.ContainsKey("jsonDataList"));
-        Assert.True(resource.Attributes.ContainsKey("exploitationReports"));
-        Assert.True(resource.Attributes.ContainsKey("complexData"));
+        Assert.True(resource.Attributes.TryGetValue("jsonDataList", out var jsonDataListValue));
+        Assert.True(
+            resource.Attributes.TryGetValue("exploitationReports", out var exploitationReportsValue)
+        );
+        Assert.True(resource.Attributes.TryGetValue("complexData", out var complexDataValue));
 
         // Verify the JSON data is preserved
-        var jsonDataList = resource.Attributes["jsonDataList"] as List<JsonData>;
+        var jsonDataList = jsonDataListValue as List<JsonData>;
         Assert.NotNull(jsonDataList);
         Assert.Equal(2, jsonDataList.Count);
 
-        var exploitationReports =
-            resource.Attributes["exploitationReports"] as ICollection<ExploitationReport>;
+        var exploitationReports = exploitationReportsValue as ICollection<ExploitationReport>;
         Assert.NotNull(exploitationReports);
         Assert.Single(exploitationReports);
 
-        var complexData = resource.Attributes["complexData"] as ComplexJsonData;
+        var complexData = complexDataValue as ComplexJsonData;
         Assert.NotNull(complexData);
         Assert.Equal("Security", complexData.Category);
         Assert.Equal(2, complexData.Tags.Count);
