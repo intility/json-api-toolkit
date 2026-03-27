@@ -46,8 +46,10 @@ public class JsonApiMapperTests
 
         // Foreign key IDs should be included in attributes
         Assert.NotNull(resourceObject.Attributes);
-        Assert.True(resourceObject.Attributes.ContainsKey("relatedEntityId"));
-        Assert.Equal(42, resourceObject.Attributes["relatedEntityId"]);
+        Assert.True(
+            resourceObject.Attributes.TryGetValue("relatedEntityId", out var relatedEntityIdValue)
+        );
+        Assert.Equal(42, relatedEntityIdValue);
     }
 
     [Fact]
@@ -70,11 +72,11 @@ public class JsonApiMapperTests
         );
 
         Assert.NotNull(resourceObject.Relationships);
-        Assert.True(resourceObject.Relationships.ContainsKey("relatedEntity"));
-
-        Relationship relationship = resourceObject.Relationships["relatedEntity"];
+        Assert.True(
+            resourceObject.Relationships.TryGetValue("relatedEntity", out var relationship)
+        );
         ResourceIdentifier resourceIdentifier = Assert.IsType<ResourceIdentifier>(
-            relationship.Data
+            relationship!.Data
         );
         Assert.Equal("2", resourceIdentifier.Id);
         Assert.Equal("testRelatedEntity", resourceIdentifier.Type);
@@ -93,9 +95,7 @@ public class JsonApiMapperTests
         var resourceObject = JsonApiMapper.ToResourceObject(entity, "testEntities", ["Children"]);
 
         Assert.NotNull(resourceObject.Relationships);
-        Assert.True(resourceObject.Relationships.ContainsKey("children"));
-
-        Relationship relationship = resourceObject.Relationships["children"];
+        Assert.True(resourceObject.Relationships.TryGetValue("children", out var relationship));
         IEnumerable<ResourceIdentifier> identifiers = Assert.IsAssignableFrom<
             IEnumerable<ResourceIdentifier>
         >(relationship.Data);
@@ -365,8 +365,8 @@ public class JsonApiMapperTests
         var resourceObject = JsonApiMapper.ToResourceObject(entity, "entities");
 
         Assert.NotNull(resourceObject.Attributes);
-        Assert.True(resourceObject.Attributes.ContainsKey("visibleName"));
-        Assert.Equal("Visible", resourceObject.Attributes["visibleName"]);
+        Assert.True(resourceObject.Attributes.TryGetValue("visibleName", out var visibleNameValue));
+        Assert.Equal("Visible", visibleNameValue);
         Assert.False(resourceObject.Attributes.ContainsKey("secretPassword"));
         Assert.False(resourceObject.Attributes.ContainsKey("internalData"));
     }

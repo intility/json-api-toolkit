@@ -125,37 +125,28 @@ public static class QueryComplexityAnalyzer
         if (group.Groups.Count == 0)
             return currentDepth;
 
-        int maxChildDepth = currentDepth;
-        foreach (var nested in group.Groups)
-        {
-            int childDepth = GetMaxDepth(nested, currentDepth + 1);
-            if (childDepth > maxChildDepth)
-                maxChildDepth = childDepth;
-        }
-        return maxChildDepth;
+        return group.Groups.Select(nested => GetMaxDepth(nested, currentDepth + 1)).Max();
     }
 
     private static void ValidateFilterValueLengths(FilterGroup group, int maxLength)
     {
-        foreach (var filter in group.Filters)
+        var tooLong = group.Filters.FirstOrDefault(f => f.Value?.Length > maxLength);
+        if (tooLong != null)
         {
-            if (filter.Value?.Length > maxLength)
-            {
-                throw new JsonApiBadRequestException(
-                    $"Filter value for '{filter.Field}' is {filter.Value.Length} characters, "
-                        + $"but maximum allowed is {maxLength}. "
-                        + "Reduce value length or configure a higher limit via JsonApiOptions.MaxFilterValueLength.",
-                    JsonApiErrorCodes.QueryTooComplex,
-                    new ErrorSource { Parameter = $"filter[{filter.Field}]" },
-                    new Dictionary<string, object>
-                    {
-                        ["field"] = filter.Field,
-                        ["valueLength"] = filter.Value.Length,
-                        ["limit"] = maxLength,
-                        ["configKey"] = "JsonApiOptions.MaxFilterValueLength",
-                    }
-                );
-            }
+            throw new JsonApiBadRequestException(
+                $"Filter value for '{tooLong.Field}' is {tooLong.Value!.Length} characters, "
+                    + $"but maximum allowed is {maxLength}. "
+                    + "Reduce value length or configure a higher limit via JsonApiOptions.MaxFilterValueLength.",
+                JsonApiErrorCodes.QueryTooComplex,
+                new ErrorSource { Parameter = $"filter[{tooLong.Field}]" },
+                new Dictionary<string, object>
+                {
+                    ["field"] = tooLong.Field,
+                    ["valueLength"] = tooLong.Value!.Length,
+                    ["limit"] = maxLength,
+                    ["configKey"] = "JsonApiOptions.MaxFilterValueLength",
+                }
+            );
         }
 
         foreach (var nested in group.Groups)

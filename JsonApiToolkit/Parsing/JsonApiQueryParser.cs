@@ -115,11 +115,13 @@ public static class JsonApiQueryParser
         if (request.Query.TryGetValue("sort", out StringValues sortValue))
         {
             var sortParams = new List<SortParameter>();
-            foreach (string field in sortValue.ToString().Split(','))
+            foreach (
+                string field in sortValue
+                    .ToString()
+                    .Split(',')
+                    .Where(f => !string.IsNullOrWhiteSpace(f))
+            )
             {
-                if (string.IsNullOrWhiteSpace(field))
-                    continue;
-
                 bool isDescending = field.StartsWith(char.ToString('-'));
                 string fieldName = isDescending ? field.Substring(1) : field;
 

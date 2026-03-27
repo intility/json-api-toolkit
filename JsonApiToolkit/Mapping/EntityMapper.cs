@@ -81,30 +81,29 @@ public static class EntityMapper
                     .Where(p =>
                         p.CanRead
                         && p.GetMethod?.IsPublic == true
-                        && !HasJsonIgnoreAttribute(p) // Exclude properties marked with [JsonIgnore]
-                        && (
-                            (
-                                typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
-                                && p.PropertyType != typeof(string)
-                                && HasIdProperty(GetCollectionElementType(p.PropertyType)) // Only include collections where items have IDs
-                            )
-                            || (
-                                !p.PropertyType.IsPrimitive
-                                && !p.PropertyType.IsValueType
-                                && p.PropertyType != typeof(string)
-                                && p.PropertyType != typeof(DateTime)
-                                && p.PropertyType != typeof(DateTime?)
-                                && p.PropertyType != typeof(Guid)
-                                && p.PropertyType != typeof(Guid?)
-                                && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType) // Exclude collections from complex object relationships
-                                && HasIdProperty(p.PropertyType) // Only include single objects that have ID properties as relationships
-                            )
-                        )
+                        && !HasJsonIgnoreAttribute(p)
+                        && (IsCollectionRelationship(p) || IsSingleObjectRelationship(p))
                     )
                     .ToList();
             }
         );
     }
+
+    private static bool IsCollectionRelationship(PropertyInfo p) =>
+        typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+        && p.PropertyType != typeof(string)
+        && HasIdProperty(GetCollectionElementType(p.PropertyType));
+
+    private static bool IsSingleObjectRelationship(PropertyInfo p) =>
+        !p.PropertyType.IsPrimitive
+        && !p.PropertyType.IsValueType
+        && p.PropertyType != typeof(string)
+        && p.PropertyType != typeof(DateTime)
+        && p.PropertyType != typeof(DateTime?)
+        && p.PropertyType != typeof(Guid)
+        && p.PropertyType != typeof(Guid?)
+        && !typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
+        && HasIdProperty(p.PropertyType);
 
     /// <summary>
     /// Gets the JSON:API resource type name (entity class name in camelCase).

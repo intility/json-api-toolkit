@@ -393,10 +393,10 @@ public class JsonApiQueryParserTests
 
         Assert.NotNull(parameters.Fields);
         Assert.Single(parameters.Fields);
-        Assert.True(parameters.Fields.ContainsKey("articles"));
-        Assert.Equal(2, parameters.Fields["articles"].Count);
-        Assert.Contains("title", parameters.Fields["articles"]);
-        Assert.Contains("content", parameters.Fields["articles"]);
+        Assert.True(parameters.Fields.TryGetValue("articles", out var articlesFields));
+        Assert.Equal(2, articlesFields!.Count);
+        Assert.Contains("title", articlesFields);
+        Assert.Contains("content", articlesFields);
     }
 
     [Fact]

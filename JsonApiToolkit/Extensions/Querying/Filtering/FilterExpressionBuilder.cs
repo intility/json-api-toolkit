@@ -69,17 +69,11 @@ public static class FilterExpressionBuilder
             }
         }
 
-        foreach (FilterGroup nestedGroup in group.Groups)
-        {
-            Expression? nestedExpr = BuildFilterExpression(
-                nestedGroup,
-                parameter,
-                entityType,
-                logger
-            );
-            if (nestedExpr != null)
-                expressions.Add(nestedExpr);
-        }
+        expressions.AddRange(
+            group
+                .Groups.Select(g => BuildFilterExpression(g, parameter, entityType, logger))
+                .OfType<Expression>()
+        );
 
         if (expressions.Count == 0)
             return null;
@@ -96,32 +90,23 @@ public static class FilterExpressionBuilder
 
         if (group.LogicalOperator == LogicalOperator.Not)
         {
-            foreach (Expression expr in expressions)
-            {
-                var notExpr = Expression.Not(expr);
-                combinedExpression =
-                    combinedExpression == null
-                        ? notExpr
-                        : Expression.OrElse(combinedExpression, notExpr);
-            }
+            combinedExpression = expressions
+                .Select(e => (Expression)Expression.Not(e))
+                .Aggregate((acc, next) => Expression.OrElse(acc, next));
         }
         else
         {
             foreach (Expression expr in expressions)
             {
-                if (combinedExpression == null)
-                {
-                    combinedExpression = expr;
-                }
-                else
-                {
-                    combinedExpression = group.LogicalOperator switch
-                    {
-                        LogicalOperator.And => Expression.AndAlso(combinedExpression, expr),
-                        LogicalOperator.Or => Expression.OrElse(combinedExpression, expr),
-                        _ => Expression.AndAlso(combinedExpression, expr),
-                    };
-                }
+                combinedExpression =
+                    combinedExpression == null
+                        ? expr
+                        : group.LogicalOperator switch
+                        {
+                            LogicalOperator.And => Expression.AndAlso(combinedExpression, expr),
+                            LogicalOperator.Or => Expression.OrElse(combinedExpression, expr),
+                            _ => Expression.AndAlso(combinedExpression, expr),
+                        };
             }
         }
 

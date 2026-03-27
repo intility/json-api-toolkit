@@ -24,10 +24,10 @@ public static class QueryableExtensions
         if (parameters.Filter != null)
             query = query.ApplyFilters(parameters.Filter);
 
-        if (parameters.Sort?.Count > 0)
-            query = query.ApplySorting(parameters.Sort);
-        else
-            query = query.ApplySorting([new SortParameter { Field = "Id", IsDescending = false }]);
+        query =
+            parameters.Sort?.Count > 0
+                ? query.ApplySorting(parameters.Sort!)
+                : query.ApplySorting([new SortParameter { Field = "Id", IsDescending = false }]);
 
         if (parameters.Pagination != null)
             query = query.ApplyPagination(parameters.Pagination);

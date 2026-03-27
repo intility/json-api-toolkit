@@ -165,10 +165,7 @@ public class IncludeFilterParserTests
         var includePaths = new List<string> { "cve-comments" };
 
         // Act
-        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
-            filters,
-            includePaths
-        );
+        var (_, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(filters, includePaths);
 
         // Assert
         Assert.Single(includeFilters);
@@ -197,10 +194,7 @@ public class IncludeFilterParserTests
         var includePaths = new List<string> { "comments.author" };
 
         // Act
-        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
-            filters,
-            includePaths
-        );
+        var (_, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(filters, includePaths);
 
         // Assert
         Assert.Single(includeFilters);
@@ -237,10 +231,7 @@ public class IncludeFilterParserTests
         var includePaths = new List<string> { "comments" };
 
         // Act
-        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
-            filters,
-            includePaths
-        );
+        var (_, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(filters, includePaths);
 
         // Assert
         Assert.Single(includeFilters);

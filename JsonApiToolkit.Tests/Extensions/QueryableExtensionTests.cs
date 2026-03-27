@@ -226,10 +226,7 @@ public class QueryableExtensionsTests
             .ToList()
             .Select(e =>
             {
-                if (e.Id == 1 || e.Id == 3)
-                    e.IsActive = true;
-                else
-                    e.IsActive = false;
+                e.IsActive = e.Id == 1 || e.Id == 3;
                 return e;
             })
             .AsQueryable();
@@ -314,10 +311,6 @@ public class QueryableExtensionsTests
     {
         var query = GetTestData();
         var pagination = new PaginationParameters { Number = 10, Size = 2 };
-        var totalCount = query.Count();
-        var totalPages = (int)Math.Ceiling(totalCount / (double)pagination.Size);
-        var expectedCurrentPage = Math.Min(Math.Max(pagination.Number, 1), Math.Max(totalPages, 1));
-
         var meta = await query.CreatePaginationMetaAsync(pagination);
 
         Assert.Equal(5, meta.TotalResources);
