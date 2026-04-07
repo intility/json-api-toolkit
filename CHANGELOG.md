@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.7.3](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.2...v1.7.3) (2026-04-07)
+
+
+### Bug Fixes
+
+* resolve all 36 open CodeQL code scanning alerts ([#102](https://github.com/intility/Intility.JsonApiToolkit/issues/102)) ([25cf2ef](https://github.com/intility/Intility.JsonApiToolkit/commit/25cf2ef8841e84341658c055fd911593e14e2636))
+
+
+### Documentation
+
+* add OpenAPI integration guide ([#99](https://github.com/intility/Intility.JsonApiToolkit/issues/99)) ([72c0ee1](https://github.com/intility/Intility.JsonApiToolkit/commit/72c0ee18c55088427d4fb54c5aa73ac6a65d9185))
+
+
+### CI
+
+* add Claude code review and auto-docs workflows ([3c9eba1](https://github.com/intility/Intility.JsonApiToolkit/commit/3c9eba1b757c59f23f0032ae53e73ab78962df6f))
+
 ## [1.7.2](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.1...v1.7.2) (2026-03-27)
 
 
