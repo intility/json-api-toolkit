@@ -12,7 +12,7 @@ updates:
       - dependencies
       - nuget
     commit-message:
-      prefix: "deps(nuget)"
+      prefix: "build(nuget)"
     groups:
       # Group minor/patch updates to reduce PR noise
       microsoft:
@@ -41,4 +41,4 @@ updates:
       - dependencies
       - github-actions
     commit-message:
-      prefix: "deps(actions)"
+      prefix: "ci(actions)"
