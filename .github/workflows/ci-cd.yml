@@ -30,13 +30,16 @@ jobs:
         with:
           dotnet-version: 9.x
 
+      - name: Restore
+        run: dotnet restore --locked-mode
+
       - name: Check formatting
         run: |
           dotnet tool restore
           dotnet csharpier check .
 
       - name: Test
-        run: dotnet test --configuration Release --verbosity normal
+        run: dotnet test --configuration Release --verbosity normal --no-restore
 
   publish:
     if: github.event_name == 'release'
@@ -56,8 +59,11 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }}
 
+      - name: Restore
+        run: dotnet restore --locked-mode
+
       - name: Build and Pack
-        run: dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -c Release
+        run: dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -c Release --no-restore
 
       - name: Publish to GitHub Packages
         run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{ secrets.NUGET_AUTH_TOKEN }}

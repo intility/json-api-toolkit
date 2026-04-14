@@ -33,8 +33,11 @@ jobs:
           languages: csharp
           queries: security-and-quality
 
+      - name: Restore
+        run: dotnet restore --locked-mode
+
       - name: Build
-        run: dotnet build --configuration Release
+        run: dotnet build --configuration Release --no-restore
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@c10b8064de6f491fea524254123dbe5e09572f13 # v4
