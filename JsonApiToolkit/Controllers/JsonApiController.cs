@@ -1,4 +1,6 @@
+using JsonApiToolkit.Configuration;
 using JsonApiToolkit.Extensions;
+using JsonApiToolkit.Extensions.Projection;
 using JsonApiToolkit.Extensions.Querying;
 using JsonApiToolkit.Filters;
 using JsonApiToolkit.Helpers;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace JsonApiToolkit.Controllers;
 
@@ -27,6 +30,7 @@ public abstract class JsonApiController : ControllerBase
 {
     private ILogger<JsonApiController>? _logger;
     private IJsonApiQueryParser? _queryParser;
+    private JsonApiOptions? _options;
 
     /// <summary>
     /// Gets the logger instance.
@@ -39,6 +43,14 @@ public abstract class JsonApiController : ControllerBase
     /// </summary>
     protected IJsonApiQueryParser QueryParser =>
         _queryParser ??= HttpContext.RequestServices.GetRequiredService<IJsonApiQueryParser>();
+
+    /// <summary>
+    /// Gets the configured JsonApiOptions.
+    /// </summary>
+    protected JsonApiOptions Options =>
+        _options ??= HttpContext
+            .RequestServices.GetRequiredService<IOptions<JsonApiOptions>>()
+            .Value;
 
     /// <summary>
     /// Parses JSON:API query parameters (filter, sort, page, include).
@@ -285,6 +297,90 @@ public abstract class JsonApiController : ControllerBase
             totalCount,
             parameters.Pagination?.Size ?? totalCount
         );
+
+        if (Options.EnableDatabaseProjection && parameters.Fields != null)
+        {
+            if (mappedIncludes.Count > 0)
+            {
+                // EF Core silently drops all .Include() hints when a .Select() projection
+                // is applied to the same query, so navigation properties would be null.
+                Logger.LogDebug(
+                    "Database projection skipped for {EntityType}: includes are not compatible with Select() projection",
+                    typeof(T).Name
+                );
+            }
+            else if (
+                parameters.Fields.TryGetValue(resourceType, out List<string>? requestedFields)
+                && requestedFields.Count > 0
+            )
+            {
+                try
+                {
+                    var projectionProperties = ProjectionPropertySelector.Determine(
+                        typeof(T),
+                        requestedFields
+                    );
+
+                    var (projectionType, projectionExpression) = ProjectionTypeCache.GetOrCreate(
+                        typeof(T),
+                        projectionProperties
+                    );
+
+                    IQueryable projectedQuery = DatabaseProjectionApplicator.ApplySelect(
+                        filteredQuery,
+                        projectionType,
+                        projectionExpression
+                    );
+
+                    List<object> projectedResults = await DatabaseProjectionApplicator
+                        .MaterializeAsync(
+                            projectedQuery,
+                            projectionType,
+                            HttpContext.RequestAborted
+                        )
+                        .ConfigureAwait(false);
+
+                    Logger.LogDebug(
+                        "Database projection applied for {EntityType}: {FieldCount} fields projected",
+                        typeof(T).Name,
+                        requestedFields.Count
+                    );
+
+                    JsonApiCollectionDocument<ResourceObject> projectedDocument =
+                        JsonApiMapper.ToCollectionDocument(
+                            projectedResults,
+                            resourceType,
+                            baseUrl,
+                            paginationMeta,
+                            mappedIncludes,
+                            Logger,
+                            parameters.Fields
+                        );
+
+                    return Ok(projectedDocument);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(
+                        ex,
+                        "Database projection failed for {EntityType}, falling back to full entity load",
+                        typeof(T).Name
+                    );
+                    // Fall through to the standard full-entity path below.
+                    // Note: CountAsync already executed above, so a projection failure
+                    // costs three DB round-trips (count + failed projection + full load).
+                }
+            }
+            else if (parameters.Fields.Count > 0)
+            {
+                Logger.LogDebug(
+                    "Database projection skipped for {EntityType}: fields[] present but no key matches resourceType '{ResourceType}'. Keys: {Keys}",
+                    typeof(T).Name,
+                    resourceType,
+                    string.Join(", ", parameters.Fields.Keys)
+                );
+            }
+        }
 
         List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
 

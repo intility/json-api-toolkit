@@ -48,7 +48,7 @@ public static class JsonApiMapper
 
         foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(type))
         {
-            string camelName = prop.Name.ToCamelCase();
+            string camelName = EntityMapper.GetAttributeName(prop);
 
             if (
                 allowedFields != null

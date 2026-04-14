@@ -73,7 +73,12 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
   - Combined: `GET /api/books?fields[books]=title,genre&sort=-publishedDate&page[number]=1&page[size]=10`
 
 > [!NOTE]
-> Sparse fieldsets filter attributes at serialization time. The database still loads full entities. This reduces JSON payload size but does not optimize database queries.
+> By default, sparse fieldsets filter attributes at serialization time. The database still loads full entities.
+> To also optimize the database query (only fetch requested columns), enable `EnableDatabaseProjection`:
+> ```csharp
+> services.AddJsonApiToolkit(options => options.EnableDatabaseProjection = true);
+> ```
+> See [Performance](performance.md) for details.
 
 ## How It Works
 
