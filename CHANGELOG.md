@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.3...v1.8.0) (2026-04-14)
+
+
+### Features
+
+* **projection:** add database-level column filtering ([#101](https://github.com/intility/Intility.JsonApiToolkit/issues/101)) ([3234779](https://github.com/intility/Intility.JsonApiToolkit/commit/3234779912a4b9d359c4f943b3ce03df2c519e37))
+
 ## [1.7.3](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.2...v1.7.3) (2026-04-07)
 
 
