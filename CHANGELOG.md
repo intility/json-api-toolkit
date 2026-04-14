@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.8.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.8.0...v1.8.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* **lockfile:** regenerate lock file with linux-musl-x64 RID section ([715745b](https://github.com/intility/Intility.JsonApiToolkit/commit/715745b9f90175e7425a6f03a960a8612140665f))
+
+
+### Build System
+
+* add NuGet lock file support for supply chain security ([6a2cd14](https://github.com/intility/Intility.JsonApiToolkit/commit/6a2cd14b15b87f7838031485e45da64bb340acc6))
+
 ## [1.8.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.7.3...v1.8.0) (2026-04-14)
 
 
