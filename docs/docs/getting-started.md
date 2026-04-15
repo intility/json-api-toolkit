@@ -50,6 +50,7 @@ dotnet add package Intility.JsonApiToolkit
        options.MaxFilterDepth = 5;                // Default: 3
        options.MaxPageSize = 200;                 // Default: 100
        options.DefaultPageSize = 25;              // Default: 10
+       options.StrictPagination = true;           // Default: false
        options.EnableDatabaseProjection = true;   // Default: false
    });
    ```

@@ -32,9 +32,10 @@ JsonApiToolkit provides robust support for JSON:API querying, including filterin
   The `sort` parameter allows multiple sort criteria. Prefixing a field with a minus (`-`) indicates descending order.
   - Example: `GET /api/books?sort=title,-publishedDate`
 
-- **Pagination (`page[number]` and `page[size]`):**  
+- **Pagination (`page[number]` and `page[size]`):**
   Control how many results are returned and which page to view.
   - Example: `GET /api/books?page[number]=2&page[size]=5`
+  - By default, invalid pagination values (page number less than 1, page size exceeding `MaxPageSize`) are silently clamped to valid ranges. Enable `StrictPagination` to return 400 errors instead (see [Security](security.md#strict-pagination)).
 
 - **Inclusion (`include`):**  
   Specify which related resources should be included in the response.
@@ -121,7 +122,7 @@ JsonApiToolkit enforces the following query limits to ensure predictable perform
 | Max Filter Depth | 3 | Maximum nesting of filter groups |
 | Max Filter Value Length | 1000 | Maximum characters per filter value |
 | Max Include Depth | 3 | Maximum include path depth (e.g., `author.posts.comments`) |
-| Max Page Size | 100 | Maximum items per page (silently clamped) |
+| Max Page Size | 100 | Maximum items per page (clamped or rejected based on `StrictPagination`) |
 
 These limits are configurable via `JsonApiOptions`. See the [Security](security.md#query-complexity-limits) documentation for configuration details.
 

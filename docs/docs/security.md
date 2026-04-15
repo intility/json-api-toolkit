@@ -96,6 +96,7 @@ builder.Services.AddJsonApiToolkit(options => {
     options.MaxIncludeDepth = 3;       // Max include path depth (default: 3)
     options.MaxPageSize = 100;         // Max page size, clamped (default: 100)
     options.DefaultPageSize = 10;      // Default when not specified (default: 10)
+    options.StrictPagination = false;  // Reject invalid pagination (default: false)
 });
 ```
 
@@ -108,7 +109,7 @@ builder.Services.AddJsonApiToolkit(options => {
 | `MaxFilterDepth` | Returns 400 Bad Request |
 | `MaxFilterValueLength` | Returns 400 Bad Request |
 | `MaxIncludeDepth` | Returns 400 Bad Request |
-| `MaxPageSize` | Silently clamped to max value |
+| `MaxPageSize` | Clamped (default) or 400 Bad Request (`StrictPagination`) |
 
 ### Error Response
 
@@ -167,6 +168,50 @@ When filtering on a non-allowed relationship:
 
 > [!NOTE]
 > This validation only applies when `[AllowedIncludes]` is present. Without the attribute, all filter paths are allowed.
+
+## Strict Pagination
+
+By default, JsonApiToolkit silently clamps invalid pagination parameters to valid ranges for backwards compatibility. Enable `StrictPagination` to return 400 Bad Request errors instead.
+
+### Configuration
+
+```csharp
+builder.Services.AddJsonApiToolkit(options => {
+    options.StrictPagination = true;
+});
+```
+
+### Behavior
+
+When `StrictPagination` is enabled, the following values are rejected with 400 Bad Request:
+
+- `page[number]` less than 1 (e.g., `page[number]=0` or `page[number]=-5`)
+- `page[size]` less than 1 (e.g., `page[size]=0` or `page[size]=-10`)
+- `page[size]` exceeding `MaxPageSize` (e.g., `page[size]=200` when `MaxPageSize=100`)
+
+When disabled (default), these values are silently clamped:
+
+- `page[number]` less than 1 becomes 1
+- `page[size]` exceeding `MaxPageSize` becomes `MaxPageSize`
+
+### Error Response
+
+```json
+{
+  "errors": [{
+    "status": "400",
+    "code": "INVALID_PAGE_SIZE",
+    "title": "Invalid page size",
+    "detail": "Page size '200' exceeds maximum allowed size of 100. Reduce page size or configure a higher limit via JsonApiOptions.MaxPageSize.",
+    "source": { "parameter": "page[size]" },
+    "meta": {
+      "value": 200,
+      "max": 100,
+      "configKey": "JsonApiOptions.MaxPageSize"
+    }
+  }]
+}
+```
 
 ## DoS Protection
 
