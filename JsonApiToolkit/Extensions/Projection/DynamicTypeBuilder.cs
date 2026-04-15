@@ -9,19 +9,19 @@ namespace JsonApiToolkit.Extensions.Projection;
 /// </summary>
 internal static class DynamicTypeBuilder
 {
-    private static readonly AssemblyBuilder s_assemblyBuilder;
-    private static readonly ModuleBuilder s_moduleBuilder;
-    private static readonly object s_buildLock = new();
-    private static int s_typeCounter;
+    private static readonly AssemblyBuilder _assemblyBuilder;
+    private static readonly ModuleBuilder _moduleBuilder;
+    private static readonly Lock _buildLock = new();
+    private static int _typeCounter;
 
     static DynamicTypeBuilder()
     {
         var assemblyName = new AssemblyName("JsonApiToolkit.Projections");
-        s_assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
+        _assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
             assemblyName,
             AssemblyBuilderAccess.Run
         );
-        s_moduleBuilder = s_assemblyBuilder.DefineDynamicModule("MainModule");
+        _moduleBuilder = _assemblyBuilder.DefineDynamicModule("MainModule");
     }
 
     /// <summary>
@@ -30,12 +30,12 @@ internal static class DynamicTypeBuilder
     internal static Type Build(IEnumerable<(string Name, Type PropertyType)> properties)
     {
         // ModuleBuilder is not thread-safe; serialize type creation
-        lock (s_buildLock)
+        lock (_buildLock)
         {
-            int id = ++s_typeCounter;
+            int id = ++_typeCounter;
             string typeName = $"JsonApiProjection_{id}";
 
-            TypeBuilder typeBuilder = s_moduleBuilder.DefineType(
+            TypeBuilder typeBuilder = _moduleBuilder.DefineType(
                 typeName,
                 TypeAttributes.Public
                     | TypeAttributes.Class

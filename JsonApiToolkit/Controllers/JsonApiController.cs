@@ -28,29 +28,23 @@ namespace JsonApiToolkit.Controllers;
 [ServiceFilter(typeof(JsonApiExceptionFilter))]
 public abstract class JsonApiController : ControllerBase
 {
-    private ILogger<JsonApiController>? _logger;
-    private IJsonApiQueryParser? _queryParser;
-    private JsonApiOptions? _options;
-
     /// <summary>
     /// Gets the logger instance.
     /// </summary>
     protected ILogger<JsonApiController> Logger =>
-        _logger ??= HttpContext.RequestServices.GetRequiredService<ILogger<JsonApiController>>();
+        field ??= HttpContext.RequestServices.GetRequiredService<ILogger<JsonApiController>>();
 
     /// <summary>
     /// Gets the query parser service.
     /// </summary>
     protected IJsonApiQueryParser QueryParser =>
-        _queryParser ??= HttpContext.RequestServices.GetRequiredService<IJsonApiQueryParser>();
+        field ??= HttpContext.RequestServices.GetRequiredService<IJsonApiQueryParser>();
 
     /// <summary>
     /// Gets the configured JsonApiOptions.
     /// </summary>
     protected JsonApiOptions Options =>
-        _options ??= HttpContext
-            .RequestServices.GetRequiredService<IOptions<JsonApiOptions>>()
-            .Value;
+        field ??= HttpContext.RequestServices.GetRequiredService<IOptions<JsonApiOptions>>().Value;
 
     /// <summary>
     /// Parses JSON:API query parameters (filter, sort, page, include).
