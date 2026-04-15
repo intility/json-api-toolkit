@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json.Serialization;
 using JsonApiToolkit.Extensions;
+using JsonApiToolkit.Extensions.Querying;
 
 namespace JsonApiToolkit.Mapping;
 
@@ -92,7 +93,7 @@ public static class EntityMapper
     private static bool IsCollectionRelationship(PropertyInfo p) =>
         typeof(IEnumerable).IsAssignableFrom(p.PropertyType)
         && p.PropertyType != typeof(string)
-        && HasIdProperty(GetCollectionElementType(p.PropertyType));
+        && HasIdProperty(TypeHelpers.GetCollectionElementType(p.PropertyType));
 
     private static bool IsSingleObjectRelationship(PropertyInfo p) =>
         !p.PropertyType.IsPrimitive
@@ -142,44 +143,5 @@ public static class EntityMapper
     private static bool HasJsonIgnoreAttribute(PropertyInfo property)
     {
         return property.GetCustomAttribute<JsonIgnoreAttribute>() != null;
-    }
-
-    /// <summary>
-    /// Gets the element type of a collection.
-    /// </summary>
-    /// <param name="collectionType">The collection type</param>
-    /// <returns>The element type, or null if not a collection</returns>
-    private static Type? GetCollectionElementType(Type collectionType)
-    {
-        // String is not considered a collection for our purposes
-        if (collectionType == typeof(string))
-        {
-            return null;
-        }
-
-        // Check if it's a generic collection
-        if (collectionType.IsGenericType)
-        {
-            Type[] genericArgs = collectionType.GetGenericArguments();
-            if (genericArgs.Length == 1)
-            {
-                return genericArgs[0];
-            }
-        }
-
-        // Check if it implements IEnumerable<T>
-        Type? enumerable = collectionType
-            .GetInterfaces()
-            .FirstOrDefault(i =>
-                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
-            );
-
-        if (enumerable != null)
-        {
-            return enumerable.GetGenericArguments()[0];
-        }
-
-        // For non-generic collections, we can't determine the element type
-        return null;
     }
 }

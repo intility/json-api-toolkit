@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Reflection;
 using JsonApiToolkit.Extensions;
+using JsonApiToolkit.Extensions.Querying;
 using JsonApiToolkit.Models.Resources;
 using Microsoft.Extensions.Logging;
 
@@ -84,10 +85,7 @@ public static class InclusionMapper
 
         Type type = entity.GetType();
 
-        PropertyInfo? relProp = type.GetProperties()
-            .FirstOrDefault(p =>
-                string.Equals(p.Name, relationshipName, StringComparison.OrdinalIgnoreCase)
-            );
+        PropertyInfo? relProp = QueryHelpers.GetPropertyByJsonName(type, relationshipName);
         if (relProp == null)
         {
             logger?.LogWarning(
