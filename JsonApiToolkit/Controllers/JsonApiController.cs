@@ -187,95 +187,24 @@ public abstract class JsonApiController : ControllerBase
         where T : class
     {
         QueryParameters parameters = GetJsonApiQueryParameters();
-
-        Logger.LogDebug(
-            "Query for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}, Fields={FieldsCount}",
-            typeof(T).Name,
-            parameters.Filter?.Filters?.Count ?? 0,
-            parameters.Sort?.Count ?? 0,
-            parameters.Include?.Count ?? 0,
-            parameters.Pagination != null,
-            parameters.Fields?.Count ?? 0
-        );
-
-        if (parameters.Filter?.Filters?.Count > 20)
-        {
-            Logger.LogInformation(
-                "Complex query with {Count} filters on {EntityType}",
-                parameters.Filter.Filters.Count,
-                typeof(T).Name
-            );
-        }
-
         string baseUrl = GetFullRequestUrl();
         var mappedIncludes = EfIncludePathHelper.MapIncludePathsToClrProperties<T>(
             parameters.Include
         );
 
-        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
-        {
-            Logger.LogWarning(
-                "No valid includes for {EntityType}. Requested: {Includes}",
-                typeof(T).Name,
-                string.Join(", ", parameters.Include)
-            );
-        }
+        LogQueryParameters<T>(parameters, mappedIncludes);
 
-        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
-            parameters.Filter,
-            parameters.Include
+        IQueryable<T> filteredQuery = ApplyFiltersAndIncludes(
+            queryable,
+            parameters,
+            mappedIncludes
         );
-
-        IQueryable<T> filteredQuery = queryable;
-
-        if (mainFilters != null)
-            filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
-
-        if (includeFilters.Count > 0)
-        {
-            Logger.LogDebug(
-                "Applying {FilterCount} filtered includes for {EntityType}",
-                includeFilters.Count,
-                typeof(T).Name
-            );
-            filteredQuery = filteredQuery.ApplyFilteredIncludes(
-                mappedIncludes,
-                includeFilters,
-                Logger
-            );
-        }
-        else if (mappedIncludes.Count > 0)
-        {
-            // Use single query with pagination to avoid EF Core split query issues
-            filteredQuery =
-                parameters.Pagination != null
-                    ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
-                    : filteredQuery.ApplyIncludes(mappedIncludes);
-
-            Logger.LogDebug(
-                "Applied {IncludeCount} includes for {EntityType} using {QueryType}",
-                mappedIncludes.Count,
-                typeof(T).Name,
-                parameters.Pagination != null ? "SingleQuery" : "SplitQuery"
-            );
-        }
 
         if (parameters.Sort?.Count > 0)
             filteredQuery = filteredQuery.ApplySorting(parameters.Sort, Logger);
 
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
-
-        if (totalCount == 0 && parameters.Filter?.Filters?.Count > 0)
-        {
-            Logger.LogInformation("Query returned 0 results for {EntityType}", typeof(T).Name);
-        }
-        else if (totalCount > 1000 && parameters.Pagination == null)
-        {
-            Logger.LogWarning(
-                "Large result set ({TotalCount}) without pagination. Consider adding pagination to improve performance",
-                totalCount
-            );
-        }
+        LogCountResults<T>(parameters, totalCount);
 
         if (parameters.Pagination != null)
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination, totalCount);
@@ -292,89 +221,16 @@ public abstract class JsonApiController : ControllerBase
             parameters.Pagination?.Size ?? totalCount
         );
 
-        if (Options.EnableDatabaseProjection && parameters.Fields != null)
-        {
-            if (mappedIncludes.Count > 0)
-            {
-                // EF Core silently drops all .Include() hints when a .Select() projection
-                // is applied to the same query, so navigation properties would be null.
-                Logger.LogDebug(
-                    "Database projection skipped for {EntityType}: includes are not compatible with Select() projection",
-                    typeof(T).Name
-                );
-            }
-            else if (
-                parameters.Fields.TryGetValue(resourceType, out List<string>? requestedFields)
-                && requestedFields.Count > 0
-            )
-            {
-                try
-                {
-                    var projectionProperties = ProjectionPropertySelector.Determine(
-                        typeof(T),
-                        requestedFields
-                    );
-
-                    var (projectionType, projectionExpression) = ProjectionTypeCache.GetOrCreate(
-                        typeof(T),
-                        projectionProperties
-                    );
-
-                    IQueryable projectedQuery = DatabaseProjectionApplicator.ApplySelect(
-                        filteredQuery,
-                        projectionType,
-                        projectionExpression
-                    );
-
-                    List<object> projectedResults = await DatabaseProjectionApplicator
-                        .MaterializeAsync(
-                            projectedQuery,
-                            projectionType,
-                            HttpContext.RequestAborted
-                        )
-                        .ConfigureAwait(false);
-
-                    Logger.LogDebug(
-                        "Database projection applied for {EntityType}: {FieldCount} fields projected",
-                        typeof(T).Name,
-                        requestedFields.Count
-                    );
-
-                    JsonApiCollectionDocument<ResourceObject> projectedDocument =
-                        JsonApiMapper.ToCollectionDocument(
-                            projectedResults,
-                            resourceType,
-                            baseUrl,
-                            paginationMeta,
-                            mappedIncludes,
-                            Logger,
-                            parameters.Fields
-                        );
-
-                    return Ok(projectedDocument);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(
-                        ex,
-                        "Database projection failed for {EntityType}, falling back to full entity load",
-                        typeof(T).Name
-                    );
-                    // Fall through to the standard full-entity path below.
-                    // Note: CountAsync already executed above, so a projection failure
-                    // costs three DB round-trips (count + failed projection + full load).
-                }
-            }
-            else if (parameters.Fields.Count > 0)
-            {
-                Logger.LogDebug(
-                    "Database projection skipped for {EntityType}: fields[] present but no key matches resourceType '{ResourceType}'. Keys: {Keys}",
-                    typeof(T).Name,
-                    resourceType,
-                    string.Join(", ", parameters.Fields.Keys)
-                );
-            }
-        }
+        IActionResult? projectionResult = await TryApplyDatabaseProjection(
+            filteredQuery,
+            resourceType,
+            baseUrl,
+            paginationMeta,
+            mappedIncludes,
+            parameters
+        );
+        if (projectionResult != null)
+            return projectionResult;
 
         List<T> results = await filteredQuery.ToListAsync().ConfigureAwait(false);
 
@@ -555,4 +411,190 @@ public abstract class JsonApiController : ControllerBase
     /// </summary>
     protected string GetFullRequestUrl() =>
         $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
+
+    private void LogQueryParameters<T>(QueryParameters parameters, List<string> mappedIncludes)
+    {
+        Logger.LogDebug(
+            "Query for {EntityType}: Filters={FilterCount}, Sorts={SortCount}, Includes={IncludeCount}, Pagination={HasPagination}, Fields={FieldsCount}",
+            typeof(T).Name,
+            parameters.Filter?.Filters?.Count ?? 0,
+            parameters.Sort?.Count ?? 0,
+            parameters.Include?.Count ?? 0,
+            parameters.Pagination != null,
+            parameters.Fields?.Count ?? 0
+        );
+
+        if (parameters.Filter?.Filters?.Count > 20)
+        {
+            Logger.LogInformation(
+                "Complex query with {Count} filters on {EntityType}",
+                parameters.Filter.Filters.Count,
+                typeof(T).Name
+            );
+        }
+
+        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
+        {
+            Logger.LogWarning(
+                "No valid includes for {EntityType}. Requested: {Includes}",
+                typeof(T).Name,
+                string.Join(", ", parameters.Include)
+            );
+        }
+    }
+
+    private IQueryable<T> ApplyFiltersAndIncludes<T>(
+        IQueryable<T> queryable,
+        QueryParameters parameters,
+        List<string> mappedIncludes
+    )
+        where T : class
+    {
+        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
+            parameters.Filter,
+            parameters.Include
+        );
+
+        IQueryable<T> filteredQuery = queryable;
+
+        if (mainFilters != null)
+            filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
+
+        if (includeFilters.Count > 0)
+        {
+            Logger.LogDebug(
+                "Applying {FilterCount} filtered includes for {EntityType}",
+                includeFilters.Count,
+                typeof(T).Name
+            );
+            filteredQuery = filteredQuery.ApplyFilteredIncludes(
+                mappedIncludes,
+                includeFilters,
+                Logger
+            );
+        }
+        else if (mappedIncludes.Count > 0)
+        {
+            filteredQuery =
+                parameters.Pagination != null
+                    ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
+                    : filteredQuery.ApplyIncludes(mappedIncludes);
+
+            Logger.LogDebug(
+                "Applied {IncludeCount} includes for {EntityType} using {QueryType}",
+                mappedIncludes.Count,
+                typeof(T).Name,
+                parameters.Pagination != null ? "SingleQuery" : "SplitQuery"
+            );
+        }
+
+        return filteredQuery;
+    }
+
+    private void LogCountResults<T>(QueryParameters parameters, int totalCount)
+    {
+        if (totalCount == 0 && parameters.Filter?.Filters?.Count > 0)
+        {
+            Logger.LogInformation("Query returned 0 results for {EntityType}", typeof(T).Name);
+        }
+        else if (totalCount > 1000 && parameters.Pagination == null)
+        {
+            Logger.LogWarning(
+                "Large result set ({TotalCount}) without pagination. Consider adding pagination to improve performance",
+                totalCount
+            );
+        }
+    }
+
+    private async Task<IActionResult?> TryApplyDatabaseProjection<T>(
+        IQueryable<T> filteredQuery,
+        string resourceType,
+        string baseUrl,
+        PaginationMeta? paginationMeta,
+        List<string> mappedIncludes,
+        QueryParameters parameters
+    )
+        where T : class
+    {
+        if (!Options.EnableDatabaseProjection || parameters.Fields == null)
+            return null;
+
+        if (mappedIncludes.Count > 0)
+        {
+            Logger.LogDebug(
+                "Database projection skipped for {EntityType}: includes are not compatible with Select() projection",
+                typeof(T).Name
+            );
+            return null;
+        }
+
+        if (
+            parameters.Fields.TryGetValue(resourceType, out List<string>? requestedFields)
+            && requestedFields.Count > 0
+        )
+        {
+            try
+            {
+                var projectionProperties = ProjectionPropertySelector.Determine(
+                    typeof(T),
+                    requestedFields
+                );
+
+                var (projectionType, projectionExpression) = ProjectionTypeCache.GetOrCreate(
+                    typeof(T),
+                    projectionProperties
+                );
+
+                IQueryable projectedQuery = DatabaseProjectionApplicator.ApplySelect(
+                    filteredQuery,
+                    projectionType,
+                    projectionExpression
+                );
+
+                List<object> projectedResults = await DatabaseProjectionApplicator
+                    .MaterializeAsync(projectedQuery, projectionType, HttpContext.RequestAborted)
+                    .ConfigureAwait(false);
+
+                Logger.LogDebug(
+                    "Database projection applied for {EntityType}: {FieldCount} fields projected",
+                    typeof(T).Name,
+                    requestedFields.Count
+                );
+
+                JsonApiCollectionDocument<ResourceObject> projectedDocument =
+                    JsonApiMapper.ToCollectionDocument(
+                        projectedResults,
+                        resourceType,
+                        baseUrl,
+                        paginationMeta,
+                        mappedIncludes,
+                        Logger,
+                        parameters.Fields
+                    );
+
+                return Ok(projectedDocument);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(
+                    ex,
+                    "Database projection failed for {EntityType}, falling back to full entity load",
+                    typeof(T).Name
+                );
+                return null;
+            }
+        }
+
+        if (parameters.Fields.Count > 0)
+        {
+            Logger.LogDebug(
+                "Database projection skipped for {EntityType}: fields[] present but no key matches resourceType '{ResourceType}'. Keys: {Keys}",
+                typeof(T).Name,
+                resourceType,
+                string.Join(", ", parameters.Fields.Keys)
+            );
+        }
+
+        return null;
+    }
 }

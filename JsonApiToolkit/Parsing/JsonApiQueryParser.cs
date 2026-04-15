@@ -1,4 +1,5 @@
 using JsonApiToolkit.Configuration;
+using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
@@ -48,6 +49,48 @@ public static class JsonApiQueryParser
 
         if (hasPageNumber || hasPageSize)
         {
+            if (options.StrictPagination)
+            {
+                if (hasPageNumber && int.TryParse(pageNumber, out int rawNum) && rawNum < 1)
+                {
+                    throw new JsonApiBadRequestException(
+                        $"Invalid page number '{rawNum}'. Page numbers must be 1 or greater.",
+                        JsonApiErrorCodes.InvalidPageNumber,
+                        new ErrorSource { Parameter = "page[number]" },
+                        new Dictionary<string, object> { ["value"] = rawNum }
+                    );
+                }
+
+                if (hasPageSize && int.TryParse(pageSize, out int rawSize))
+                {
+                    if (rawSize < 1)
+                    {
+                        throw new JsonApiBadRequestException(
+                            $"Invalid page size '{rawSize}'. Page size must be 1 or greater.",
+                            JsonApiErrorCodes.InvalidPageSize,
+                            new ErrorSource { Parameter = "page[size]" },
+                            new Dictionary<string, object> { ["value"] = rawSize }
+                        );
+                    }
+
+                    if (rawSize > options.MaxPageSize)
+                    {
+                        throw new JsonApiBadRequestException(
+                            $"Page size '{rawSize}' exceeds maximum allowed size of {options.MaxPageSize}. "
+                                + "Reduce page size or configure a higher limit via JsonApiOptions.MaxPageSize.",
+                            JsonApiErrorCodes.PageSizeExceeded,
+                            new ErrorSource { Parameter = "page[size]" },
+                            new Dictionary<string, object>
+                            {
+                                ["value"] = rawSize,
+                                ["max"] = options.MaxPageSize,
+                                ["configKey"] = "JsonApiOptions.MaxPageSize",
+                            }
+                        );
+                    }
+                }
+            }
+
             queryParams.Pagination = new PaginationParameters
             {
                 Number =
@@ -144,6 +187,27 @@ public static class JsonApiQueryParser
                 .Where(i => !string.IsNullOrWhiteSpace(i))
                 .Select(i => i.Trim())
                 .ToList();
+
+            foreach (var include in includes)
+            {
+                int depth = include.Count(c => c == '.') + 1;
+                if (depth > options.MaxIncludeDepth)
+                {
+                    throw new JsonApiBadRequestException(
+                        $"Include path '{include}' has depth {depth}, but maximum allowed is {options.MaxIncludeDepth}. "
+                            + "Reduce nesting or configure a higher limit via JsonApiOptions.MaxIncludeDepth.",
+                        JsonApiErrorCodes.IncludeDepthExceeded,
+                        new ErrorSource { Parameter = "include" },
+                        new Dictionary<string, object>
+                        {
+                            ["includePath"] = include,
+                            ["depth"] = depth,
+                            ["limit"] = options.MaxIncludeDepth,
+                            ["configKey"] = "JsonApiOptions.MaxIncludeDepth",
+                        }
+                    );
+                }
+            }
 
             if (includes.Count > 0)
             {

@@ -48,6 +48,13 @@ public class JsonApiOptions
     public int DefaultPageSize { get; set; } = 10;
 
     /// <summary>
+    /// When true, returns 400 Bad Request for invalid pagination values instead of
+    /// silently clamping. Invalid page numbers (less than 1) and page sizes (less than 1 or
+    /// exceeding MaxPageSize) will return errors. Default: false (clamp for backwards compatibility).
+    /// </summary>
+    public bool StrictPagination { get; set; }
+
+    /// <summary>
     /// When true, applies database-level column filtering via EF Core Select() projection
     /// when fields[type] is specified in the request. Only fetches requested columns from
     /// the database instead of loading full entities and filtering in memory.

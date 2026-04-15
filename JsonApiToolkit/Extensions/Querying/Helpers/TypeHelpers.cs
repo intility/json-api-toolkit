@@ -22,11 +22,17 @@ internal static class TypeHelpers
 
     internal static Type? GetCollectionElementType(Type collectionType)
     {
+        if (collectionType == typeof(string))
+            return null;
+
         if (collectionType.IsArray)
             return collectionType.GetElementType();
 
-        if (collectionType.IsGenericType)
-            return collectionType.GetGenericArguments().FirstOrDefault();
+        if (
+            collectionType.IsGenericType
+            && collectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+        )
+            return collectionType.GetGenericArguments()[0];
 
         var enumerableInterface = collectionType
             .GetInterfaces()

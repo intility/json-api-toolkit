@@ -239,9 +239,9 @@ public class JsonApiQueryParserServiceTests
             }
         );
 
-        // Filters are checked first
+        // Include depth is validated during parsing (before post-parse filter count check)
         var exception = Assert.Throws<JsonApiBadRequestException>(() => service.Parse(request));
-        Assert.Contains("filters", exception.Message);
+        Assert.Contains("Include path", exception.Message);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
