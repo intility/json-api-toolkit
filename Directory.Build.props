@@ -2,9 +2,13 @@
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <RuntimeIdentifier>linux-musl-x64</RuntimeIdentifier>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-musl-x64'">
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <NuGetLockFilePath>$(MSBuildProjectDirectory)\packages.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
   </PropertyGroup>
 </Project>

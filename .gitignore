@@ -393,8 +393,6 @@ test.json
 restore_db.sh
 wsl-docker-compose.sh
 
-# Ignore asdf-vm files
-.tool-versions
 # WSL
 *.deb
 

@@ -2,7 +2,32 @@
 
 This document tracks all breaking changes, new features, and migration steps for each version of JsonApiToolkit.
 
-**Current Version:** 1.8.0
+**Current Version:** 2.0.0
+
+---
+
+## v2.0.0 - .NET 10
+
+**Breaking Changes:**
+- Minimum runtime requirement changes from .NET 9 to .NET 10
+- Applications must target `net10.0` to use this version
+
+**Changes:**
+- Target framework updated from `net9.0` to `net10.0`
+- `Microsoft.EntityFrameworkCore` updated to 10.x
+- `Microsoft.EntityFrameworkCore.Relational` updated to 10.x
+- Replaced legacy `Microsoft.AspNetCore.Mvc` 2.x NuGet package with `FrameworkReference` to `Microsoft.AspNetCore.App` (the correct pattern since .NET Core 3.0)
+- Removed explicit `Microsoft.AspNetCore.JsonPatch` and `Microsoft.Extensions.DependencyInjection.Abstractions` package references (provided by the shared framework)
+- CI/CD pipelines updated to .NET 10 SDK
+- SDK version pinned via `global.json` for reproducible builds
+
+**Migration:**
+1. Update your project to target .NET 10:
+   ```xml
+   <TargetFramework>net10.0</TargetFramework>
+   ```
+2. Update the JsonApiToolkit package to v2.0.0
+3. Ensure your deployment environment has the .NET 10 runtime installed
 
 ---
 
@@ -32,32 +57,6 @@ services.AddJsonApiToolkit(options =>
 - Nested include projections (projecting related entities to fewer columns) are not supported;
   included entities are still fully loaded.
 - Falls back to full entity load automatically if projection fails for any reason.
-
----
-
-## .NET 10 Upgrade (November 2025)
-
-**Target Version:** 2.0.0
-
-**Timeline:** After .NET 10 GA release (November 2025)
-
-**Changes:**
-- [ ] Update target framework from `net9.0` to `net10.0`
-- [ ] Update Microsoft.* dependencies to .NET 10 versions
-- [ ] Review and adopt new C# 14 language features where beneficial
-- [ ] Update GitHub Actions to use `dotnet-version: 10.x`
-- [ ] Update documentation prerequisites
-
-**Breaking Changes:**
-- Minimum runtime requirement changes from .NET 9 to .NET 10
-- Applications must upgrade to .NET 10 to use new package versions
-
-**Migration:**
-1. Update your project to target .NET 10
-2. Update JsonApiToolkit package to the new version
-
-**Multi-targeting consideration:**
-If there's demand, we may multi-target `net9.0;net10.0` for one release cycle to ease migration.
 
 ---
 
