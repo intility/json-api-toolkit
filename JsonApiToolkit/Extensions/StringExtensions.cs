@@ -13,7 +13,7 @@ public static class StringExtensions
         if (string.IsNullOrEmpty(str) || !char.IsUpper(str[0]))
             return str;
 
-        return char.ToLowerInvariant(str[0]) + str.Substring(1);
+        return char.ToLowerInvariant(str[0]) + str[1..];
     }
 
     /// <summary>
@@ -24,6 +24,6 @@ public static class StringExtensions
         if (string.IsNullOrEmpty(str))
             return str;
 
-        return char.ToUpperInvariant(str[0]) + str.Substring(1);
+        return char.ToUpperInvariant(str[0]) + str[1..];
     }
 }
