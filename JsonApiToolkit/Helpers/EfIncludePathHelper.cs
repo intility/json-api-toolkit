@@ -21,19 +21,16 @@ public static class EfIncludePathHelper
             return [];
 
         var type = typeof(T);
-        var mapped = new List<string>(includePaths.Count);
 
-        foreach (var path in includePaths.Where(p => !string.IsNullOrWhiteSpace(p)))
-        {
-            var mappedPath = s_includePathCache.GetOrAdd(
-                (type, path),
-                key => MapSinglePath(key.Item1, key.Item2)
-            );
-
-            mapped.Add(mappedPath);
-        }
-
-        return mapped;
+        return includePaths
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(path =>
+                s_includePathCache.GetOrAdd(
+                    (type, path),
+                    key => MapSinglePath(key.Item1, key.Item2)
+                )
+            )
+            .ToList();
     }
 
     private static string MapSinglePath(Type startType, string path)
