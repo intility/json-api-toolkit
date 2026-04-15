@@ -4,7 +4,7 @@ This guide walks you through installing and configuring JsonApiToolkit in your .
 
 ## Prerequisites
 
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download) or later.
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download) or later.
 - An ASP.NET Core project.
 
 ## Installation

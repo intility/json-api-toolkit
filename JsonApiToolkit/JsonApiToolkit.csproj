@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -23,12 +23,10 @@
     <InternalsVisibleTo Include="JsonApiToolkit.Tests"/>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="10.0.5"/>
+    <FrameworkReference Include="Microsoft.AspNetCore.App"/>
     <PackageReference Include="Intility.Logging.AspNetCore" Version="3.1.4"/>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.3.9"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.14"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.14"/>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.5"/>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\"/>
