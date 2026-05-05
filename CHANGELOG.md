@@ -1,5 +1,46 @@
 # Changelog
 
+## [2.0.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.8.1...v2.0.0) (2026-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* upgrade to .NET 10 ([#112](https://github.com/intility/Intility.JsonApiToolkit/issues/112))
+
+### Features
+
+* upgrade to .NET 10 ([#112](https://github.com/intility/Intility.JsonApiToolkit/issues/112)) ([7e9bae9](https://github.com/intility/Intility.JsonApiToolkit/commit/7e9bae991b94971d9c7860bd2c68ca32214e8bf3))
+
+
+### Bug Fixes
+
+* code quality and fixes ([#116](https://github.com/intility/Intility.JsonApiToolkit/issues/116)) ([0f7af6b](https://github.com/intility/Intility.JsonApiToolkit/commit/0f7af6b5b01f743a2e23da73f63e72cd06120b7a))
+* use LINQ `Select` instead of foreach loop in `EfIncludePathHelper` ([#115](https://github.com/intility/Intility.JsonApiToolkit/issues/115)) ([381d1b1](https://github.com/intility/Intility.JsonApiToolkit/commit/381d1b1e8c0219b813e76ccda7b8d514b875c0f5))
+
+
+### Code Refactoring
+
+* adopt C# 14 language features ([#114](https://github.com/intility/Intility.JsonApiToolkit/issues/114)) ([2b0169e](https://github.com/intility/Intility.JsonApiToolkit/commit/2b0169eaefc49395754bad34698276c28a250046))
+
+
+### Documentation
+
+* auto-generated docs for intility/Intility.JsonApiToolkit[#116](https://github.com/intility/Intility.JsonApiToolkit/issues/116) ([#117](https://github.com/intility/Intility.JsonApiToolkit/issues/117)) ([89f5cdf](https://github.com/intility/Intility.JsonApiToolkit/commit/89f5cdf540734b7cdae93ef4dfe2e6959da69fca))
+
+
+### Build System
+
+* **nuget:** Bump coverlet.collector from 8.0.1 to 10.0.0 ([#120](https://github.com/intility/Intility.JsonApiToolkit/issues/120)) ([8d489bd](https://github.com/intility/Intility.JsonApiToolkit/commit/8d489bdd2f11611cfde34ad0805c8480c7ae281f))
+* **nuget:** Bump the microsoft group with 4 updates ([#119](https://github.com/intility/Intility.JsonApiToolkit/issues/119)) ([5c8f97e](https://github.com/intility/Intility.JsonApiToolkit/commit/5c8f97e1c1414f74d8c0c055c0215fb1b61df800))
+* **nuget:** Bump the microsoft group with 5 updates ([#124](https://github.com/intility/Intility.JsonApiToolkit/issues/124)) ([f616e77](https://github.com/intility/Intility.JsonApiToolkit/commit/f616e77f50a7d42d49ccec13fe55c820840346d2))
+
+
+### CI
+
+* **actions:** bump github/codeql-action from 4.35.1 to 4.35.2 ([#118](https://github.com/intility/Intility.JsonApiToolkit/issues/118)) ([600e53b](https://github.com/intility/Intility.JsonApiToolkit/commit/600e53b902d75af633853fb318b49751813bd6ed))
+* **actions:** Bump github/codeql-action from 4.35.2 to 4.35.3 ([#123](https://github.com/intility/Intility.JsonApiToolkit/issues/123)) ([ba623a5](https://github.com/intility/Intility.JsonApiToolkit/commit/ba623a517133f14719e6df33ecf555f920e38c64))
+* **actions:** Bump googleapis/release-please-action from 4.4.1 to 5.0.0 ([#121](https://github.com/intility/Intility.JsonApiToolkit/issues/121)) ([973d5ad](https://github.com/intility/Intility.JsonApiToolkit/commit/973d5ade87eec86135f3a03f92f7744ec49c0d60))
+
 ## [1.8.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.8.0...v1.8.1) (2026-04-14)
 
 
