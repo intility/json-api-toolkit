@@ -183,15 +183,20 @@ builder.Services.AddJsonApiToolkit(options => {
 
 ### Behavior
 
-When `StrictPagination` is enabled, the following values are rejected with 400 Bad Request:
+When `StrictPagination` is enabled, the following values are rejected with 400 Bad Request at parse time:
 
 - `page[number]` less than 1 (e.g., `page[number]=0` or `page[number]=-5`)
 - `page[size]` less than 1 (e.g., `page[size]=0` or `page[size]=-10`)
 - `page[size]` exceeding `MaxPageSize` (e.g., `page[size]=200` when `MaxPageSize=100`)
 
+After the count is computed, the following also returns **404 Not Found**:
+
+- `page[number]` greater than the total page count (e.g., `page[number]=100` for a result set with 3 pages). Returns no 404 when the result set is empty (no pages exist).
+
 When disabled (default), these values are silently clamped:
 
 - `page[number]` less than 1 becomes 1
+- `page[number]` greater than total pages becomes the last page
 - `page[size]` exceeding `MaxPageSize` becomes `MaxPageSize`
 
 ### Error Response

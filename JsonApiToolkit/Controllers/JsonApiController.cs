@@ -206,6 +206,26 @@ public abstract class JsonApiController : ControllerBase
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
         LogCountResults<T>(parameters, totalCount);
 
+        if (Options.StrictPagination && parameters.Pagination != null && totalCount > 0)
+        {
+            int totalPages = (int)Math.Ceiling(totalCount / (double)parameters.Pagination.Size);
+            if (parameters.Pagination.Number > totalPages)
+            {
+                throw new JsonApiNotFoundException(
+                    $"Page {parameters.Pagination.Number} does not exist. "
+                        + $"This collection has {totalPages} page(s). Request a page between 1 and {totalPages}.",
+                    JsonApiErrorCodes.InvalidPageNumber,
+                    new ErrorSource { Parameter = "page[number]" },
+                    new Dictionary<string, object>
+                    {
+                        ["value"] = parameters.Pagination.Number,
+                        ["totalPages"] = totalPages,
+                        ["totalResources"] = totalCount,
+                    }
+                );
+            }
+        }
+
         if (parameters.Pagination != null)
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination, totalCount);
 

@@ -2,7 +2,38 @@
 
 This document tracks all breaking changes, new features, and migration steps for each version of JsonApiToolkit.
 
-**Current Version:** 2.0.0
+**Current Version:** 2.1.0
+
+---
+
+## v2.1.0 - Strict Pagination (runtime)
+
+**New Behavior:**
+`StrictPagination` now also rejects requests for a page that does not exist (page number greater than the total number of pages). Previously these requests were clamped to the last page.
+
+When `StrictPagination = true` and the requested `page[number]` exceeds the total page count for the resolved query, the controller returns **404 Not Found** with a JSON:API error document:
+
+```json
+{
+  "errors": [{
+    "status": "404",
+    "code": "INVALID_PAGE_NUMBER",
+    "detail": "Page 10 does not exist. This collection has 3 page(s). Request a page between 1 and 3.",
+    "source": { "parameter": "page[number]" },
+    "meta": {
+      "value": 10,
+      "totalPages": 3,
+      "totalResources": 5
+    }
+  }]
+}
+```
+
+**Edge case:** When a query returns zero resources (for example, a filter that matches nothing), no 404 is raised regardless of the requested page number. There are no pages to be wrong about.
+
+**Default behavior (`StrictPagination = false`) is unchanged**: out-of-range page numbers are clamped to the last page.
+
+**Breaking Changes:** None. Behavior change is opt-in via `StrictPagination`. Parse-time `StrictPagination` errors (invalid page number, invalid page size, page size exceeds maximum) introduced earlier are unchanged.
 
 ---
 
