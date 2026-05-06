@@ -206,25 +206,7 @@ public abstract class JsonApiController : ControllerBase
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
         LogCountResults<T>(parameters, totalCount);
 
-        if (Options.StrictPagination && parameters.Pagination != null && totalCount > 0)
-        {
-            int totalPages = (int)Math.Ceiling(totalCount / (double)parameters.Pagination.Size);
-            if (parameters.Pagination.Number > totalPages)
-            {
-                throw new JsonApiNotFoundException(
-                    $"Page {parameters.Pagination.Number} does not exist. "
-                        + $"This collection has {totalPages} page(s). Request a page between 1 and {totalPages}.",
-                    JsonApiErrorCodes.InvalidPageNumber,
-                    new ErrorSource { Parameter = "page[number]" },
-                    new Dictionary<string, object>
-                    {
-                        ["value"] = parameters.Pagination.Number,
-                        ["totalPages"] = totalPages,
-                        ["totalResources"] = totalCount,
-                    }
-                );
-            }
-        }
+        EnforceStrictPagination(Options, parameters, totalCount);
 
         if (parameters.Pagination != null)
             filteredQuery = filteredQuery.ApplyPagination(parameters.Pagination, totalCount);
@@ -241,7 +223,7 @@ public abstract class JsonApiController : ControllerBase
             parameters.Pagination?.Size ?? totalCount
         );
 
-        IActionResult? projectionResult = await TryApplyDatabaseProjection(
+        IActionResult? projectionResult = await TryApplyDatabaseProjectionAsync(
             filteredQuery,
             resourceType,
             baseUrl,
@@ -511,6 +493,33 @@ public abstract class JsonApiController : ControllerBase
         return filteredQuery;
     }
 
+    private static void EnforceStrictPagination(
+        JsonApiOptions options,
+        QueryParameters parameters,
+        int totalCount
+    )
+    {
+        if (!options.StrictPagination || parameters.Pagination is null || totalCount == 0)
+            return;
+
+        int totalPages = (int)Math.Ceiling(totalCount / (double)parameters.Pagination.Size);
+        if (parameters.Pagination.Number <= totalPages)
+            return;
+
+        throw new JsonApiNotFoundException(
+            $"Page {parameters.Pagination.Number} does not exist. "
+                + $"This collection has {totalPages} page(s). Request a page between 1 and {totalPages}.",
+            JsonApiErrorCodes.InvalidPageNumber,
+            new ErrorSource { Parameter = "page[number]" },
+            new Dictionary<string, object>
+            {
+                ["value"] = parameters.Pagination.Number,
+                ["totalPages"] = totalPages,
+                ["totalResources"] = totalCount,
+            }
+        );
+    }
+
     private void LogCountResults<T>(QueryParameters parameters, int totalCount)
     {
         if (totalCount == 0 && parameters.Filter?.Filters?.Count > 0)
@@ -526,7 +535,7 @@ public abstract class JsonApiController : ControllerBase
         }
     }
 
-    private async Task<IActionResult?> TryApplyDatabaseProjection<T>(
+    private async Task<IActionResult?> TryApplyDatabaseProjectionAsync<T>(
         IQueryable<T> filteredQuery,
         string resourceType,
         string baseUrl,
