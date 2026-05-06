@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v2.0.0...v2.0.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **build:** reference root README.md in package ([ecbdb2a](https://github.com/intility/Intility.JsonApiToolkit/commit/ecbdb2a1ad73475350d1bcbad0f96656670075cd))
+* **lockfile:** restore linux-musl-x64 RID section ([0c523f1](https://github.com/intility/Intility.JsonApiToolkit/commit/0c523f1183d9662872d0cd10354cdca3139a4153))
+
 ## [2.0.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v1.8.1...v2.0.0) (2026-05-05)
 
 
