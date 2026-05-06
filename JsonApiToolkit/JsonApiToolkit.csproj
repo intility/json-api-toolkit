@@ -29,6 +29,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.7"/>
   </ItemGroup>
   <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\"/>
+    <None Include="..\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>
