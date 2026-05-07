@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- .NET 10 SDK (pinned in `global.json` to `10.0.201`)
+- .NET 10 SDK 
 - `uv` for the docs site (`brew install uv` or `mise use uv`)
 
 ## Setup
@@ -12,14 +12,12 @@ dotnet tool restore   # csharpier + dotnet-api-docs
 dotnet restore
 ```
 
-> **Intility contributors:** `NuGet.config` currently resolves dependencies from `nuget.pkg.github.com/Intility`. Until the package moves to public NuGet, restore needs `NUGET_AUTH_TOKEN` set to a GitHub PAT with `read:packages`.
-
 ## Daily Commands
 
 ```bash
 dotnet build --configuration Release
 dotnet test  --configuration Release
-dotnet csharpier format .   # CI fails on unformatted code
+dotnet csharpier format .  
 ```
 
 ## Docs
@@ -29,8 +27,7 @@ The site is built with mkdocs (Material) and served from GitHub Pages.
 ```bash
 uv venv
 uv pip install -r docs/requirements.txt
-uv run mkdocs serve         # http://127.0.0.1:8000, live reload
-uv run mkdocs build --strict  # what CI runs; do this before pushing
+uv run mkdocs serve         
 ```
 
 If you change C# XML doc comments, regenerate the API reference first:
@@ -73,10 +70,6 @@ Branch names: `feat/`, `fix/`, `refactor/`, `docs/`, `test/`, `chore/`, etc.
 ## Releases
 
 Handled by [Release Please](https://github.com/googleapis/release-please). Merging to `main` updates a release PR that accumulates changes. Merging the release PR cuts a GitHub Release, publishes to NuGet, and bumps the version in `JsonApiToolkit.csproj` and `mkdocs.yaml`.
-
-## AI-Assisted Contributions
-
-Project-specific guidance for AI tools lives in `AGENTS.md` at the repo root (with `CLAUDE.md` as a symlink). Update it there if you add conventions other contributors' tools should follow.
 
 ## Questions
 
