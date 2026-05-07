@@ -68,7 +68,7 @@ jobs:
       - name: Build library (for API XML docs)
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: dotnet build JsonApiToolkit/JsonApiToolkit.csproj -c Release
+        run: dotnet build JsonApiToolkit/JsonApiToolkit.csproj -c Release -o JsonApiToolkit/bin/docs
 
       - name: Restore .NET tools
         env:
@@ -76,7 +76,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Generate API reference
-        run: dotnet tool run mkdocs-dotnet-api -- --input JsonApiToolkit/bin/Release/net10.0 --output docs/api --strict
+        run: dotnet tool run mkdocs-dotnet-api -- --input JsonApiToolkit/bin/docs --output docs/api --strict
 
       - name: Install Python dependencies
         run: uv venv && uv pip install -r docs/requirements.txt
