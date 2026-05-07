@@ -9,7 +9,7 @@
       ],
       "rollForward": false
     },
-    "intility.dotnet-api-docs": {
+    "Intility.DotnetApiDocs": {
       "version": "0.1.5",
       "commands": [
         "dotnet-api-docs"
