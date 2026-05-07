@@ -9,10 +9,10 @@
       ],
       "rollForward": false
     },
-    "intility.mkdocsdotnetapi": {
-      "version": "0.1.4",
+    "intility.dotnet-api-docs": {
+      "version": "0.1.5",
       "commands": [
-        "mkdocs-dotnet-api"
+        "dotnet-api-docs"
       ],
       "rollForward": false
     }
