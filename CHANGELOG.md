@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v2.0.1...v2.1.0) (2026-05-07)
+
+
+### Features
+
+* **docs:** migrate to mkdocs material with generated API reference ([#129](https://github.com/intility/Intility.JsonApiToolkit/issues/129)) ([765d46a](https://github.com/intility/Intility.JsonApiToolkit/commit/765d46a155b7fbd08d3b981766478b884243f0f7))
+* **pagination:** return 404 when page exceeds total pages in strict mode ([#126](https://github.com/intility/Intility.JsonApiToolkit/issues/126)) ([b639fdd](https://github.com/intility/Intility.JsonApiToolkit/commit/b639fdd9ece2c7510bd3a558f05876288ad36b67))
+
+
+### Bug Fixes
+
+* correct casing for Intility.DotnetApiDocs in dotnet-tools configuration ([01ed721](https://github.com/intility/Intility.JsonApiToolkit/commit/01ed721092f687b126b0e6edf1190e198166cc0a))
+* follow dotnet api docs rename ([abe8436](https://github.com/intility/Intility.JsonApiToolkit/commit/abe8436f56b97cff8f99c32049e5184736ee5f5f))
+
+
+### Code Refactoring
+
+* **controller:** extract EnforceStrictPagination from JsonApiQueryAsync ([#128](https://github.com/intility/Intility.JsonApiToolkit/issues/128)) ([e501631](https://github.com/intility/Intility.JsonApiToolkit/commit/e5016314063c4bf083c7fbafedd1a2dafe5deddc))
+
 ## [2.0.1](https://github.com/intility/Intility.JsonApiToolkit/compare/v2.0.0...v2.0.1) (2026-05-06)
 
 
