@@ -17,5 +17,5 @@ Set `"JsonApiToolkit": "Debug"` in appsettings.json to enable detailed query pro
 - **Pagination clamping**: Invalid page numbers are silently clamped (negative/zero -> page 1, overflow -> last page).
 - **Malformed query params**: Bad filter/sort/include syntax is logged and skipped, not thrown as exceptions.
 - **Filtered includes**: Dot notation in filters (e.g. `filter[author.name]=John`) applies to included resources when `include=author` is also set.
-- **Include whitelisting**: `AllowedIncludesAttribute` on controller actions restricts which relationships can be requested via `include=`, preventing unauthorized data exposure.
+- **Include allowlisting**: `AllowedIncludesAttribute` on controller actions restricts which relationships can be requested via `include=`, preventing unauthorized data exposure.
 - **Sparse fieldsets**: `fields[type]=field1,field2` works for both primary and included resources. `id` and `type` are always returned.

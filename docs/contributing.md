@@ -63,9 +63,9 @@ Branch names: `feat/`, `fix/`, `refactor/`, `docs/`, `test/`, `chore/`, etc.
 
 1. Branch from `main`.
 2. Format (`dotnet csharpier format .`) and run tests locally.
-3. Open a PR with a descriptive title and bullet summary.
-4. CI must pass `build-and-test` and `Docs: Build` (required status checks).
-5. Squash merge (the only merge method allowed on `main`).
+3. Open a PR with a descriptive title and summary.
+4. CI must pass.
+5. At least one approving review is required.
 
 ## Releases
 
@@ -73,4 +73,4 @@ Handled by [Release Please](https://github.com/googleapis/release-please). Mergi
 
 ## Questions
 
-Open an issue: <https://github.com/intility/Intility.JsonApiToolkit/issues>
+Open an issue: <https://github.com/intility/json-api-toolkit/issues>

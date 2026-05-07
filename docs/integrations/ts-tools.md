@@ -4,7 +4,7 @@
 
 **jsonapi-ts-tools** is a lightweight, Deno-based TypeScript library designed
 to make working with
-[JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit) responses
+[JsonApiToolkit](https://github.com/intility/json-api-toolkit) responses
 in TypeScript applications easier.
 
 ## Features
@@ -15,11 +15,11 @@ in TypeScript applications easier.
   and inclusion.
 
 ## Prerequisites
-- **JsonApiToolkit**: This library is designed to work with [JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit). Make sure the api you want to interact with is using JsonApiToolkit.
+- **JsonApiToolkit**: This library is designed to work with [JsonApiToolkit](https://github.com/intility/json-api-toolkit). Make sure the api you want to interact with is using JsonApiToolkit.
 
 ## Getting Started
 
-You can read more about jsonapi-ts-tools & JsonApiToolkit [**here**](https://intility.github.io/Intility.JsonApiToolkit/docs/integrations/ts-tools.html), or follow the instructions below for a quick start.
+You can read more about jsonapi-ts-tools & JsonApiToolkit [**here**](https://intility.github.io/json-api-toolkit/docs/integrations/ts-tools.html), or follow the instructions below for a quick start.
 
 ### Installation
 

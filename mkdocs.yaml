@@ -1,6 +1,6 @@
 site_name: Intility JsonApiToolkit
 site_description: Documentation for Intility JsonApiToolkit
-site_url: https://intility.github.io/Intility.JsonApiToolkit/
+site_url: https://intility.github.io/json-api-toolkit/
 extra:
   version: 2.1.0 # x-release-please-version
 
