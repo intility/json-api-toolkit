@@ -197,7 +197,8 @@ public abstract class JsonApiController : ControllerBase
         IQueryable<T> filteredQuery = ApplyFiltersAndIncludes(
             queryable,
             parameters,
-            mappedIncludes
+            mappedIncludes,
+            paginating: parameters.Pagination != null
         );
 
         if (parameters.Sort?.Count > 0)
@@ -280,53 +281,15 @@ public abstract class JsonApiController : ControllerBase
             parameters.Include
         );
 
-        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
-        {
-            Logger.LogWarning(
-                "No valid includes for {EntityType}. Requested: {Includes}",
-                typeof(T).Name,
-                string.Join(", ", parameters.Include)
-            );
-        }
+        LogInvalidIncludes<T>(parameters, mappedIncludes);
 
-        var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
-            parameters.Filter,
-            parameters.Include
+        IQueryable<T> processedQuery = ApplyFiltersAndIncludes(
+            queryable,
+            parameters,
+            mappedIncludes,
+            paginating: false
         );
 
-        IQueryable<T> processedQuery = queryable;
-
-        // Apply main entity filters
-        if (mainFilters != null)
-            processedQuery = processedQuery.ApplyFilters(mainFilters, Logger);
-
-        // Apply includes (with or without filters)
-        if (includeFilters.Count > 0)
-        {
-            Logger.LogDebug(
-                "Applying {FilterCount} filtered includes for {EntityType}",
-                includeFilters.Count,
-                typeof(T).Name
-            );
-            processedQuery = processedQuery.ApplyFilteredIncludes(
-                mappedIncludes,
-                includeFilters,
-                Logger
-            );
-        }
-        else if (mappedIncludes.Count > 0)
-        {
-            // Use standard includes (no pagination optimization needed since we're not paginating)
-            processedQuery = processedQuery.ApplyIncludes(mappedIncludes);
-
-            Logger.LogDebug(
-                "Applied {IncludeCount} includes for {EntityType}",
-                mappedIncludes.Count,
-                typeof(T).Name
-            );
-        }
-
-        // Apply sorting
         if (parameters.Sort?.Count > 0)
             processedQuery = processedQuery.ApplySorting(parameters.Sort, Logger);
 
@@ -435,20 +398,17 @@ public abstract class JsonApiController : ControllerBase
             );
         }
 
-        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
-        {
-            Logger.LogWarning(
-                "No valid includes for {EntityType}. Requested: {Includes}",
-                typeof(T).Name,
-                string.Join(", ", parameters.Include)
-            );
-        }
+        LogInvalidIncludes<T>(parameters, mappedIncludes);
     }
 
+    // When `paginating` is true, includes use single-query mode to avoid the
+    // EF Core warning/exception triggered by split-query + Skip/Take. Otherwise
+    // split-query is preferred to avoid cartesian explosion on collection includes.
     private IQueryable<T> ApplyFiltersAndIncludes<T>(
         IQueryable<T> queryable,
         QueryParameters parameters,
-        List<string> mappedIncludes
+        List<string> mappedIncludes,
+        bool paginating
     )
         where T : class
     {
@@ -477,20 +437,31 @@ public abstract class JsonApiController : ControllerBase
         }
         else if (mappedIncludes.Count > 0)
         {
-            filteredQuery =
-                parameters.Pagination != null
-                    ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
-                    : filteredQuery.ApplyIncludes(mappedIncludes);
+            filteredQuery = paginating
+                ? filteredQuery.ApplyIncludesSingleQuery(mappedIncludes)
+                : filteredQuery.ApplyIncludes(mappedIncludes);
 
             Logger.LogDebug(
                 "Applied {IncludeCount} includes for {EntityType} using {QueryType}",
                 mappedIncludes.Count,
                 typeof(T).Name,
-                parameters.Pagination != null ? "SingleQuery" : "SplitQuery"
+                paginating ? "SingleQuery" : "SplitQuery"
             );
         }
 
         return filteredQuery;
+    }
+
+    private void LogInvalidIncludes<T>(QueryParameters parameters, List<string> mappedIncludes)
+    {
+        if (parameters.Include?.Count > 0 && mappedIncludes.Count == 0)
+        {
+            Logger.LogWarning(
+                "No valid includes for {EntityType}. Requested: {Includes}",
+                typeof(T).Name,
+                string.Join(", ", parameters.Include)
+            );
+        }
     }
 
     private static void EnforceStrictPagination(
