@@ -7,13 +7,18 @@ using Microsoft.Extensions.Logging;
 
 namespace JsonApiToolkit.Extensions.Querying;
 
-internal static partial class NestedPropertyNavigator
+/// <summary>
+/// Builds LINQ expressions for collection navigations: <c>Any(item =&gt; predicate)</c>
+/// for nested paths (e.g. <c>tags.name</c>) and <c>Contains(value)</c> for primitive
+/// collections used as filter targets (e.g. <c>filter[tags][in]=value</c>).
+/// </summary>
+internal static class CollectionFilterBuilder
 {
     /// <summary>
     /// Builds a filter expression for collection navigation using Any().
-    /// e.g., collection.Any(item => item.Property == value)
+    /// e.g., collection.Any(item =&gt; item.Property == value)
     /// </summary>
-    private static Expression? BuildCollectionFilterExpression(
+    internal static Expression? BuildCollectionFilterExpression(
         Expression collectionAccess,
         Type elementType,
         string[] remainingParts,
@@ -22,17 +27,17 @@ internal static partial class NestedPropertyNavigator
         int depth
     )
     {
-        if (depth > MaxRecursionDepth)
+        if (depth > PropertyNavigator.MaxRecursionDepth)
         {
             throw new JsonApiBadRequestException(
-                $"Filter path recursion depth exceeds maximum of {MaxRecursionDepth}. "
+                $"Filter path recursion depth exceeds maximum of {PropertyNavigator.MaxRecursionDepth}. "
                     + "Simplify the filter expression or reduce collection nesting.",
                 JsonApiErrorCodes.QueryTooComplex,
                 new ErrorSource { Parameter = $"filter[{filter.Field}]" },
                 new Dictionary<string, object>
                 {
                     ["field"] = filter.Field,
-                    ["maxDepth"] = MaxRecursionDepth,
+                    ["maxDepth"] = PropertyNavigator.MaxRecursionDepth,
                     ["actualDepth"] = depth,
                 }
             );
@@ -65,12 +70,16 @@ internal static partial class NestedPropertyNavigator
             }
 
             Expression propertyAccess = Expression.Property(itemParam, prop);
-            innerExpression = BuildPropertyFilterExpression(propertyAccess, filter, logger);
+            innerExpression = PropertyFilterBuilder.BuildPropertyFilterExpression(
+                propertyAccess,
+                filter,
+                logger
+            );
         }
         else
         {
             // Nested property access - recursively build
-            innerExpression = BuildSafeNestedFilterExpression(
+            innerExpression = PropertyNavigator.BuildSafeNestedFilterExpression(
                 itemParam,
                 innerFilter,
                 logger,
@@ -95,7 +104,7 @@ internal static partial class NestedPropertyNavigator
     /// Builds a filter expression when the property itself is a collection.
     /// e.g., entity.Tags.Contains("value") for filter[tags][in]=value
     /// </summary>
-    private static Expression? BuildCollectionPropertyFilterExpression(
+    internal static Expression? BuildCollectionPropertyFilterExpression(
         Expression collectionAccess,
         Type elementType,
         FilterParameter filter,
@@ -146,7 +155,7 @@ internal static partial class NestedPropertyNavigator
             {
                 logger?.LogWarning(
                     "Failed to convert '{Value}' to {ElementType} for collection filter",
-                    SanitizeForLog(filter.Value),
+                    FilterLogSanitizer.SanitizeForLog(filter.Value),
                     elementType.Name
                 );
                 return null;
@@ -172,7 +181,7 @@ internal static partial class NestedPropertyNavigator
             {
                 logger?.LogWarning(
                     "Failed to convert '{Value}' to {ElementType} for collection filter",
-                    SanitizeForLog(filter.Value),
+                    FilterLogSanitizer.SanitizeForLog(filter.Value),
                     elementType.Name
                 );
                 return null;

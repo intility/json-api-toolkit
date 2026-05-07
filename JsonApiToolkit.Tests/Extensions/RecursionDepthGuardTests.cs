@@ -64,7 +64,7 @@ public class RecursionDepthGuardTests
         var parameter = Expression.Parameter(typeof(Level0), "x");
 
         // This should not throw
-        var expression = NestedPropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter);
+        var expression = PropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter);
 
         Assert.NotNull(expression);
     }
@@ -83,7 +83,7 @@ public class RecursionDepthGuardTests
         var parameter = Expression.Parameter(typeof(Level0), "x");
 
         var exception = Assert.Throws<JsonApiBadRequestException>(() =>
-            NestedPropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter)
+            PropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter)
         );
 
         Assert.Contains("recursion depth", exception.Message.ToLower());
@@ -105,7 +105,7 @@ public class RecursionDepthGuardTests
         var parameter = Expression.Parameter(typeof(Level0), "x");
 
         // This should not throw - exactly at limit
-        var expression = NestedPropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter);
+        var expression = PropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter);
 
         Assert.NotNull(expression);
     }
@@ -124,7 +124,7 @@ public class RecursionDepthGuardTests
         var parameter = Expression.Parameter(typeof(Level0), "x");
 
         var exception = Assert.Throws<JsonApiBadRequestException>(() =>
-            NestedPropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter)
+            PropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter)
         );
 
         Assert.Contains("recursion depth", exception.Message.ToLower());
@@ -143,7 +143,7 @@ public class RecursionDepthGuardTests
         var parameter = Expression.Parameter(typeof(Level0), "x");
 
         var exception = Assert.Throws<JsonApiBadRequestException>(() =>
-            NestedPropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter)
+            PropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter)
         );
 
         Assert.NotNull(exception.ErrorSource);
