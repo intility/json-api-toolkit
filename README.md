@@ -1,5 +1,5 @@
 [![CI/CD Pipeline](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/ci-cd.yml)
-[![Build Docs](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/build-docs.yml/badge.svg)](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/build-docs.yml)
+[![Docs](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/docs.yml/badge.svg)](https://github.com/intility/Intility.JsonApiToolkit/actions/workflows/docs.yml)
 
 # Intility.JsonApiToolkit
 

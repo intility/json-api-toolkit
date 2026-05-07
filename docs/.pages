@@ -1,0 +1,17 @@
+nav:
+  - Home:
+      - Welcome: index.md
+      - introduction.md
+      - getting-started.md
+  - Guides:
+      - querying.md
+      - build-query.md
+      - enhanced-error-handling.md
+      - performance.md
+      - security.md
+      - api-controller-examples.md
+      - debugging.md
+      - upgrade-guide.md
+  - integrations
+  - api
+  - contributing.md

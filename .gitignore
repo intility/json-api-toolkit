@@ -407,9 +407,10 @@ obj
 core_*
 docs/markdown-cheat-sheet.md
 
-# DocFX
-_site
-api
+# MkDocs
+/site/
+.venv/
+/docs/api/
 
 # Claude
 .claude

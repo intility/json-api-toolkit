@@ -1,0 +1,1 @@
+intility-bifrost-mkdocs==0.7.0
