@@ -123,11 +123,7 @@ public static class FilterExpressionBuilder
     )
     {
         if (filter.Field.Contains('.'))
-            return NestedPropertyNavigator.BuildSafeNestedFilterExpression(
-                parameter,
-                filter,
-                logger
-            );
+            return PropertyNavigator.BuildSafeNestedFilterExpression(parameter, filter, logger);
 
         PropertyInfo? property = QueryHelpers.GetPropertyByJsonName(parameter.Type, filter.Field);
         if (property == null)
@@ -141,10 +137,6 @@ public static class FilterExpressionBuilder
         }
 
         Expression propertyAccess = Expression.Property(parameter, property);
-        return NestedPropertyNavigator.BuildPropertyFilterExpression(
-            propertyAccess,
-            filter,
-            logger
-        );
+        return PropertyFilterBuilder.BuildPropertyFilterExpression(propertyAccess, filter, logger);
     }
 }
