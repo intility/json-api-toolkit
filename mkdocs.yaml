@@ -1,0 +1,35 @@
+site_name: Intility JsonApiToolkit
+site_description: Documentation for Intility JsonApiToolkit
+site_url: https://intility.github.io/Intility.JsonApiToolkit/
+extra:
+  version: 2.0.1 # x-release-please-version
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: light
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: dark
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+hooks:
+  - docs/hooks/filter_warnings.py
+
+plugins:
+  - intility-bifrost
+  - search:
+      lang: en
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      exclude:
+        - api/*
+  - awesome-nav:
+      filename: .pages
