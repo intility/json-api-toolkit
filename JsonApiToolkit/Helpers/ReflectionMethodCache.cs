@@ -15,8 +15,8 @@ internal static class ReflectionMethodCache
     private static MethodInfo? s_enumerableContains;
     private static MethodInfo? s_enumerableWhere;
     private static MethodInfo? s_efCoreIncludeExpression;
-    private static MethodInfo? s_thenIncludeCollection;
-    private static MethodInfo? s_thenIncludeReference;
+    private static volatile MethodInfo? s_thenIncludeCollection;
+    private static volatile MethodInfo? s_thenIncludeReference;
     private static MethodInfo? s_queryableSelect;
     private static readonly ConcurrentDictionary<
         (Type Source, Type Projection),

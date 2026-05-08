@@ -1,0 +1,5 @@
+name: "JsonApiToolkit CodeQL"
+
+paths-ignore:
+  - "**/bin/**"
+  - "**/obj/**"
