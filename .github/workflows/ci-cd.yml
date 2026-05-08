@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -31,7 +32,7 @@ jobs:
           dotnet-version: 10.0.x
           source-url: https://nuget.pkg.github.com/Intility/index.json
         env:
-          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }}
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore
         run: dotnet restore --locked-mode
@@ -60,7 +61,7 @@ jobs:
           dotnet-version: 10.0.x
           source-url: https://nuget.pkg.github.com/Intility/index.json
         env:
-          NUGET_AUTH_TOKEN: ${{ secrets.NUGET_AUTH_TOKEN }}
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore
         run: dotnet restore --locked-mode
@@ -70,4 +71,4 @@ jobs:
 
       - name: Publish to GitHub Packages
         run: dotnet nuget push "JsonApiToolkit/bin/Release/*.nupkg" --api-key ${{
-          secrets.NUGET_AUTH_TOKEN }}
+          secrets.GITHUB_TOKEN }}
