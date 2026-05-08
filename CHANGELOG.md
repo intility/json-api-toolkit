@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.1.1](https://github.com/intility/json-api-toolkit/compare/v2.1.0...v2.1.1) (2026-05-08)
+
+
+### Code Refactoring
+
+* **controller:** dedupe filter+include logic between `JsonApiQue… ([#132](https://github.com/intility/json-api-toolkit/issues/132)) ([07f69f5](https://github.com/intility/json-api-toolkit/commit/07f69f559b769a367755f1e1ca4c3b4cb201e64e))
+* **filters:** split `NestedPropertyNavigator` into focused classes ([#130](https://github.com/intility/json-api-toolkit/issues/130)) ([9b602bd](https://github.com/intility/json-api-toolkit/commit/9b602bd35ce96c97cdc8ed1a4aa27d7cfeeb4ad1))
+
+
+### Documentation
+
+* rename repo URLs and restructure README for OSS ([#142](https://github.com/intility/json-api-toolkit/issues/142)) ([e149f61](https://github.com/intility/json-api-toolkit/commit/e149f61fc3ec1a9dc3f57897ff5157e31fec3738))
+* update contributing guide for .NET 10 SDK and setup instructions ([82397c9](https://github.com/intility/json-api-toolkit/commit/82397c97d6b8417ef11911fe1b1b8b5315824670))
+* update contributing guide to remove outdated information and clarify setup instructions ([a1d296d](https://github.com/intility/json-api-toolkit/commit/a1d296dd97939033bffc9a8c16b9b460cc5335c9))
+
+
+### CI
+
+* use GITHUB_TOKEN instead of NUGET_AUTH_TOKEN ([134eaa9](https://github.com/intility/json-api-toolkit/commit/134eaa98c530a5a880bc05c65b66fb8f5c80ec0a))
+
 ## [2.1.0](https://github.com/intility/Intility.JsonApiToolkit/compare/v2.0.1...v2.1.0) (2026-05-07)
 
 
