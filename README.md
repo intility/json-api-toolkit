@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-    <em>A .NET toolkit for implementing the JSON:API specification.</em>
+    <em>Build JSON:API endpoints in ASP.NET Core.</em>
 </p>
 <p align="center">
     <a href="https://dotnet.microsoft.com/">
@@ -26,7 +26,7 @@
 
 ## Description
 
-JsonApiToolkit makes ASP.NET Core APIs speak the [JSON:API specification](https://jsonapi.org/). It translates standard query parameters (`filter[]`, `sort`, `include`, `fields[]`, `page[]`) into typed EF Core queries and returns spec-compliant response documents, so your controllers stay short and predictable.
+JsonApiToolkit translates [JSON:API](https://jsonapi.org/) query parameters (`filter[]`, `sort`, `include`, `fields[]`, `page[]`) into typed EF Core queries and shapes responses as spec-compliant documents, so your ASP.NET Core controllers stay short.
 
 ## Installation
 
@@ -47,10 +47,14 @@ Derive controllers from `JsonApiController` and let `JsonApiQueryAsync` handle t
 ```csharp
 public class BooksController : JsonApiController
 {
+    private const string ResourceType = "book";
+
     [HttpGet]
     [AllowedIncludes("author", "publisher")]
-    public Task<IActionResult> GetBooks() =>
-        JsonApiQueryAsync(_dbContext.Books.AsQueryable(), "book");
+    public async Task<IActionResult> GetAllAsync()
+    {
+        return await JsonApiQueryAsync(_dbContext.Books, ResourceType);
+    }
 }
 ```
 

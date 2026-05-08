@@ -1,182 +1,80 @@
 # Building Custom Queries
 
-The `BuildJsonApiQueryAsync` method provides access to the processed query **before execution**, enabling custom operations like CSV exports, aggregations, and projections.
+`BuildJsonApiQueryAsync` exposes the processed query *before execution*, so you can apply your own logic on top: exports, projections, streaming, aggregations.
 
-## Overview
+For standard JSON:API responses, use `JsonApiQueryAsync` instead.
+
+## Signature
 
 ```csharp
-protected async Task<JsonApiQueryResult<T>> BuildJsonApiQueryAsync<T>(
+protected Task<JsonApiQueryResult<T>> BuildJsonApiQueryAsync<T>(
     IQueryable<T> queryable,
     string resourceType,
-    bool includeCount = true)
-    where T : class
+    bool includeCount = true) where T : class
 ```
 
-**Returns:**
+`JsonApiQueryResult<T>` exposes:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Query` | `IQueryable<T>` | The processed query with filters, includes, and sorting applied. **Pagination is NOT applied.** |
-| `Parameters` | `QueryParameters` | The parsed query parameters from the request. |
-| `TotalCount` | `int` | Total matching records. Returns 0 if `includeCount` is false. |
+- `Query`: the `IQueryable<T>` with filters, includes, and sorting applied. **Pagination is not applied.**
+- `Parameters`: the parsed `QueryParameters`, including pagination if you want to apply it manually.
+- `TotalCount`: total matching records, or `0` if `includeCount: false`.
 
-## When to Use
+## Custom queries: export example
 
-Use `BuildJsonApiQueryAsync` when you need to:
-
-- **Export data** (CSV, Excel, JSON file) - you need all matching records, not paginated results
-- **Aggregate data** - apply GROUP BY after filtering
-- **Custom projections** - select specific columns or transform the data
-- **Stream results** - process large datasets without loading everything into memory
-- **Combine with other queries** - use the filtered query as a subquery
-
-For standard JSON:API responses with pagination, use `JsonApiQueryAsync` instead.
-
-## Examples
-
-### CSV Export
+The pattern is the same for CSV, Excel, JSON file, projection, or streaming: take `result.Query`, do whatever you want with it.
 
 ```csharp
 [HttpGet("export")]
 public async Task<IActionResult> ExportBooks()
 {
-    var result = await BuildJsonApiQueryAsync(_context.Books, "books");
+    var result = await BuildJsonApiQueryAsync(_db.Books.AsNoTracking(), ResourceType);
+
     var books = await result.Query.ToListAsync();
-
-    var csv = new StringBuilder();
-    csv.AppendLine("Id,Title,Author,PublishedDate");
-
-    foreach (var book in books)
-    {
-        csv.AppendLine($"{book.Id},{CsvSafe(book.Title)},{CsvSafe(book.Author)},{book.PublishedDate:yyyy-MM-dd}");
-    }
-
-    return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", "books.csv");
-}
-
-// Prevent CSV injection - Excel treats =, +, -, @ as formula prefixes
-private static string CsvSafe(string? value)
-{
-    if (string.IsNullOrEmpty(value)) return "";
-    if (value.StartsWith('=') || value.StartsWith('+') || value.StartsWith('-') || value.StartsWith('@'))
-        return "'" + value;
-    return value.Contains(',') ? $"\"{value}\"" : value;
+    // serialize however you want: CSV, Excel, NDJSON, etc.
+    return File(BuildCsv(books), "text/csv", "books.csv");
 }
 ```
 
-**Request:**
-```
-GET /api/books/export?filter[publishedDate][gt]=2020-01-01&sort=title&include=author
-```
-
-All matching books are exported (no pagination), with filters, sorting, and includes applied.
-
-### Custom Projection
+For very large exports, stream instead of `ToListAsync()`:
 
 ```csharp
-[HttpGet("titles-only")]
-public async Task<IActionResult> GetTitlesOnly()
+await foreach (var book in result.Query.AsAsyncEnumerable())
 {
-    var result = await BuildJsonApiQueryAsync(_context.Books, "books");
-
-    // Project to minimal DTO
-    var titles = await result.Query
-        .Select(b => new { b.Id, b.Title })
-        .ToListAsync();
-
-    return Ok(new
-    {
-        count = result.TotalCount,
-        titles
-    });
+    // one entity at a time
 }
 ```
 
-### Streaming Large Datasets
+For projections, chain `Select` after `result.Query`:
 
 ```csharp
-[HttpGet("stream")]
-public async IAsyncEnumerable<BookDto> StreamBooks()
-{
-    var result = await BuildJsonApiQueryAsync(_context.Books, "books", includeCount: false);
-
-    await foreach (var book in result.Query.AsAsyncEnumerable())
-    {
-        yield return new BookDto
-        {
-            Id = book.Id,
-            Title = book.Title,
-            Author = book.Author?.Name
-        };
-    }
-}
+var titles = await result.Query.Select(b => new { b.Id, b.Title }).ToListAsync();
 ```
 
-### Combining with Other Queries
-
-```csharp
-[HttpGet("with-sales")]
-public async Task<IActionResult> GetBooksWithSales()
-{
-    var result = await BuildJsonApiQueryAsync(_context.Books, "books");
-
-    // Join with sales data from another source
-    var booksWithSales = await result.Query
-        .Join(
-            _context.Sales,
-            book => book.Id,
-            sale => sale.BookId,
-            (book, sale) => new { book, sale })
-        .GroupBy(x => x.book)
-        .Select(g => new
-        {
-            Book = g.Key.Title,
-            TotalSales = g.Sum(x => x.sale.Quantity),
-            Revenue = g.Sum(x => x.sale.Amount)
-        })
-        .ToListAsync();
-
-    return Ok(booksWithSales);
-}
-```
+Pass `includeCount: false` to skip the COUNT query when you don't need it.
 
 ---
 
-## Statistics and Aggregations
+## Statistics and aggregations
 
-When building statistics endpoints, you need to apply filters **before** aggregating. Otherwise, filters won't work on your DTOs.
-
-### The Problem
+Aggregation endpoints have a subtle trap: if you `GroupBy().Select(...)` first and hand the resulting query to `JsonApiQueryAsync`, user filters target the projected DTO, not the source entity. Any filter referencing a column the DTO doesn't expose is silently skipped, so requests look like they succeed but ignore the filter.
 
 ```csharp
-[HttpGet("genre-stats")]
-public async Task<IActionResult> GetGenreStatsAsync()
-{
-    var stats = _context.Books
-        .GroupBy(b => b.Genre)
-        .Select(g => new { Genre = g.Key, Count = g.Count() });
+// Filter is silently skipped: the anonymous DTO has no PublishedDate property.
+var stats = _db.Books
+    .GroupBy(b => b.Genre)
+    .Select(g => new { Genre = g.Key, Count = g.Count() });
 
-    // ❌ This FAILS - the DTO doesn't have PublishedDate
-    return await JsonApiQueryAsync(stats, "genre_stats");
-}
+return await JsonApiQueryAsync(stats, ResourceType);
 ```
 
-**Request:** `GET /api/books/genre-stats?filter[publishedDate][gt]=2020-01-01`
-
-The filter tries to apply to the anonymous DTO, but it doesn't have `PublishedDate`. The filter is silently skipped.
-
-### Solution: Filter First, Then Aggregate
-
-Use `BuildJsonApiQueryAsync` to apply filters to the source entity, then aggregate:
+Apply filters to the source entity *first*, then aggregate:
 
 ```csharp
 [HttpGet("genre-stats")]
-public async Task<IActionResult> GetGenreStatsAsync()
+public async Task<IActionResult> GetGenreStats()
 {
-    // Apply filters to Book entity BEFORE aggregation
-    var result = await BuildJsonApiQueryAsync(_context.Books, "books", includeCount: false);
+    var result = await BuildJsonApiQueryAsync(_db.Books, ResourceType, includeCount: false);
 
-    // Aggregate the already-filtered query
     var stats = await result.Query
         .GroupBy(b => b.Genre)
         .Select(g => new
@@ -191,122 +89,35 @@ public async Task<IActionResult> GetGenreStatsAsync()
 }
 ```
 
-Now `filter[publishedDate][gt]=2020-01-01` correctly filters books before counting.
+Now `?filter[publishedDate][gt]=2020-01-01` filters books before the GROUP BY.
 
-### Simple Aggregations with ApplyFiltersOnly
+### `ApplyFiltersOnly` for simple cases
 
-For simple aggregations where you don't need includes or sorting, use `ApplyFiltersOnly()`:
-
-```csharp
-[HttpGet("genre-stats")]
-public async Task<IActionResult> GetGenreStatsAsync()
-{
-    // Only apply filters (no includes, no sorting)
-    var query = ApplyFiltersOnly(_context.Books);
-
-    var stats = await query
-        .GroupBy(b => b.Genre)
-        .Select(g => new { Genre = g.Key, Count = g.Count() })
-        .ToListAsync();
-
-    return Ok(stats);
-}
-```
-
-### With Business Logic Filters
-
-Combine user filters with required business logic:
+If you don't need includes or sorting, `ApplyFiltersOnly` is shorter:
 
 ```csharp
-[HttpGet("publisher-stats")]
-public async Task<IActionResult> GetPublisherStatsAsync()
-{
-    // Start with business logic filter
-    var query = _context.Books.Where(b => b.Status == BookStatus.Published);
+var query = ApplyFiltersOnly(_db.Books);
 
-    // Apply user filters from query params
-    query = ApplyFiltersOnly(query);
-
-    // Aggregate
-    var stats = await query
-        .GroupBy(b => b.Publisher)
-        .Select(g => new
-        {
-            Publisher = g.Key,
-            TotalBooks = g.Count(),
-            AveragePrice = g.Average(b => b.Price)
-        })
-        .ToListAsync();
-
-    return Ok(stats);
-}
+var stats = await query
+    .GroupBy(b => b.Genre)
+    .Select(g => new { Genre = g.Key, Count = g.Count() })
+    .ToListAsync();
 ```
 
-### Why Return Plain JSON for Statistics?
-
-Statistics and aggregations aren't "resources" with stable IDs or relationships - they're computed views. Return plain JSON instead of JSON:API documents.
-
----
-
-## Performance Considerations
-
-### Skip Count When Not Needed
-
-If you don't need the total count, set `includeCount: false` to skip the COUNT query:
+You can compose it with your own `Where` clauses:
 
 ```csharp
-// Skips COUNT query - better for large datasets
-var result = await BuildJsonApiQueryAsync(query, "books", includeCount: false);
+// business logic first, then user filters
+var query = _db.Books.Where(b => b.Status == BookStatus.Published);
+query = ApplyFiltersOnly(query);
 ```
 
-### Use AsNoTracking for Read-Only Operations
+Statistics aren't really "resources" with stable IDs and relationships, so return plain `Ok(...)` rather than a JSON:API document.
 
-For export/read-only operations, use `AsNoTracking()` on your queryable:
-
-```csharp
-var result = await BuildJsonApiQueryAsync(
-    _context.Books.AsNoTracking(),
-    "books"
-);
-```
-
-### Consider Streaming for Large Exports
-
-For very large datasets, use streaming instead of `ToListAsync()`:
-
-```csharp
-await foreach (var item in result.Query.AsAsyncEnumerable())
-{
-    // Process one item at a time
-}
-```
-
----
-
-## Method Comparison
+## Method cheat sheet
 
 | Method | Filters | Includes | Sorting | Pagination | Returns |
 |--------|---------|----------|---------|------------|---------|
-| `JsonApiQueryAsync` | Yes | Yes | Yes | Yes | JSON:API document |
-| `BuildJsonApiQueryAsync` | Yes | Yes | Yes | **No** | `JsonApiQueryResult<T>` |
-| `ApplyFiltersOnly` | Yes | No | No | No | `IQueryable<T>` |
-
-**When to use each:**
-
-- **`JsonApiQueryAsync`** - Standard API responses with pagination
-- **`BuildJsonApiQueryAsync`** - Exports, projections, when you need includes/sorting
-- **`ApplyFiltersOnly`** - Simple aggregations where you only need filtering
-
-## Query Parameters Applied
-
-`BuildJsonApiQueryAsync` applies the following query parameters:
-
-| Parameter | Applied |
-|-----------|---------|
-| `filter` | Yes - filters main entity |
-| `filter[relation.field]` | Yes - filtered includes |
-| `include` | Yes - eager loads relationships |
-| `sort` | Yes - orders results |
-| `page[number]`, `page[size]` | Parsed but **NOT applied** |
-
-The pagination parameters are still available in `result.Parameters.Pagination` if you need them for custom pagination logic.
+| `JsonApiQueryAsync` | yes | yes | yes | yes | JSON:API document |
+| `BuildJsonApiQueryAsync` | yes | yes | yes | no | `JsonApiQueryResult<T>` |
+| `ApplyFiltersOnly` | yes | no | no | no | `IQueryable<T>` |

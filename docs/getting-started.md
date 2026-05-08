@@ -39,19 +39,59 @@ dotnet add package Intility.JsonApiToolkit
    > [!TIP]
    > See the [Security](security.md#query-complexity-limits) documentation for security options and [Performance](performance.md) for database projection.
 
-2. **Inheritance:**
-   Derive your API controllers from the provided `JsonApiController` to leverage helper methods that return JSON:API compliant responses.
+2. **Inherit from `JsonApiController`:**
+   Your controller gets `JsonApiQueryAsync`, `JsonApiOk`, `JsonApiCreated`, etc. Convention is to declare a `ResourceType` constant per controller so the resource type string is defined once.
 
    ```csharp
+   [ApiController]
+   [Route("api/[controller]")]
    public class BooksController : JsonApiController
    {
-       // Your endpoint implementations here
+       private const string ResourceType = "book";
+       private readonly AppDbContext _context;
+
+       public BooksController(AppDbContext context) => _context = context;
+
+       [HttpGet]
+       public async Task<IActionResult> GetAllAsync()
+       {
+           return await JsonApiQueryAsync(_context.Books, ResourceType);
+       }
    }
    ```
 
-3. **Configuration:**
-    The toolkit automatically configures JSON serialization settings (camelCase properties, ignoring nulls, etc.) and adds the JSON:API media type to the supported output formatters.
+3. **Configuration is automatic:**
+   `AddJsonApiToolkit()` registers JSON serialization settings (camelCase, ignore nulls) and the `application/vnd.api+json` media type.
 
-> [!NOTE]
-> Now your API is ready to return responses that fully comply with the JSON:API specification!
+## Example
+
+With the controller above, this request:
+
+```
+GET /api/books?filter[title][like]=Hobbit&include=author&page[size]=5&sort=-publishedDate
+```
+
+Returns a JSON:API document:
+
+```json
+{
+  "data": [
+    {
+      "id": "1",
+      "type": "book",
+      "attributes": { "title": "The Hobbit", "publishedDate": "1937-09-21" },
+      "relationships": {
+        "author": { "data": { "id": "1", "type": "author" } }
+      }
+    }
+  ],
+  "included": [
+    { "id": "1", "type": "author", "attributes": { "name": "J.R.R. Tolkien" } }
+  ],
+  "meta": { "totalCount": 1, "totalPages": 1 },
+  "links": { "self": "...", "first": "...", "last": "..." }
+}
+```
+
+Filtering, sorting, pagination, and includes all happen without extra code. See [Querying](querying.md) for the full parameter reference and [Recipes](recipes.md) for common scenarios.
 
