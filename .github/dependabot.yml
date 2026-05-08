@@ -14,7 +14,6 @@ updates:
     commit-message:
       prefix: "build(nuget)"
     groups:
-      # Group minor/patch updates to reduce PR noise
       microsoft:
         patterns:
           - "Microsoft.*"

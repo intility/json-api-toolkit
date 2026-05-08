@@ -10,7 +10,7 @@ namespace JsonApiToolkit.Attributes;
 
 /// <summary>
 /// Restricts which relationships can be included in responses.
-/// Returns 403 Forbidden if requested includes don't match the whitelist.
+/// Returns 403 Forbidden if requested includes don't match the allowlist.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public class AllowedIncludesAttribute : ActionFilterAttribute

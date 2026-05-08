@@ -1,119 +1,69 @@
 # Security
 
-JsonApiToolkit provides security features to control which relationships can be included in JSON:API responses.
+Guidance for using JsonApiToolkit safely: restricting includes, configuring query complexity limits, and rejecting bad pagination.
 
-## AllowedIncludes Attribute
+> [!NOTE]
+> To **report a vulnerability** in JsonApiToolkit itself, see the [Security Policy](https://github.com/intility/json-api-toolkit/blob/main/SECURITY.md). This page is about using the toolkit securely.
 
-The `[AllowedIncludes]` attribute restricts which relationships clients can request via the `include` query parameter. This prevents exposure of sensitive relationships and protects against potentially expensive queries.
+## `[AllowedIncludes]`
 
-### Basic Usage
-
-Apply the attribute to controller actions:
+Without `[AllowedIncludes]`, every navigation property on your entities is includable via `?include=`. That can leak sensitive relationships and run expensive queries. The attribute restricts which relationships clients can request.
 
 ```csharp
-[HttpGet("users")]
-[AllowedIncludes("profile", "posts")]
-public async Task<IActionResult> GetUsers()
+[HttpGet]
+[AllowedIncludes("author", "reviews")]
+public async Task<IActionResult> GetAllAsync()
 {
-    return await JsonApiQueryAsync(_context.Users, "user");
+    return await JsonApiQueryAsync(_db.Books, ResourceType);
 }
 ```
 
-### Wildcard Patterns
+Forbidden includes return 403 with the requested, forbidden, and allowed lists in `meta`.
 
-Use wildcards to allow nested includes at specific levels:
+### Wildcards
 
 ```csharp
-[HttpGet("posts")]
 [AllowedIncludes("author.*", "comments")]
-public async Task<IActionResult> GetPosts()
-{
-    return await JsonApiQueryAsync(_context.Posts, "post");
-}
 ```
 
-**Wildcard Rules:**
-- `author.*` allows `author` and `author.profile` but not `author.profile.settings`
-- `*` allows all top-level includes but no nested ones
+- `author.*` allows `author` and `author.profile`, but not `author.profile.settings`.
+- `*` allows any top-level include, but no nesting.
+- `[AllowedIncludes()]` (empty) allows no includes at all.
 
-### Configuration Options
+Matching is case-insensitive. Invalid patterns (e.g., `**`) log a warning at startup.
 
-**Empty array** - No includes allowed:
-```csharp
-[AllowedIncludes()]
-```
+### Filter-path validation
 
-**No attribute** - All includes allowed (default behavior)
+Dot-notation filter paths are validated against the same list. With `[AllowedIncludes("author")]`, `filter[author.name]=John` works but `filter[admin.role]=X` returns 403. This only kicks in when the attribute is present. Without it, all filter paths are allowed.
 
-### Error Responses
+## Query complexity limits
 
-When forbidden includes are requested, a 403 Forbidden response is returned:
-
-```json
-{
-  "errors": [{
-    "status": "403",
-    "title": "Forbidden Include",
-    "detail": "The requested include 'sensitive' was not found",
-    "meta": {
-      "requestedIncludes": ["profile", "sensitive"],
-      "forbiddenIncludes": ["sensitive"],
-      "allowedIncludes": ["profile", "posts"]
-    }
-  }]
-}
-```
-
-### Case Sensitivity
-
-All matching is case-insensitive:
-- `Author` matches `author`
-- `author.*` matches `Author.Posts`
-
-### Pattern Validation
-
-Invalid patterns are logged as warnings during application startup:
-
-```
-AllowedIncludesAttribute validation warnings for UsersController.GetUsers:
-Pattern 'user.**' contains '**' which is not supported. Use single '*' for wildcards.
-```
-
-## Query Complexity Limits
-
-JsonApiToolkit enforces configurable limits on query complexity to prevent resource exhaustion attacks.
-
-### Configuration
-
-Configure limits via `JsonApiOptions` in your `Program.cs`:
+The toolkit enforces configurable limits on query complexity to prevent resource exhaustion. Configure them via `JsonApiOptions`:
 
 ```csharp
-builder.Services.AddJsonApiToolkit(options => {
-    options.MaxFilters = 50;           // Max filter conditions (default: 50)
-    options.MaxFilterGroups = 10;      // Max OR/NOT blocks (default: 10)
-    options.MaxFilterDepth = 3;        // Max group nesting depth (default: 3)
-    options.MaxFilterValueLength = 1000; // Max value string length (default: 1000)
-    options.MaxIncludeDepth = 3;       // Max include path depth (default: 3)
-    options.MaxPageSize = 100;         // Max page size, clamped (default: 100)
-    options.DefaultPageSize = 10;      // Default when not specified (default: 10)
-    options.StrictPagination = false;  // Reject invalid pagination (default: false)
+builder.Services.AddJsonApiToolkit(options =>
+{
+    options.MaxFilters = 50;             // max filter conditions
+    options.MaxFilterGroups = 10;        // max OR/NOT blocks
+    options.MaxFilterDepth = 3;          // max group nesting
+    options.MaxFilterValueLength = 1000; // max value string length
+    options.MaxIncludeDepth = 3;         // max include path depth
+    options.MaxPageSize = 100;           // max items per page
+    options.DefaultPageSize = 10;
+    options.StrictPagination = false;    // reject vs clamp invalid pagination
 });
 ```
 
-### Limit Behaviors
+| Limit | Default | Behavior when exceeded |
+|-------|---------|------------------------|
+| `MaxFilters` | 50 | 400 Bad Request |
+| `MaxFilterGroups` | 10 | 400 Bad Request |
+| `MaxFilterDepth` | 3 | 400 Bad Request |
+| `MaxFilterValueLength` | 1000 | 400 Bad Request |
+| `MaxIncludeDepth` | 3 | 400 Bad Request |
+| `MaxPageSize` | 100 | Clamped, or 400 if `StrictPagination` |
 
-| Option | Behavior When Exceeded |
-|--------|----------------------|
-| `MaxFilters` | Returns 400 Bad Request |
-| `MaxFilterGroups` | Returns 400 Bad Request |
-| `MaxFilterDepth` | Returns 400 Bad Request |
-| `MaxFilterValueLength` | Returns 400 Bad Request |
-| `MaxIncludeDepth` | Returns 400 Bad Request |
-| `MaxPageSize` | Clamped (default) or 400 Bad Request (`StrictPagination`) |
-
-### Error Response
-
-When limits are exceeded, a 400 Bad Request is returned with details:
+Exceeded limits return:
 
 ```json
 {
@@ -121,85 +71,28 @@ When limits are exceeded, a 400 Bad Request is returned with details:
     "status": "400",
     "code": "QUERY_TOO_COMPLEX",
     "title": "Query exceeds complexity limits",
-    "detail": "Query contains 75 filters, but maximum allowed is 50. Reduce filter count or configure a higher limit via JsonApiOptions.MaxFilters.",
+    "detail": "Query contains 75 filters, but maximum allowed is 50.",
     "source": { "parameter": "filter" },
-    "meta": {
-      "limit": 50,
-      "actual": 75,
-      "configKey": "JsonApiOptions.MaxFilters"
-    }
+    "meta": { "limit": 50, "actual": 75, "configKey": "JsonApiOptions.MaxFilters" }
   }]
 }
 ```
 
-## Filter Path Validation
+Raise the limits if your application genuinely needs them, but monitor query performance when you do.
 
-When using `[AllowedIncludes]`, dot-notation filter paths are also validated against the allowed list.
+## Strict pagination
 
-### How It Works
-
-If you use `filter[author.name]=John` (filtering the primary resource by a related entity's field), the `author` relationship must be in the `AllowedIncludes` list:
+By default, invalid pagination is silently clamped to valid ranges (page 0 → 1, page 99999 → last page, oversized page → `MaxPageSize`). Enable `StrictPagination` to return errors instead:
 
 ```csharp
-[HttpGet("posts")]
-[AllowedIncludes("author", "comments")]
-public async Task<IActionResult> GetPosts()
-{
-    // filter[author.name]=John ✓ - allowed
-    // filter[author.bio]=X ✓ - allowed
-    // filter[admin.role]=X ✗ - 403 Forbidden (admin not in AllowedIncludes)
-    return await JsonApiQueryAsync(_context.Posts, "post");
-}
+builder.Services.AddJsonApiToolkit(options => options.StrictPagination = true);
 ```
 
-### Error Response
+With strict pagination on:
 
-When filtering on a non-allowed relationship:
-
-```json
-{
-  "errors": [{
-    "status": "403",
-    "title": "Forbidden",
-    "detail": "Filtering on relationship 'admin' is not allowed. Add 'admin' to AllowedIncludes or remove the filter."
-  }]
-}
-```
-
-> [!NOTE]
-> This validation only applies when `[AllowedIncludes]` is present. Without the attribute, all filter paths are allowed.
-
-## Strict Pagination
-
-By default, JsonApiToolkit silently clamps invalid pagination parameters to valid ranges for backwards compatibility. Enable `StrictPagination` to return 400 Bad Request errors instead.
-
-### Configuration
-
-```csharp
-builder.Services.AddJsonApiToolkit(options => {
-    options.StrictPagination = true;
-});
-```
-
-### Behavior
-
-When `StrictPagination` is enabled, the following values are rejected with 400 Bad Request at parse time:
-
-- `page[number]` less than 1 (e.g., `page[number]=0` or `page[number]=-5`)
-- `page[size]` less than 1 (e.g., `page[size]=0` or `page[size]=-10`)
-- `page[size]` exceeding `MaxPageSize` (e.g., `page[size]=200` when `MaxPageSize=100`)
-
-After the count is computed, the following also returns **404 Not Found**:
-
-- `page[number]` greater than the total page count (e.g., `page[number]=100` for a result set with 3 pages). Returns no 404 when the result set is empty (no pages exist).
-
-When disabled (default), these values are silently clamped:
-
-- `page[number]` less than 1 becomes 1
-- `page[number]` greater than total pages becomes the last page
-- `page[size]` exceeding `MaxPageSize` becomes `MaxPageSize`
-
-### Error Response
+- `page[number] < 1` → 400 Bad Request
+- `page[size] < 1` or `> MaxPageSize` → 400 Bad Request
+- `page[number]` greater than total pages → 404 Not Found (only when results exist)
 
 ```json
 {
@@ -207,42 +100,9 @@ When disabled (default), these values are silently clamped:
     "status": "400",
     "code": "INVALID_PAGE_SIZE",
     "title": "Invalid page size",
-    "detail": "Page size '200' exceeds maximum allowed size of 100. Reduce page size or configure a higher limit via JsonApiOptions.MaxPageSize.",
+    "detail": "Page size '200' exceeds maximum allowed size of 100.",
     "source": { "parameter": "page[size]" },
-    "meta": {
-      "value": 200,
-      "max": 100,
-      "configKey": "JsonApiOptions.MaxPageSize"
-    }
+    "meta": { "value": 200, "max": 100, "configKey": "JsonApiOptions.MaxPageSize" }
   }]
 }
 ```
-
-## DoS Protection
-
-The query complexity limits protect against several denial-of-service attack vectors:
-
-### Resource Exhaustion
-Complex queries with many filters or deep nesting can cause excessive CPU usage. Limits on `MaxFilters`, `MaxFilterGroups`, and `MaxFilterDepth` prevent attackers from crafting queries that overwhelm the server.
-
-### Stack Overflow
-Deeply nested filter groups could cause stack overflow during recursive expression building. The `MaxFilterDepth` limit and internal recursion guards prevent this.
-
-### Memory Exhaustion
-Very large filter values or responses could exhaust server memory. The `MaxFilterValueLength` and `MaxPageSize` limits bound memory usage per request.
-
-### Recommended Defaults
-
-The default limits are designed to handle typical API usage while blocking abuse:
-
-| Limit | Default | Rationale |
-|-------|---------|-----------|
-| MaxFilters | 50 | Covers complex search UIs |
-| MaxFilterGroups | 10 | Allows OR chains for search |
-| MaxFilterDepth | 3 | Entity → Relationship → Property |
-| MaxFilterValueLength | 1000 | Long enough for UUIDs, GUIDs, text search |
-| MaxIncludeDepth | 3 | Matches filter depth |
-| MaxPageSize | 100 | Prevents large data dumps |
-
-> [!TIP]
-> If your application requires higher limits, increase them via configuration. Monitor query performance when raising limits.

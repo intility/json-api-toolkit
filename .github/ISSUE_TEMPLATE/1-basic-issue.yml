@@ -3,10 +3,6 @@ description: File a basic issue.
 type: Task
 projects: ['intility/56']
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to fill out this issue!
   - type: textarea
     attributes:
       label: What's the issue?

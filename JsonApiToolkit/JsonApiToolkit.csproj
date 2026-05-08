@@ -11,7 +11,7 @@
     <Company>Intility</Company>
     <Description>A toolkit for implementing JSON:API specification in .NET applications</Description>
     <PackageTags>jsonapi;api;rest;dotnet</PackageTags>
-    <RepositoryUrl>https://github.com/intility/Intility.JsonApiToolkit</RepositoryUrl>
+    <RepositoryUrl>https://github.com/intility/json-api-toolkit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

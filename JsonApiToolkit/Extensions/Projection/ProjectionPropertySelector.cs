@@ -34,11 +34,11 @@ internal static class ProjectionPropertySelector
             requestedFieldsCamelCase,
             StringComparer.OrdinalIgnoreCase
         );
-        foreach (PropertyInfo prop in EntityMapper.GetAttributeProperties(sourceType))
-        {
-            if (fieldSet.Contains(EntityMapper.GetAttributeName(prop)))
-                result.Add(prop);
-        }
+        result.AddRange(
+            EntityMapper
+                .GetAttributeProperties(sourceType)
+                .Where(prop => fieldSet.Contains(EntityMapper.GetAttributeName(prop)))
+        );
 
         return result;
     }

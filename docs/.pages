@@ -1,18 +1,16 @@
 nav:
   - Home:
       - Welcome: index.md
-      - introduction.md
       - getting-started.md
   - Guides:
       - querying.md
       - build-query.md
-      - enhanced-error-handling.md
-      - performance.md
+      - error-handling.md
       - security.md
-      - api-controller-examples.md
-      - debugging.md
-      - upgrade-guide.md
-  - integrations
+      - performance.md
+      - recipes.md
+      - troubleshooting.md
+      - openapi.md
   - api
   - contributing.md
   - changelog.md

@@ -15,8 +15,8 @@ internal static class ReflectionMethodCache
     private static MethodInfo? s_enumerableContains;
     private static MethodInfo? s_enumerableWhere;
     private static MethodInfo? s_efCoreIncludeExpression;
-    private static MethodInfo? s_thenIncludeCollection;
-    private static MethodInfo? s_thenIncludeReference;
+    private static volatile MethodInfo? s_thenIncludeCollection;
+    private static volatile MethodInfo? s_thenIncludeReference;
     private static MethodInfo? s_queryableSelect;
     private static readonly ConcurrentDictionary<
         (Type Source, Type Projection),
@@ -50,7 +50,7 @@ internal static class ReflectionMethodCache
                     ?? throw new InvalidOperationException(
                         "Could not find Enumerable.Any<T>(IEnumerable<T>, Func<T, bool>) method. "
                             + "This is a core .NET method that should always exist. "
-                            + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                            + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                     );
             }
         }
@@ -74,7 +74,7 @@ internal static class ReflectionMethodCache
                     ?? throw new InvalidOperationException(
                         "Could not find Enumerable.Contains<T>(IEnumerable<T>, T) method. "
                             + "This is a core .NET method that should always exist. "
-                            + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                            + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                     );
             }
         }
@@ -98,7 +98,7 @@ internal static class ReflectionMethodCache
                     ?? throw new InvalidOperationException(
                         "Could not find Enumerable.Where<T>(IEnumerable<T>, Func<T, bool>) method. "
                             + "This is a core .NET method that should always exist. "
-                            + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                            + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                     );
             }
         }
@@ -126,7 +126,7 @@ internal static class ReflectionMethodCache
             ?? throw new InvalidOperationException(
                 $"Could not find Queryable.{methodName} method. "
                     + "This is a core .NET method that should always exist. "
-                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                    + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
             );
 
         return method.MakeGenericMethod(entityType, propertyType);
@@ -154,7 +154,7 @@ internal static class ReflectionMethodCache
                     ?? throw new InvalidOperationException(
                         "Could not find EntityFrameworkQueryableExtensions.Include<TEntity, TProperty> method. "
                             + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
-                            + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                            + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                     );
             }
         }
@@ -195,7 +195,7 @@ internal static class ReflectionMethodCache
                             ?? throw new InvalidOperationException(
                                 "Could not find Queryable.Select<TSource, TResult>(IQueryable<TSource>, Expression<Func<TSource, TResult>>) method. "
                                     + "This is a core .NET method that should always exist. "
-                                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                                    + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                             );
                     }
                 }
@@ -232,7 +232,7 @@ internal static class ReflectionMethodCache
                             ?? throw new InvalidOperationException(
                                 "Could not find EntityFrameworkQueryableExtensions.ToListAsync<T>(IQueryable<T>, CancellationToken) method. "
                                     + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
-                                    + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                                    + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                             );
                     }
                 }
@@ -297,7 +297,7 @@ internal static class ReflectionMethodCache
                         throw new InvalidOperationException(
                             "Could not find EntityFrameworkQueryableExtensions.ThenInclude method. "
                                 + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
-                                + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                                + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                         );
 
                     foreach (var candidate in candidates)
@@ -322,7 +322,7 @@ internal static class ReflectionMethodCache
                         ?? throw new InvalidOperationException(
                             "Could not find EntityFrameworkQueryableExtensions.ThenInclude method. "
                                 + "Ensure Microsoft.EntityFrameworkCore is properly referenced. "
-                                + "Please report this issue at https://github.com/Intility/Intility.JsonApiToolkit/issues"
+                                + "Please report this issue at https://github.com/intility/json-api-toolkit/issues"
                         );
                     s_thenIncludeReference ??= s_thenIncludeCollection;
                 }
