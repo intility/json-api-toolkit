@@ -76,7 +76,9 @@ jobs:
       - name: Install Intility.DotnetApiDocs
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: dotnet tool install -g Intility.DotnetApiDocs --version 0.1.5
+        run: dotnet tool install -g Intility.DotnetApiDocs
+          --version 0.1.5
+          --source https://nuget.pkg.github.com/Intility/index.json
 
       - name: Generate API reference
         run: dotnet-api-docs --input JsonApiToolkit/bin/docs --output docs/api --strict
