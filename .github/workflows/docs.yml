@@ -73,14 +73,13 @@ jobs:
         run: dotnet build JsonApiToolkit/JsonApiToolkit.csproj -c Release -o
           JsonApiToolkit/bin/docs
 
-      - name: Restore .NET tools
+      - name: Install Intility.DotnetApiDocs
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: dotnet tool restore
+        run: dotnet tool install -g Intility.DotnetApiDocs --version 0.1.5
 
       - name: Generate API reference
-        run: dotnet tool run dotnet-api-docs -- --input JsonApiToolkit/bin/docs --output
-          docs/api --strict
+        run: dotnet-api-docs --input JsonApiToolkit/bin/docs --output docs/api --strict
 
       - name: Install Python dependencies
         run: uv venv && uv pip install -r docs/requirements.txt
