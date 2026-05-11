@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.3](https://github.com/intility/json-api-toolkit/compare/v2.1.2...v2.1.3) (2026-05-11)
+
+
+### Bug Fixes
+
+* **packaging:** add icon and nuget-specific readme ([5c85ab8](https://github.com/intility/json-api-toolkit/commit/5c85ab80b8e51ec026f90b770ecc8078aae613ae))
+
 ## [2.1.2](https://github.com/intility/json-api-toolkit/compare/v2.1.1...v2.1.2) (2026-05-11)
 
 
