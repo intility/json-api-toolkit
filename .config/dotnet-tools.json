@@ -8,13 +8,6 @@
         "csharpier"
       ],
       "rollForward": false
-    },
-    "Intility.DotnetApiDocs": {
-      "version": "0.1.5",
-      "commands": [
-        "dotnet-api-docs"
-      ],
-      "rollForward": false
     }
   }
 }

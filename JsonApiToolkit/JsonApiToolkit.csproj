@@ -9,10 +9,11 @@
     <Version>2.1.1</Version>
     <Authors>Intility</Authors>
     <Company>Intility</Company>
-    <Description>A toolkit for implementing JSON:API specification in .NET applications</Description>
-    <PackageTags>jsonapi;api;rest;dotnet</PackageTags>
+    <Description>Build JSON:API endpoints in ASP.NET Core. Translates JSON:API query parameters (filter, sort, include, fields, page) into typed EF Core queries and returns spec-compliant response documents.</Description>
+    <PackageTags>jsonapi;json-api;aspnetcore;efcore;rest;api;dotnet</PackageTags>
     <RepositoryUrl>https://github.com/intility/json-api-toolkit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/intility/json-api-toolkit</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
 
