@@ -1,9 +1,0 @@
-<Project>
-  <Target
-    Name="CrossPlatformRestoreForLockFiles"
-    AfterTargets="Restore"
-    Condition="'$(SkipCrossPlatformRestore)' != 'true' AND !$([MSBuild]::IsOSPlatform('Linux'))"
-  >
-    <Exec Command="dotnet restore -p:RuntimeIdentifier=linux-musl-x64 -p:SkipCrossPlatformRestore=true" />
-  </Target>
-</Project>

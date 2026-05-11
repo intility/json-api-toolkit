@@ -1,7 +1,6 @@
 <Project>
-  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+  <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <NuGetLockFilePath>$(MSBuildProjectDirectory)\packages.lock.json</NuGetLockFilePath>
   </PropertyGroup>
   <PropertyGroup>
     <NuGetAudit>true</NuGetAudit>
