@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/intility/json-api-toolkit/compare/v2.1.1...v2.1.2) (2026-05-11)
+
+
+### CI
+
+* **actions:** Bump github/codeql-action from 4.35.3 to 4.35.4 ([#145](https://github.com/intility/json-api-toolkit/issues/145)) ([4bedc09](https://github.com/intility/json-api-toolkit/commit/4bedc09c5dc2f85cb025dbc603106fcd90ff6d5d))
+
 ## [2.1.1](https://github.com/intility/json-api-toolkit/compare/v2.1.0...v2.1.1) (2026-05-08)
 
 
