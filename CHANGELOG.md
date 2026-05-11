@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.4](https://github.com/intility/json-api-toolkit/compare/v2.1.3...v2.1.4) (2026-05-11)
+
+
+### Bug Fixes
+
+* **nuget:** remove RID for packing ([ae35a48](https://github.com/intility/json-api-toolkit/commit/ae35a483201196f45b2c9f64e3c6e8f8d34fb5e0))
+* **packaging:** remove RuntimeIdentifier that forced x64-specific builds ([a8d1eb8](https://github.com/intility/json-api-toolkit/commit/a8d1eb82e66ac59f48720984a6a5ce31bd1d86c2))
+
 ## [2.1.3](https://github.com/intility/json-api-toolkit/compare/v2.1.2...v2.1.3) (2026-05-11)
 
 
