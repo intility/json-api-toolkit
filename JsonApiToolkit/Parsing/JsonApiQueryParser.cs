@@ -13,7 +13,7 @@ namespace JsonApiToolkit.Parsing;
 /// </summary>
 public static class JsonApiQueryParser
 {
-    private const int MIN_PAGE_SIZE = 1;
+    private const int MinPageSize = 1;
 
     /// <summary>
     /// Minimum length for a valid filter key: "filter[x]" = 9 characters.
@@ -97,7 +97,7 @@ public static class JsonApiQueryParser
                     hasPageNumber && int.TryParse(pageNumber, out int num) ? Math.Max(1, num) : 1, // Default to page 1 if not specified or invalid
                 Size =
                     hasPageSize && int.TryParse(pageSize, out int size)
-                        ? Math.Clamp(size, MIN_PAGE_SIZE, options.MaxPageSize)
+                        ? Math.Clamp(size, MinPageSize, options.MaxPageSize)
                         : options.DefaultPageSize, // Use configured defaults
             };
         }
