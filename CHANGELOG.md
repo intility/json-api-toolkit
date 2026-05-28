@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.1.5](https://github.com/intility/json-api-toolkit/compare/v2.1.4...v2.1.5) (2026-05-26)
+
+
+### Build System
+
+* **nuget:** Bump the microsoft group with 4 updates ([#159](https://github.com/intility/json-api-toolkit/issues/159)) ([9529545](https://github.com/intility/json-api-toolkit/commit/952954577c5632d68ecf8419b2282fb63fc8931b))
+* **nuget:** Bump the testing group with 1 update ([#156](https://github.com/intility/json-api-toolkit/issues/156)) ([965f261](https://github.com/intility/json-api-toolkit/commit/965f2619435761bc7662abeab02475bed2feeea7))
+
+
+### CI
+
+* **actions:** Bump actions/create-github-app-token from 3.1.1 to 3.2.0 ([#153](https://github.com/intility/json-api-toolkit/issues/153)) ([b341e81](https://github.com/intility/json-api-toolkit/commit/b341e81b0a999de943925683ede573f788e8a981))
+* **actions:** Bump github/codeql-action from 4.35.4 to 4.35.5 ([#154](https://github.com/intility/json-api-toolkit/issues/154)) ([b5c1479](https://github.com/intility/json-api-toolkit/commit/b5c147906a085c876c72b1af053be0bd59f9eb9d))
+* **actions:** Bump github/codeql-action from 4.35.5 to 4.36.0 ([#158](https://github.com/intility/json-api-toolkit/issues/158)) ([dcb6bc1](https://github.com/intility/json-api-toolkit/commit/dcb6bc174c9e4f66e7c6d26e64c865baa6cdb446))
+
 ## [2.1.4](https://github.com/intility/json-api-toolkit/compare/v2.1.3...v2.1.4) (2026-05-11)
 
 
