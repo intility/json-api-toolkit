@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.6](https://github.com/intility/json-api-toolkit/compare/v2.1.5...v2.1.6) (2026-06-09)
+
+
+### Build System
+
+* **nuget:** Bump csharpier from 1.2.6 to 1.3.0 ([#168](https://github.com/intility/json-api-toolkit/issues/168)) ([ed2417e](https://github.com/intility/json-api-toolkit/commit/ed2417e089041298c3c10ea05351d84a6fb8db06))
+* **nuget:** Bump Intility.Logging.AspNetCore from 3.1.4 to 3.1.5 ([#169](https://github.com/intility/json-api-toolkit/issues/169)) ([3e609bf](https://github.com/intility/json-api-toolkit/commit/3e609bf53322dab375604e98ccdd48daf39e59a9))
+* **nuget:** Bump the microsoft group with 1 update ([#163](https://github.com/intility/json-api-toolkit/issues/163)) ([bfd6711](https://github.com/intility/json-api-toolkit/commit/bfd6711b2f6bed901daaef47d0dc161fc42e5f99))
+
+
+### CI
+
+* **actions:** Bump actions/checkout from 6.0.2 to 6.0.3 ([#160](https://github.com/intility/json-api-toolkit/issues/160)) ([b2e2d24](https://github.com/intility/json-api-toolkit/commit/b2e2d24d68cf9e688e3ca1e893b701b3ab9efd37))
+* **actions:** Bump actions/setup-dotnet from 5.2.0 to 5.3.0 ([#161](https://github.com/intility/json-api-toolkit/issues/161)) ([8600fe5](https://github.com/intility/json-api-toolkit/commit/8600fe5ee278a37bffa0211c3977b79ca687141d))
+* **actions:** Bump astral-sh/setup-uv from 8.1.0 to 8.2.0 ([#167](https://github.com/intility/json-api-toolkit/issues/167)) ([6da0317](https://github.com/intility/json-api-toolkit/commit/6da0317269e81d201801aac9082c3629025619f3))
+* **actions:** Bump github/codeql-action from 4.36.0 to 4.36.1 ([#162](https://github.com/intility/json-api-toolkit/issues/162)) ([f1a33c3](https://github.com/intility/json-api-toolkit/commit/f1a33c366ef71e758a27c1ff82b7853f6bb870f6))
+* **actions:** Bump github/codeql-action from 4.36.1 to 4.36.2 ([#166](https://github.com/intility/json-api-toolkit/issues/166)) ([683a4bc](https://github.com/intility/json-api-toolkit/commit/683a4bc9d710a7e9c4078467165390f86d67d885))
+
 ## [2.1.5](https://github.com/intility/json-api-toolkit/compare/v2.1.4...v2.1.5) (2026-05-26)
 
 
