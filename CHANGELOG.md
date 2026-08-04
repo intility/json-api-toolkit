@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.1.7](https://github.com/intility/json-api-toolkit/compare/v2.1.6...v2.1.7) (2026-08-04)
+
+
+### Build System
+
+* **nuget:** Bump the microsoft group with 4 updates ([#170](https://github.com/intility/json-api-toolkit/issues/170)) ([5ec62c2](https://github.com/intility/json-api-toolkit/commit/5ec62c2d5ce138ea71f6ec31fbd5be638bca598d))
+* **nuget:** Bump the microsoft group with 5 updates ([#179](https://github.com/intility/json-api-toolkit/issues/179)) ([ae4aeee](https://github.com/intility/json-api-toolkit/commit/ae4aeee5911b63ae8cee3e711de878a7ce6fffdd))
+
+
+### CI
+
+* **actions:** Bump actions/checkout from 6.0.3 to 7.0.0 ([#172](https://github.com/intility/json-api-toolkit/issues/172)) ([8ef4f37](https://github.com/intility/json-api-toolkit/commit/8ef4f3768b0a04a6612f5f35812a5cd0cf360089))
+* **actions:** Bump actions/checkout from 7.0.0 to 7.0.1 ([#183](https://github.com/intility/json-api-toolkit/issues/183)) ([0a72b34](https://github.com/intility/json-api-toolkit/commit/0a72b34f3c07ada76fe0a595c772b2608e05004f))
+* **actions:** Bump actions/setup-dotnet from 5.3.0 to 5.4.0 ([#173](https://github.com/intility/json-api-toolkit/issues/173)) ([5797785](https://github.com/intility/json-api-toolkit/commit/57977854859578e8d48b09b54376859ec1030114))
+* **actions:** Bump actions/setup-dotnet from 5.4.0 to 6.0.0 ([#184](https://github.com/intility/json-api-toolkit/issues/184)) ([b9653c6](https://github.com/intility/json-api-toolkit/commit/b9653c668c21655ed0f02de5c3ecc0d942836664))
+* **actions:** Bump astral-sh/setup-uv from 8.2.0 to 8.3.0 ([#175](https://github.com/intility/json-api-toolkit/issues/175)) ([37ccaf9](https://github.com/intility/json-api-toolkit/commit/37ccaf9b7b15ea370390316522c47e1571e934f3))
+* **actions:** Bump astral-sh/setup-uv from 8.3.0 to 9.0.0 ([#181](https://github.com/intility/json-api-toolkit/issues/181)) ([c0403ca](https://github.com/intility/json-api-toolkit/commit/c0403ca4e895e14ae5fd9ad92192d4b09dd4ab36))
+* **actions:** Bump dorny/paths-filter from 4.0.1 to 4.0.2 ([#177](https://github.com/intility/json-api-toolkit/issues/177)) ([26d597d](https://github.com/intility/json-api-toolkit/commit/26d597d08c27375d45fd7c70fe18794627f51b03))
+* **actions:** Bump github/codeql-action/analyze from 4.36.2 to 4.36.3 ([#178](https://github.com/intility/json-api-toolkit/issues/178)) ([4dd8af4](https://github.com/intility/json-api-toolkit/commit/4dd8af4af35cd69dcbfee0f74f0beb0234547de2))
+* **actions:** Bump github/codeql-action/analyze from 4.36.3 to 4.37.4 ([#180](https://github.com/intility/json-api-toolkit/issues/180)) ([e83c631](https://github.com/intility/json-api-toolkit/commit/e83c631fe22fd89d7b8f89a909904d5b52364d32))
+* **actions:** Bump github/codeql-action/init from 4.36.2 to 4.36.3 ([#176](https://github.com/intility/json-api-toolkit/issues/176)) ([9754c66](https://github.com/intility/json-api-toolkit/commit/9754c6661bded781e26bf3049f4af375e79e624e))
+* **actions:** Bump github/codeql-action/init from 4.36.3 to 4.37.4 ([#182](https://github.com/intility/json-api-toolkit/issues/182)) ([537dfc0](https://github.com/intility/json-api-toolkit/commit/537dfc048f1811ae6abd7b1dc5b875ab231204a4))
+
 ## [2.1.6](https://github.com/intility/json-api-toolkit/compare/v2.1.5...v2.1.6) (2026-06-09)
 
 
