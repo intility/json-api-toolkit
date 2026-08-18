@@ -132,20 +132,13 @@ public static class FilteredIncludeBuilder
             var navParam = Expression.Parameter(firstNavType, "nav");
             var secondNavAccess = Expression.Property(navParam, secondProperty);
 
-            var filterParam = Expression.Parameter(elementType, "item");
-
-            // Use FilterExpressionBuilder to build the filter expression with proper logical operators
-            var filterExpr = FilterExpressionBuilder.BuildFilterExpression(
+            var whereLambda = new FilterExpressionComposer(logger).Compose(
                 filterGroup,
-                filterParam,
-                elementType,
-                logger
+                elementType
             );
 
-            if (filterExpr != null)
+            if (whereLambda != null)
             {
-                var whereLambda = Expression.Lambda(filterExpr, filterParam);
-
                 var whereMethod = ReflectionMethodCache.GetEnumerableWhere(elementType);
 
                 var filteredCollection = Expression.Call(whereMethod, secondNavAccess, whereLambda);
@@ -259,20 +252,10 @@ public static class FilteredIncludeBuilder
     {
         var entityParameter = Expression.Parameter(entityType, "e");
         var navigationAccess = Expression.Property(entityParameter, navigationProperty);
-        var elementParameter = Expression.Parameter(elementType, "x");
 
-        // Use FilterExpressionBuilder to build the filter expression with proper logical operators
-        var filterExpression = FilterExpressionBuilder.BuildFilterExpression(
-            filterGroup,
-            elementParameter,
-            elementType,
-            logger
-        );
-
-        if (filterExpression == null)
+        var whereLambda = new FilterExpressionComposer(logger).Compose(filterGroup, elementType);
+        if (whereLambda == null)
             return null;
-
-        var whereLambda = Expression.Lambda(filterExpression, elementParameter);
 
         var whereMethod = ReflectionMethodCache.GetEnumerableWhere(elementType);
 
@@ -281,31 +264,5 @@ public static class FilteredIncludeBuilder
         var includeLambda = Expression.Lambda(filteredCollection, entityParameter);
 
         return includeLambda;
-    }
-
-    private static MemberExpression? GetPropertyExpression(
-        Expression parameter,
-        string propertyPath,
-        Type entityType
-    )
-    {
-        if (string.IsNullOrEmpty(propertyPath))
-            return null;
-
-        var parts = propertyPath.Split('.');
-        Expression current = parameter;
-        Type currentType = entityType;
-
-        foreach (var part in parts)
-        {
-            var property = QueryHelpers.GetPropertyByJsonName(currentType, part);
-            if (property == null)
-                return null;
-
-            current = Expression.Property(current, property);
-            currentType = property.PropertyType;
-        }
-
-        return current as MemberExpression;
     }
 }
