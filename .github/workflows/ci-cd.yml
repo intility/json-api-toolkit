@@ -8,6 +8,7 @@ on:
       - "**.md"
       - ".github/ISSUE_TEMPLATE/**"
       - ".claude/**"
+      - "clients/typescript/**"
   release:
     types: [ published ]
 

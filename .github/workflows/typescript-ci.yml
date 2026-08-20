@@ -1,0 +1,47 @@
+name: TypeScript CI
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    branches:
+      - main
+    paths:
+      - "clients/typescript/**"
+      - ".github/workflows/typescript-ci.yml"
+
+concurrency:
+  group: ts-ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: clients/typescript
+
+jobs:
+  quality:
+    name: 🔍 Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+
+      - name: Type Check
+        run: deno task check
+
+      - name: Lint
+        run: deno task lint
+
+      - name: Format
+        run: deno task fmt
+
+      - name: Test
+        run: deno task test
