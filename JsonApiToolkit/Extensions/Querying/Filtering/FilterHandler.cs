@@ -24,18 +24,12 @@ public static class FilterHandler
         )
             return query;
 
-        ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
-        Expression? expression = FilterExpressionBuilder.BuildFilterExpression<T>(
-            filterGroup,
-            parameter,
-            logger
+        Expression<Func<T, bool>>? lambda = new FilterExpressionComposer(logger).Compose<T>(
+            filterGroup
         );
 
-        if (expression != null)
-        {
-            var lambda = Expression.Lambda<Func<T, bool>>(expression, parameter);
+        if (lambda != null)
             return query.Where(lambda);
-        }
 
         logger?.LogWarning("Filter expression returned null for {Type}", typeof(T).Name);
         return query;

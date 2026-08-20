@@ -5,7 +5,7 @@ using JsonApiToolkit.Tests.Models;
 
 namespace JsonApiToolkit.Tests.Extensions.Filtering;
 
-public class NestedPropertyNavigatorTests
+public class FilterCompositionTests
 {
     #region Test Data
 
