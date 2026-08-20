@@ -6,11 +6,12 @@
   "version": "0.6.0",
   "exports": "./index.js",
   "tasks": {
-    "check": "deno check src/**/*.ts",
+    "check": "deno check src/**/*.ts contract/**/*.ts",
     "lint": "deno lint --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",
     "fmt": "deno fmt --check --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",
     "fmt:fix": "deno fmt --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",
-    "test": "deno test",
+    "test": "deno test src/",
+    "test:contract": "deno test --allow-net --allow-env contract/",
     "build": "deno run -A build_npm.ts"
   },
   "imports": {

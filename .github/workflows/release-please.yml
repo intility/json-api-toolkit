@@ -12,7 +12,7 @@ on:
 jobs:
   release-please:
     if: github.event_name == 'push'
-    name: 🚀 Release Please
+    name: Release Please
     runs-on: ubuntu-latest
     permissions:
       contents: write
