@@ -8,6 +8,7 @@ on:
       - "**.md"
       - ".github/ISSUE_TEMPLATE/**"
       - ".claude/**"
+      - "clients/typescript/**"
   release:
     types: [ published ]
 
@@ -42,7 +43,8 @@ jobs:
         run: dotnet test --configuration Release --verbosity normal --no-restore
 
   publish:
-    if: github.event_name == 'release'
+    # TypeScript client releases (typescript-v*) are published by typescript-release.yml
+    if: github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'typescript-')
     runs-on: ubuntu-latest
     permissions:
       contents: read

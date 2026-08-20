@@ -1,0 +1,47 @@
+name: 🚀 TypeScript Release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: ts-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: clients/typescript
+
+jobs:
+  publish:
+    if: startsWith(github.event.release.tag_name, 'typescript-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+
+      - name: Build Package
+        run: |
+          TAG=${{ github.event.release.tag_name }}
+          deno task build "${TAG#typescript-v}"
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+
+      - name: Publish Package
+        run: |
+          cd dist
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

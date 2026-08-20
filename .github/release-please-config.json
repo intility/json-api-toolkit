@@ -1,5 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/refs/heads/main/schemas/config.json",
+  "bootstrap-sha": "4d1c01c8ebbf8ba5c61713c040f7724c6afb2366",
   "packages": {
     ".": {
       "release-type": "simple",
@@ -24,6 +25,28 @@
           "xpath": "//Project/PropertyGroup/Version"
         },
         "mkdocs.yaml"
+      ]
+    },
+    "clients/typescript": {
+      "release-type": "simple",
+      "package-name": "@intility/jsonapi-ts-tools",
+      "component": "typescript",
+      "include-component-in-tag": true,
+      "changelog-sections": [
+        { "type": "feat", "section": "Features", "hidden": false },
+        { "type": "fix", "section": "Bug Fixes", "hidden": false },
+        { "type": "perf", "section": "Performance", "hidden": false },
+        { "type": "refactor", "section": "Refactoring", "hidden": false },
+        { "type": "docs", "section": "Documentation", "hidden": false },
+        { "type": "test", "section": "Tests", "hidden": false },
+        { "type": "chore", "section": "Maintenance", "hidden": true }
+      ],
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "deno.json",
+          "jsonpath": "$.version"
+        }
       ]
     }
   }
