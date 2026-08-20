@@ -10,8 +10,6 @@ on:
       - opened
       - synchronize
       - reopened
-    branches:
-      - main
 
 concurrency:
   group: ts-ci-${{ github.head_ref }}

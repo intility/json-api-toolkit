@@ -2,7 +2,6 @@ name: CI/CD Pipeline
 
 on:
   pull_request:
-    branches: [ main ]
   release:
     types: [ published ]
 

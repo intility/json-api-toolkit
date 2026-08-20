@@ -3,7 +3,6 @@ name: Contract Tests
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [main]
 
 permissions:
   contents: read
