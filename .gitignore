@@ -414,3 +414,9 @@ docs/markdown-cheat-sheet.md
 
 # Claude
 .claude
+
+# AI agent and planning docs (kept local, not published in this public repo)
+CLAUDE.md
+AGENTS.md
+DESIGN.md
+.claude/
