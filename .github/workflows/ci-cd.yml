@@ -43,8 +43,7 @@ jobs:
         run: dotnet test --configuration Release --verbosity normal --no-restore
 
   publish:
-    # TypeScript client releases (typescript-v*) are published by typescript-release.yml
-    if: github.event_name == 'release' && !startsWith(github.event.release.tag_name, 'typescript-')
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: read
