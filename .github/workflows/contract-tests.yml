@@ -4,24 +4,40 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
-    paths:
-      - "JsonApiToolkit/**"
-      - "samples/ContractApi/**"
-      - "clients/typescript/**"
-      - ".github/workflows/contract-tests.yml"
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: contract-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
-  contract:
-    name: Contract Tests
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      contract: ${{ steps.filter.outputs.contract }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            contract:
+              - 'JsonApiToolkit/**'
+              - 'samples/ContractApi/**'
+              - 'clients/typescript/**'
+              - '.github/workflows/contract-tests.yml'
 
+  contract:
+    name: Run contract tests
+    needs: changes
+    if: needs.changes.outputs.contract == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -50,3 +66,15 @@ jobs:
       - name: Run contract test suite
         working-directory: clients/typescript
         run: deno task test:contract
+
+  status:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [contract]
+    steps:
+      - name: Check result
+        run: |
+          result="${{ needs.contract.result }}"
+          if [[ "$result" == "success" || "$result" == "skipped" ]]; then exit 0; fi
+          exit 1
