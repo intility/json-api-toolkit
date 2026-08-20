@@ -1,0 +1,191 @@
+// deno-lint-ignore-file no-explicit-any
+import type {
+  AttributeKeys,
+  DirectAttributeKeys,
+  FilterOp,
+  Include,
+  Sort,
+} from '../types/query-builder.ts';
+import { FilterGroupBuilder } from './FilterGroupBuilder.ts';
+import type { FilterGroup } from '../types/filters.ts';
+
+/**
+ * Recursively serializes a filter group into JSON:API query parameter key-value pairs.
+ */
+function serializeFilterGroup<T>(
+  group: FilterGroup<T>,
+  prefix: string[] = [],
+): [string, string][] {
+  if (group.type === 'simple') {
+    const { field, op, value } = group.filter;
+    const key = op === 'eq'
+      ? [...prefix, String(field)]
+      : [...prefix, String(field), op];
+    let val = value;
+    if (Array.isArray(value)) val = value.join(',');
+    return [[`filter${key.map((k) => `[${k}]`).join('')}`, String(val)]];
+  } else {
+    // Logical group (or, and, not)
+    return group.filters.flatMap((f, i) =>
+      serializeFilterGroup(f, [...prefix, group.type, String(i)])
+    );
+  }
+}
+
+/**
+ * Main JSON:API query builder.
+ * Supports type-safe filters (including logical groups), sorts, includes, and pagination.
+ */
+export class JsonApiQueryBuilder<T> {
+  private filterGroups: FilterGroup<T>[] = [];
+  private sorts: Sort<T> = [];
+  private includes: Include<T> = [];
+  private pagination: { number?: number; size?: number } = {};
+  private fieldsets: Map<string, string[]> = new Map();
+
+  /**
+   * Add a simple filter.
+   * @param field - The attribute to filter on
+   * @param value - The value to filter by (uses "eq" operator)
+   */
+  filter<K extends AttributeKeys<T>>(field: K, value: any): this;
+  /**
+   * Add a simple filter with explicit operator.
+   * @param field - The attribute to filter on
+   * @param op - The filter operator
+   * @param value - The value to filter by
+   */
+  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any): this;
+  filter<K extends AttributeKeys<T>>(
+    field: K,
+    opOrValue: FilterOp | any,
+    value?: any,
+  ) {
+    const op: FilterOp = value === undefined ? 'eq' : opOrValue;
+    const val = value === undefined ? opOrValue : value;
+    this.filterGroups.push({
+      type: 'simple',
+      filter: { field, op, value: val },
+    });
+    return this;
+  }
+
+  /**
+   * Add an "or" logical filter group.
+   */
+  or(cb: (b: FilterGroupBuilder<T>) => void) {
+    const builder = new FilterGroupBuilder<T>();
+    cb(builder);
+    this.filterGroups.push({
+      type: 'or',
+      filters: builder.build(),
+    });
+    return this;
+  }
+
+  /**
+   * Add an "and" logical filter group.
+   */
+  and(cb: (b: FilterGroupBuilder<T>) => void) {
+    const builder = new FilterGroupBuilder<T>();
+    cb(builder);
+    this.filterGroups.push({
+      type: 'and',
+      filters: builder.build(),
+    });
+    return this;
+  }
+
+  /**
+   * Add a "not" logical filter group.
+   */
+  not(cb: (b: FilterGroupBuilder<T>) => void) {
+    const builder = new FilterGroupBuilder<T>();
+    cb(builder);
+    this.filterGroups.push({
+      type: 'not',
+      filters: builder.build(),
+    });
+    return this;
+  }
+
+  /**
+   * Set sort fields (comma-separated, supports -field for descending).
+   */
+  sort(...fields: Sort<T>) {
+    this.sorts = fields;
+    return this;
+  }
+
+  /**
+   * Set included relationships (comma-separated, supports dot notation).
+   */
+  include(...fields: Include<T>) {
+    this.includes = fields;
+    return this;
+  }
+
+  /**
+   * Set sparse fieldsets for a resource type.
+   * Produces `fields[type]=field1,field2` in the query string.
+   * Pass a type parameter for type-safe field suggestions.
+   * @param type - The JSON:API resource type name
+   * @param fields - The attribute names to include
+   */
+  fields<R = unknown>(
+    type: string,
+    fields: (unknown extends R ? string : DirectAttributeKeys<R>)[],
+  ) {
+    this.fieldsets.set(type, fields as string[]);
+    return this;
+  }
+
+  /**
+   * Set pagination (page number and size).
+   */
+  page(number: number, size: number) {
+    this.pagination = { number, size };
+    return this;
+  }
+
+  /**
+   * Build the query string for use in a JSON:API request.
+   */
+  build(): string {
+    const params = new URLSearchParams();
+
+    // Serialize all filter groups
+    for (const group of this.filterGroups) {
+      for (const [key, value] of serializeFilterGroup(group)) {
+        params.append(key, value);
+      }
+    }
+
+    // Sort
+    if (this.sorts.length) {
+      params.append('sort', this.sorts.join(','));
+    }
+
+    // Include
+    if (this.includes.length) {
+      params.append('include', this.includes.join(','));
+    }
+
+    // Sparse fieldsets
+    for (const [type, fields] of this.fieldsets) {
+      if (fields.length) {
+        params.append(`fields[${type}]`, fields.join(','));
+      }
+    }
+
+    // Pagination
+    if (this.pagination.number !== undefined) {
+      params.append('page[number]', String(this.pagination.number));
+    }
+    if (this.pagination.size !== undefined) {
+      params.append('page[size]', String(this.pagination.size));
+    }
+
+    return params.toString();
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@intility/jsonapi-ts-tools",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "version": "0.6.0",
+  "exports": "./index.js",
+  "tasks": {
+    "check": "deno check src/**/*.ts",
+    "lint": "deno lint --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",
+    "fmt": "deno fmt --check --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",
+    "fmt:fix": "deno fmt --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",
+    "test": "deno test",
+    "build": "deno run -A build_npm.ts"
+  },
+  "imports": {
+    "@deno/dnt": "jsr:@deno/dnt@^0.41.3",
+    "@std/assert": "jsr:@std/assert@^0.226.0"
+  },
+  "fmt": {
+    "singleQuote": true,
+    "exclude": [
+      "README.md",
+      "CLAUDE.md",
+      "CODEOWNERS",
+      "CHANGELOG.md"
+    ]
+  }
+}
