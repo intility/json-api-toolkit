@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   contract:
-    name: 🤝 Contract Tests
+    name: Contract Tests
     runs-on: ubuntu-latest
 
     steps:
