@@ -101,6 +101,17 @@ public static class JsonApiErrors
         );
     }
 
+    /// <summary>Creates a 400 error for an unsupported filter group shape.</summary>
+    public static JsonApiBadRequestException UnsupportedFilterGroup(
+        string detail,
+        string parameter
+    ) =>
+        new(
+            detail,
+            JsonApiErrorCodes.UnsupportedFilterGroup,
+            new ErrorSource { Parameter = parameter }
+        );
+
     /// <summary>Creates a 400 error for an invalid sort field.</summary>
     public static JsonApiBadRequestException InvalidSortField(
         string field,

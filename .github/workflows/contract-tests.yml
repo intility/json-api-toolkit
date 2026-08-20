@@ -56,7 +56,7 @@ jobs:
         run: |
           ASPNETCORE_URLS=http://localhost:5198 \
             dotnet run --project samples/ContractApi --configuration Release --no-build &
-          STRICT_PAGINATION=true ASPNETCORE_URLS=http://localhost:5199 \
+          JSONAPI_STRICT=true ASPNETCORE_URLS=http://localhost:5199 \
             dotnet run --project samples/ContractApi --configuration Release --no-build &
           for url in http://localhost:5198/articles http://localhost:5199/articles; do
             timeout 60 bash -c "until curl -sf -o /dev/null $url; do sleep 1; done"

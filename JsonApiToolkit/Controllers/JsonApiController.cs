@@ -72,7 +72,7 @@ public abstract class JsonApiController : ControllerBase
         if (parameters.Filter == null)
             return queryable;
 
-        return queryable.ApplyFilters(parameters.Filter, Logger);
+        return queryable.ApplyFilters(parameters.Filter, Logger, Options.StrictQueryValidation);
     }
 
     /// <summary>
@@ -116,14 +116,19 @@ public abstract class JsonApiController : ControllerBase
 
         var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
             parameters.Filter,
-            parameters.Include
+            parameters.Include,
+            Options.StrictQueryValidation
         );
 
         IQueryable<T> filteredQuery = queryable;
 
         // Apply main entity filters
         if (mainFilters != null)
-            filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
+            filteredQuery = filteredQuery.ApplyFilters(
+                mainFilters,
+                Logger,
+                Options.StrictQueryValidation
+            );
 
         // Apply includes (with or without filters)
         if (includeFilters.Count > 0)
@@ -131,7 +136,8 @@ public abstract class JsonApiController : ControllerBase
             filteredQuery = filteredQuery.ApplyFilteredIncludes(
                 mappedIncludes,
                 includeFilters,
-                Logger
+                Logger,
+                Options.StrictQueryValidation
             );
         }
         else if (mappedIncludes.Count > 0)
@@ -202,7 +208,11 @@ public abstract class JsonApiController : ControllerBase
         );
 
         if (parameters.Sort?.Count > 0)
-            filteredQuery = filteredQuery.ApplySorting(parameters.Sort, Logger);
+            filteredQuery = filteredQuery.ApplySorting(
+                parameters.Sort,
+                Logger,
+                Options.StrictQueryValidation
+            );
 
         int totalCount = await filteredQuery.CountAsync().ConfigureAwait(false);
         LogCountResults<T>(parameters, totalCount);
@@ -291,7 +301,11 @@ public abstract class JsonApiController : ControllerBase
         );
 
         if (parameters.Sort?.Count > 0)
-            processedQuery = processedQuery.ApplySorting(parameters.Sort, Logger);
+            processedQuery = processedQuery.ApplySorting(
+                parameters.Sort,
+                Logger,
+                Options.StrictQueryValidation
+            );
 
         // Get count if requested
         int totalCount = 0;
@@ -414,13 +428,18 @@ public abstract class JsonApiController : ControllerBase
     {
         var (mainFilters, includeFilters) = IncludeFilterParser.SeparateIncludeFilters(
             parameters.Filter,
-            parameters.Include
+            parameters.Include,
+            Options.StrictQueryValidation
         );
 
         IQueryable<T> filteredQuery = queryable;
 
         if (mainFilters != null)
-            filteredQuery = filteredQuery.ApplyFilters(mainFilters, Logger);
+            filteredQuery = filteredQuery.ApplyFilters(
+                mainFilters,
+                Logger,
+                Options.StrictQueryValidation
+            );
 
         if (includeFilters.Count > 0)
         {
@@ -432,7 +451,8 @@ public abstract class JsonApiController : ControllerBase
             filteredQuery = filteredQuery.ApplyFilteredIncludes(
                 mappedIncludes,
                 includeFilters,
-                Logger
+                Logger,
+                Options.StrictQueryValidation
             );
         }
         else if (mappedIncludes.Count > 0)

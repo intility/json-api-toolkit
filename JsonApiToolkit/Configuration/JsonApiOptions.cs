@@ -55,6 +55,15 @@ public class JsonApiOptions
     public bool StrictPagination { get; set; }
 
     /// <summary>
+    /// When true, returns 400 Bad Request instead of silently ignoring invalid query
+    /// parameters: unknown filter fields, unconvertible filter values, unknown filter
+    /// operators, unknown sort fields, malformed filter keys, unsupported filter group
+    /// shapes (filter[and] and nested groups), and bracket-syntax include filters whose
+    /// relationship is not included. Default: false (log and skip for backwards compatibility).
+    /// </summary>
+    public bool StrictQueryValidation { get; set; }
+
+    /// <summary>
     /// When true, applies database-level column filtering via EF Core Select() projection
     /// when fields[type] is specified in the request. Only fetches requested columns from
     /// the database instead of loading full entities and filtering in memory.

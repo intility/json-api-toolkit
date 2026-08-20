@@ -8,9 +8,9 @@ In-memory EF Core, deterministic fabricated seed data (see `Data.cs`). The
 contract test suite asserts against the exact seed rules.
 
 ```bash
-# default instance (StrictPagination off)
+# default instance (all strict options off)
 dotnet run --project samples/ContractApi --urls http://localhost:5198
 
-# strict-pagination instance
-STRICT_PAGINATION=true dotnet run --project samples/ContractApi --urls http://localhost:5199
+# strict instance (StrictPagination + StrictQueryValidation)
+JSONAPI_STRICT=true dotnet run --project samples/ContractApi --urls http://localhost:5199
 ```

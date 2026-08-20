@@ -105,7 +105,7 @@ Deno.test('JsonApiErrorCodes', async (t) => {
     );
   });
 
-  await t.step('has 18 error codes', () => {
-    assertEquals(Object.keys(JsonApiErrorCodes).length, 18);
+  await t.step('has 19 error codes', () => {
+    assertEquals(Object.keys(JsonApiErrorCodes).length, 19);
   });
 });

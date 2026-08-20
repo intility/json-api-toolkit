@@ -16,6 +16,7 @@ public static class JsonApiErrorCodes
     public const string InvalidFilterValue = "INVALID_FILTER_VALUE";
     public const string InvalidFilterOperator = "INVALID_FILTER_OPERATOR";
     public const string FilterNotAllowed = "FILTER_NOT_ALLOWED";
+    public const string UnsupportedFilterGroup = "UNSUPPORTED_FILTER_GROUP";
 
     // Include errors
     public const string IncludeNotAllowed = "INCLUDE_NOT_ALLOWED";

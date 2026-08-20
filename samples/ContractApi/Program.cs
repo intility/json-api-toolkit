@@ -8,8 +8,10 @@ builder.Services.AddDbContext<ContractDbContext>(o => o.UseInMemoryDatabase("con
 builder.Services.AddControllers();
 builder.Services.AddJsonApiToolkit(o =>
 {
-    // Contract tests run one instance with strict pagination and one without.
-    o.StrictPagination = builder.Configuration.GetValue<bool>("STRICT_PAGINATION");
+    // Contract tests run one fully strict instance and one default instance.
+    bool strict = builder.Configuration.GetValue<bool>("JSONAPI_STRICT");
+    o.StrictPagination = strict;
+    o.StrictQueryValidation = strict;
 });
 
 var app = builder.Build();
