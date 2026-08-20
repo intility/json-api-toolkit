@@ -19,6 +19,7 @@
   },
   "fmt": {
     "singleQuote": true,
+    "indentWidth": 2,
     "exclude": [
       "README.md",
       "CLAUDE.md",
