@@ -1,0 +1,79 @@
+name: Contract Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: contract-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      contract: ${{ steps.filter.outputs.contract }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            contract:
+              - 'JsonApiToolkit/**'
+              - 'samples/ContractApi/**'
+              - 'clients/typescript/**'
+              - '.github/workflows/contract-tests.yml'
+
+  contract:
+    name: Run contract tests
+    needs: changes
+    if: needs.changes.outputs.contract == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+
+      - name: Build sample API
+        run: dotnet build samples/ContractApi --configuration Release
+
+      - name: Start sample APIs
+        run: |
+          ASPNETCORE_URLS=http://localhost:5198 \
+            dotnet run --project samples/ContractApi --configuration Release --no-build &
+          STRICT_PAGINATION=true ASPNETCORE_URLS=http://localhost:5199 \
+            dotnet run --project samples/ContractApi --configuration Release --no-build &
+          for url in http://localhost:5198/articles http://localhost:5199/articles; do
+            timeout 60 bash -c "until curl -sf -o /dev/null $url; do sleep 1; done"
+          done
+
+      - name: Run contract test suite
+        working-directory: clients/typescript
+        run: deno task test:contract
+
+  status:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [contract]
+    steps:
+      - name: Check result
+        run: |
+          result="${{ needs.contract.result }}"
+          if [[ "$result" == "success" || "$result" == "skipped" ]]; then exit 0; fi
+          exit 1

@@ -102,3 +102,7 @@ end_of_line = lf
 
 [*.{cmd,bat}]
 end_of_line = crlf
+
+# TypeScript client uses 2-space indent (Deno defaults)
+[clients/typescript/**]
+indent_size = 2

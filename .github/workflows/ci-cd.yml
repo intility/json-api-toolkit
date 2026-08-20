@@ -2,12 +2,6 @@ name: CI/CD Pipeline
 
 on:
   pull_request:
-    branches: [ main ]
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".claude/**"
   release:
     types: [ published ]
 
@@ -16,8 +10,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  changes:
+    name: Detect changes
     if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      dotnet: ${{ steps.filter.outputs.dotnet }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            dotnet:
+              - 'JsonApiToolkit/**'
+              - 'JsonApiToolkit.Tests/**'
+              - 'samples/**'
+              - 'JsonApiToolkit.sln'
+              - 'Directory.Build.props'
+              - 'global.json'
+              - '.config/**'
+              - '.github/workflows/ci-cd.yml'
+
+  build-and-test:
+    needs: changes
+    if: needs.changes.outputs.dotnet == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,6 +59,18 @@ jobs:
 
       - name: Test
         run: dotnet test --configuration Release --verbosity normal --no-restore
+
+  status:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    needs: [build-and-test]
+    steps:
+      - name: Check result
+        run: |
+          result="${{ needs.build-and-test.result }}"
+          if [[ "$result" == "success" || "$result" == "skipped" ]]; then exit 0; fi
+          exit 1
 
   publish:
     if: github.event_name == 'release'

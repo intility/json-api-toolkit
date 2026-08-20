@@ -1,0 +1,73 @@
+name: TypeScript CI
+
+permissions:
+  contents: read
+  pull-requests: read
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+concurrency:
+  group: ts-ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      typescript: ${{ steps.filter.outputs.typescript }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            typescript:
+              - 'clients/typescript/**'
+              - '.github/workflows/typescript-ci.yml'
+
+  quality:
+    name: Code Quality
+    needs: changes
+    if: needs.changes.outputs.typescript == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/typescript
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+
+      - name: Type Check
+        run: deno task check
+
+      - name: Lint
+        run: deno task lint
+
+      - name: Format
+        run: deno task fmt
+
+      - name: Test
+        run: deno task test
+
+  status:
+    name: TypeScript CI
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [quality]
+    steps:
+      - name: Check result
+        run: |
+          result="${{ needs.quality.result }}"
+          if [[ "$result" == "success" || "$result" == "skipped" ]]; then exit 0; fi
+          exit 1

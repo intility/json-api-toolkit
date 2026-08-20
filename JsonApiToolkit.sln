@@ -7,22 +7,61 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonApiToolkit", "JsonApiTo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JsonApiToolkit.Tests", "JsonApiToolkit.Tests\JsonApiToolkit.Tests.csproj", "{77C5FCE1-1E3E-452C-9D80-581374921DB1}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContractApi", "samples\ContractApi\ContractApi.csproj", "{D558228A-59FB-439C-A8F3-97E429790C31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Debug|x64.Build.0 = Debug|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Debug|x86.Build.0 = Debug|Any CPU
 		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Release|x64.ActiveCfg = Release|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Release|x64.Build.0 = Release|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Release|x86.ActiveCfg = Release|Any CPU
+		{B2A60A01-B73C-4052-8716-B341C4FA8D0D}.Release|x86.Build.0 = Release|Any CPU
 		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Debug|x64.Build.0 = Debug|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Debug|x86.Build.0 = Debug|Any CPU
 		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Release|x64.ActiveCfg = Release|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Release|x64.Build.0 = Release|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Release|x86.ActiveCfg = Release|Any CPU
+		{77C5FCE1-1E3E-452C-9D80-581374921DB1}.Release|x86.Build.0 = Release|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Debug|x64.Build.0 = Debug|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Debug|x86.Build.0 = Debug|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Release|x64.ActiveCfg = Release|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Release|x64.Build.0 = Release|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Release|x86.ActiveCfg = Release|Any CPU
+		{D558228A-59FB-439C-A8F3-97E429790C31}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D558228A-59FB-439C-A8F3-97E429790C31} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal
