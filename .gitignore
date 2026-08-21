@@ -420,3 +420,7 @@ CLAUDE.md
 AGENTS.md
 DESIGN.md
 .claude/
+
+# Lefthook local overrides (personal, not shared)
+.lefthook-local.yml
+lefthook-local.yml

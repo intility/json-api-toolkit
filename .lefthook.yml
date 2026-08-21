@@ -1,0 +1,43 @@
+# Lefthook Git Hooks Configuration
+min_version: 1.9.0
+assert_lefthook_installed: true
+colors: true
+output:
+  - summary
+  - execution
+  - execution_out
+  - execution_info
+
+pre-commit:
+  parallel: true
+  commands:
+    dotnet-fmt:
+      glob: "*.cs"
+      run: dotnet csharpier check .
+      fail_text: "C# formatting issues found! Run 'just format-dotnet' to fix them"
+
+    ts-lint:
+      root: "clients/typescript/"
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: deno task lint
+      fail_text: "Linting failed! Run 'cd clients/typescript && deno task lint' to see errors"
+
+    ts-fmt:
+      root: "clients/typescript/"
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: deno task fmt
+      fail_text: "Formatting issues found! Run 'just format-ts' to fix them"
+
+pre-push:
+  parallel: true
+  commands:
+    dotnet-build:
+      glob: "*.{cs,csproj,sln}"
+      run: dotnet build JsonApiToolkit.sln --configuration Release
+      fail_text: "Build failed! Run 'dotnet build JsonApiToolkit.sln' to see errors"
+
+    ts-check:
+      root: "clients/typescript/"
+      glob: "*.{ts,tsx,js,jsx}"
+      run: deno task check
+      fail_text: "Type checking failed! Run 'cd clients/typescript && deno task check' to see errors"
