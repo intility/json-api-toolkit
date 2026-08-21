@@ -64,6 +64,14 @@ public class JsonApiOptions
     public bool StrictQueryValidation { get; set; }
 
     /// <summary>
+    /// When true, pagination links (first/last/prev/next) preserve the request's full
+    /// query string (filter, sort, include, fields) with only the page parameters
+    /// replaced. Default: false (links are rebuilt from the bare path and drop all
+    /// other query parameters, for backwards compatibility).
+    /// </summary>
+    public bool PreserveQueryInPaginationLinks { get; set; }
+
+    /// <summary>
     /// When true, applies database-level column filtering via EF Core Select() projection
     /// when fields[type] is specified in the request. Only fetches requested columns from
     /// the database instead of loading full entities and filtering in memory.

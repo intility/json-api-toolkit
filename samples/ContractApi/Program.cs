@@ -8,10 +8,12 @@ builder.Services.AddDbContext<ContractDbContext>(o => o.UseInMemoryDatabase("con
 builder.Services.AddControllers();
 builder.Services.AddJsonApiToolkit(o =>
 {
-    // Contract tests run one fully strict instance and one default instance.
+    // Contract tests run one default instance and one instance with every
+    // opt-in behavior enabled.
     bool strict = builder.Configuration.GetValue<bool>("JSONAPI_STRICT");
     o.StrictPagination = strict;
     o.StrictQueryValidation = strict;
+    o.PreserveQueryInPaginationLinks = strict;
 });
 
 var app = builder.Build();

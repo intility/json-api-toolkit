@@ -265,6 +265,7 @@ public static class JsonApiMapper
     /// <param name="includedRelationships">Optional list of relationship paths to include.</param>
     /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <param name="fields">Optional sparse fieldsets per resource type</param>
+    /// <param name="preserveQueryInLinks">When true, pagination links keep the full query string with only the page parameters replaced</param>
     /// <returns>The JSON:API collection document.</returns>
     public static JsonApiCollectionDocument<ResourceObject> ToCollectionDocument<T>(
         IEnumerable<T> entities,
@@ -273,7 +274,8 @@ public static class JsonApiMapper
         PaginationMeta? paginationMeta = null,
         List<string>? includedRelationships = null,
         ILogger? logger = null,
-        Dictionary<string, List<string>>? fields = null
+        Dictionary<string, List<string>>? fields = null,
+        bool preserveQueryInLinks = false
     )
         where T : class
     {
@@ -321,20 +323,20 @@ public static class JsonApiMapper
 
             int pageSize = paginationMeta.PageSize;
 
-            document.Links.First = $"{baseUrl}?page[number]=1&page[size]={pageSize}";
-            document.Links.Last =
-                $"{baseUrl}?page[number]={paginationMeta.TotalPages}&page[size]={pageSize}";
+            string PageLink(int pageNumber) =>
+                BuildPaginationLink(baseUrl, selfLink, pageNumber, pageSize, preserveQueryInLinks);
+
+            document.Links.First = PageLink(1);
+            document.Links.Last = PageLink(paginationMeta.TotalPages);
 
             if (paginationMeta.CurrentPage > 1)
             {
-                document.Links.Prev =
-                    $"{baseUrl}?page[number]={paginationMeta.CurrentPage - 1}&page[size]={pageSize}";
+                document.Links.Prev = PageLink(paginationMeta.CurrentPage - 1);
             }
 
             if (paginationMeta.CurrentPage < paginationMeta.TotalPages)
             {
-                document.Links.Next =
-                    $"{baseUrl}?page[number]={paginationMeta.CurrentPage + 1}&page[size]={pageSize}";
+                document.Links.Next = PageLink(paginationMeta.CurrentPage + 1);
             }
         }
 
@@ -374,5 +376,43 @@ public static class JsonApiMapper
         }
 
         return document;
+    }
+
+    /// <summary>
+    /// Builds a pagination link. Default: bare path + page params only (legacy).
+    /// With <paramref name="preserveQuery"/>: the original query string with only
+    /// the page parameters replaced, so filters/sort/include/fields survive.
+    /// </summary>
+    private static string BuildPaginationLink(
+        string baseUrl,
+        string selfLink,
+        int pageNumber,
+        int pageSize,
+        bool preserveQuery
+    )
+    {
+        if (!preserveQuery)
+            return $"{baseUrl}?page[number]={pageNumber}&page[size]={pageSize}";
+
+        int queryStart = selfLink.IndexOf('?');
+        string query = queryStart >= 0 ? selfLink[queryStart..] : string.Empty;
+
+        var builder = new Microsoft.AspNetCore.Http.Extensions.QueryBuilder();
+        foreach (var kvp in Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query))
+        {
+            if (
+                kvp.Key.Equals("page[number]", StringComparison.OrdinalIgnoreCase)
+                || kvp.Key.Equals("page[size]", StringComparison.OrdinalIgnoreCase)
+            )
+                continue;
+
+            foreach (string? value in kvp.Value)
+                builder.Add(kvp.Key, value ?? string.Empty);
+        }
+
+        builder.Add("page[number]", pageNumber.ToString());
+        builder.Add("page[size]", pageSize.ToString());
+
+        return baseUrl + builder.ToQueryString().Value;
     }
 }

@@ -54,6 +54,12 @@ page[number]=2&page[size]=10
 
 By default, invalid values are silently clamped (`page[number]=0` → 1, oversized → `MaxPageSize`). Enable `StrictPagination` to return errors instead. See [Security](security.md#strict-pagination).
 
+Pagination links (`first`/`last`/`prev`/`next`) are rebuilt from the bare path by default and drop all other query parameters (filter, sort, include, fields), so do not follow them. Enable `PreserveQueryInPaginationLinks` to keep the full query string with only the page parameters replaced:
+
+```csharp
+builder.Services.AddJsonApiToolkit(options => options.PreserveQueryInPaginationLinks = true);
+```
+
 ## Includes
 
 `include=author,reviews` for top-level relationships, dot-separated for nesting:
