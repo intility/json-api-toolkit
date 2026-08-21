@@ -6,6 +6,7 @@ import { assert, assertEquals, assertFalse } from '@std/assert';
 import {
   BASE_URL,
   getDoc,
+  PUBLISHED_ARTICLES,
   STRICT_BASE_URL,
   total,
   TOTAL_ARTICLES,
@@ -144,3 +145,30 @@ Deno.test('strict pagination (StrictPagination = true)', async (t) => {
     },
   );
 });
+
+Deno.test(
+  'pagination links with PreserveQueryInPaginationLinks (opt-in, strict instance)',
+  async (t) => {
+    await t.step('links keep the query, only page params change', async () => {
+      const { doc } = await getDoc(
+        'articles?filter%5Bpublished%5D=true&sort=-viewCount&page%5Bsize%5D=2',
+        STRICT_BASE_URL,
+      );
+      // keys are re-encoded by the link builder (%5B/%5D)
+      assertEquals(
+        doc.links.next,
+        `${STRICT_BASE_URL}/articles` +
+          '?filter%5Bpublished%5D=true&sort=-viewCount&page%5Bnumber%5D=2&page%5Bsize%5D=2',
+      );
+
+      // following next keeps the filtered, sorted result set
+      const next = new URL(doc.links.next);
+      const { doc: page2 } = await getDoc(
+        `articles${next.search}`,
+        STRICT_BASE_URL,
+      );
+      assertEquals(total(page2), PUBLISHED_ARTICLES);
+      assertEquals(page2.data[0].id, '21'); // -viewCount page 2: 21, 19
+    });
+  },
+);

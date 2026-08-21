@@ -178,7 +178,8 @@ public abstract class JsonApiController : ControllerBase
             paginationMeta,
             mappedIncludes,
             Logger,
-            parameters.Fields
+            parameters.Fields,
+            Options.PreserveQueryInPaginationLinks
         );
         return Ok(document);
     }
@@ -254,7 +255,8 @@ public abstract class JsonApiController : ControllerBase
             paginationMeta,
             mappedIncludes,
             Logger,
-            parameters.Fields
+            parameters.Fields,
+            Options.PreserveQueryInPaginationLinks
         );
 
         return Ok(document);
@@ -589,7 +591,8 @@ public abstract class JsonApiController : ControllerBase
                         paginationMeta,
                         mappedIncludes,
                         Logger,
-                        parameters.Fields
+                        parameters.Fields,
+                        Options.PreserveQueryInPaginationLinks
                     );
 
                 return Ok(projectedDocument);
