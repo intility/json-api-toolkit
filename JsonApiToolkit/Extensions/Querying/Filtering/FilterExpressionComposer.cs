@@ -25,6 +25,7 @@ public sealed class FilterExpressionComposer
 
     private readonly ILogger? _logger;
     private readonly Func<Type, string, PropertyInfo?> _resolveProperty;
+    private readonly bool _strictValidation;
 
     /// <summary>
     /// Creates a composer. The optional <paramref name="propertyResolver"/> maps a JSON
@@ -32,11 +33,13 @@ public sealed class FilterExpressionComposer
     /// </summary>
     public FilterExpressionComposer(
         ILogger? logger = null,
-        Func<Type, string, PropertyInfo?>? propertyResolver = null
+        Func<Type, string, PropertyInfo?>? propertyResolver = null,
+        bool strictValidation = false
     )
     {
         _logger = logger;
         _resolveProperty = propertyResolver ?? QueryHelpers.GetPropertyByJsonName;
+        _strictValidation = strictValidation;
     }
 
     /// <summary>
@@ -106,6 +109,9 @@ public sealed class FilterExpressionComposer
         PropertyInfo? property = _resolveProperty(parameter.Type, filter.Field);
         if (property == null)
         {
+            if (_strictValidation)
+                throw JsonApiErrors.InvalidFilterField(filter.Field, parameter.Type);
+
             _logger?.LogWarning(
                 "Property '{Field}' not found on {EntityType}",
                 filter.Field,
@@ -139,6 +145,9 @@ public sealed class FilterExpressionComposer
             PropertyInfo? prop = _resolveProperty(current.Type, parts[i]);
             if (prop == null)
             {
+                if (_strictValidation)
+                    throw JsonApiErrors.InvalidFilterField(filter.Field, current.Type);
+
                 _logger?.LogWarning(
                     "Property '{PropertyName}' not found on {Type} during navigation",
                     parts[i],
@@ -187,6 +196,9 @@ public sealed class FilterExpressionComposer
         PropertyInfo? finalProp = _resolveProperty(current.Type, parts[^1]);
         if (finalProp == null)
         {
+            if (_strictValidation)
+                throw JsonApiErrors.InvalidFilterField(filter.Field, current.Type);
+
             _logger?.LogWarning(
                 "Property '{PropertyName}' not found on {Type}",
                 parts[^1],
@@ -242,6 +254,9 @@ public sealed class FilterExpressionComposer
             PropertyInfo? prop = _resolveProperty(elementType, remainingParts[0]);
             if (prop == null)
             {
+                if (_strictValidation)
+                    throw JsonApiErrors.InvalidFilterField(filter.Field, elementType);
+
                 _logger?.LogWarning(
                     "Property '{PropertyName}' not found on {Type}",
                     remainingParts[0],
@@ -293,36 +308,29 @@ public sealed class FilterExpressionComposer
 
         if (filter.Operator == FilterOperator.In || filter.Operator == FilterOperator.Nin)
         {
-            Expression contains;
-            Type? underlying = Nullable.GetUnderlyingType(targetType);
-            if (underlying != null)
+            try
             {
-                Expression notNull = Expression.NotEqual(
-                    propertyAccess,
-                    Expression.Constant(null, targetType)
-                );
-                contains = Expression.AndAlso(
-                    notNull,
-                    BuildInExpression(
-                        Expression.Property(propertyAccess, "Value"),
-                        filter.Value,
-                        underlying
-                    )
-                );
+                return BuildInOrNinLeaf(propertyAccess, filter, targetType);
             }
-            else
+            catch (ArgumentException) when (_strictValidation)
             {
-                contains = BuildInExpression(propertyAccess, filter.Value, targetType);
+                throw JsonApiErrors.InvalidFilterValue(filter.Field, filter.Value, targetType);
             }
-
-            // Nin: null values count as "not in"
-            return filter.Operator == FilterOperator.In ? contains : Expression.Not(contains);
         }
 
         if (filter.Operator == FilterOperator.Like)
             return BuildLikeExpression(propertyAccess, filter.Value);
 
-        object? filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, targetType);
+        object? filterValue;
+        try
+        {
+            filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, targetType);
+        }
+        catch (FormatException) when (_strictValidation)
+        {
+            throw JsonApiErrors.InvalidFilterValue(filter.Field, filter.Value, targetType);
+        }
+
         if (
             filterValue == null
             && filter.Operator != FilterOperator.Eq
@@ -349,6 +357,38 @@ public sealed class FilterExpressionComposer
             FilterOperator.Le => Expression.LessThanOrEqual(propertyAccess, constant),
             _ => Expression.Equal(propertyAccess, constant),
         };
+    }
+
+    private Expression BuildInOrNinLeaf(
+        Expression propertyAccess,
+        FilterParameter filter,
+        Type targetType
+    )
+    {
+        Expression contains;
+        Type? underlying = Nullable.GetUnderlyingType(targetType);
+        if (underlying != null)
+        {
+            Expression notNull = Expression.NotEqual(
+                propertyAccess,
+                Expression.Constant(null, targetType)
+            );
+            contains = Expression.AndAlso(
+                notNull,
+                BuildInExpression(
+                    Expression.Property(propertyAccess, "Value"),
+                    filter.Value,
+                    underlying
+                )
+            );
+        }
+        else
+        {
+            contains = BuildInExpression(propertyAccess, filter.Value, targetType);
+        }
+
+        // Nin: null values count as "not in"
+        return filter.Operator == FilterOperator.In ? contains : Expression.Not(contains);
     }
 
     /// <summary>
@@ -383,7 +423,16 @@ public sealed class FilterExpressionComposer
                 or FilterOperator.Ne
         )
         {
-            object? filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, elementType);
+            object? filterValue;
+            try
+            {
+                filterValue = QueryHelpers.ConvertToPropertyType(filter.Value, elementType);
+            }
+            catch (FormatException) when (_strictValidation)
+            {
+                throw JsonApiErrors.InvalidFilterValue(filter.Field, filter.Value, elementType);
+            }
+
             if (filterValue == null)
             {
                 _logger?.LogWarning(
@@ -410,6 +459,15 @@ public sealed class FilterExpressionComposer
 
         if (filter.Operator == FilterOperator.IsNotNull)
             return Expression.NotEqual(collectionAccess, Expression.Constant(null));
+
+        if (_strictValidation)
+        {
+            throw new JsonApiBadRequestException(
+                $"Operator '{filter.Operator}' is not supported for collection property '{filter.Field}'.",
+                JsonApiErrorCodes.InvalidFilterOperator,
+                new ErrorSource { Parameter = $"filter[{filter.Field}]" }
+            );
+        }
 
         _logger?.LogWarning(
             "Operator '{Operator}' is not supported for collection properties",

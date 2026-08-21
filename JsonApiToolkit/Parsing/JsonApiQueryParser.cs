@@ -102,17 +102,46 @@ public static class JsonApiQueryParser
             };
         }
 
+        bool strict = options.StrictQueryValidation;
         var filterGroup = new FilterGroup();
+
+        if (strict)
+        {
+            string? andKey = request.Query.Keys.FirstOrDefault(k =>
+                k.StartsWith("filter[and][", StringComparison.OrdinalIgnoreCase)
+            );
+            if (andKey != null)
+            {
+                throw JsonApiErrors.UnsupportedFilterGroup(
+                    "Filter group 'and' is not supported. Top-level filters already combine with AND.",
+                    andKey
+                );
+            }
+        }
 
         foreach (string? key in request.Query.Keys.Where(k => k.StartsWith("filter[")))
         {
+            // In strict mode, or/not group keys are owned by ParseLogicalGroup below;
+            // parsing them here would surface them as bogus filter fields.
+            if (
+                strict
+                && (
+                    key.StartsWith("filter[or][", StringComparison.OrdinalIgnoreCase)
+                    || key.StartsWith("filter[not][", StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            {
+                continue;
+            }
+
             if (key.Contains(JsonApiFilterParser.s_separator[0]))
             {
                 JsonApiFilterParser.ParseComplexFilter(
                     key,
                     request.Query[key].ToString(),
                     filterGroup,
-                    logger
+                    logger,
+                    strict
                 );
             }
             else
@@ -120,6 +149,15 @@ public static class JsonApiQueryParser
                 // Validate simple filter key format: filter[field]
                 if (key.Length < MinFilterKeyLength || !key.EndsWith("]"))
                 {
+                    if (strict)
+                    {
+                        throw new JsonApiBadRequestException(
+                            $"Malformed filter parameter: '{key}'.",
+                            JsonApiErrorCodes.ValidationFailed,
+                            new ErrorSource { Parameter = key }
+                        );
+                    }
+
                     logger?.LogWarning("Malformed filter key ignored: {Key}", key);
                     continue;
                 }
@@ -141,7 +179,8 @@ public static class JsonApiQueryParser
             "or",
             LogicalOperator.Or,
             filterGroup,
-            logger
+            logger,
+            strict
         );
 
         JsonApiFilterParser.ParseLogicalGroup(
@@ -149,7 +188,8 @@ public static class JsonApiQueryParser
             "not",
             LogicalOperator.Not,
             filterGroup,
-            logger
+            logger,
+            strict
         );
 
         if (filterGroup.Filters.Count > 0 || filterGroup.Groups.Count > 0)

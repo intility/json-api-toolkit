@@ -18,7 +18,11 @@ public static class IncludeFilterParser
     public static (
         FilterGroup? mainFilters,
         List<IncludeFilter> includeFilters
-    ) SeparateIncludeFilters(FilterGroup? filters, List<string>? includePaths)
+    ) SeparateIncludeFilters(
+        FilterGroup? filters,
+        List<string>? includePaths,
+        bool strictValidation = false
+    )
     {
         if (filters == null)
             return (null, new List<IncludeFilter>());
@@ -33,7 +37,8 @@ public static class IncludeFilterParser
         var mainFilters = ExtractIncludeFilters(
             filters,
             normalizedIncludePaths,
-            filtersByRelationship
+            filtersByRelationship,
+            strictValidation
         );
 
         // Convert dictionary to list of IncludeFilters
@@ -53,7 +58,8 @@ public static class IncludeFilterParser
     private static FilterGroup? ExtractIncludeFilters(
         FilterGroup group,
         HashSet<string> normalizedIncludePaths,
-        Dictionary<string, FilterGroup> filtersByRelationship
+        Dictionary<string, FilterGroup> filtersByRelationship,
+        bool strictValidation = false
     )
     {
         var newGroup = new FilterGroup { LogicalOperator = group.LogicalOperator };
@@ -101,6 +107,21 @@ public static class IncludeFilterParser
                 {
                     newGroup.Filters.Add(filter);
                 }
+                else if (strictValidation)
+                {
+                    string relationship = filter.Field.Split('.')[0];
+                    throw new JsonApiBadRequestException(
+                        $"Filter on relationship '{relationship}' requires it to be included. "
+                            + $"Add 'include={relationship}' or remove the filter.",
+                        JsonApiErrorCodes.FilterNotAllowed,
+                        new ErrorSource { Parameter = $"filter[{relationship}]" },
+                        new Dictionary<string, object>
+                        {
+                            ["relationship"] = relationship,
+                            ["field"] = filter.Field,
+                        }
+                    );
+                }
                 // else: silently ignore bracket syntax filters for non-included relationships
             }
         }
@@ -109,7 +130,12 @@ public static class IncludeFilterParser
         newGroup.Groups.AddRange(
             group
                 .Groups.Select(g =>
-                    ExtractIncludeFilters(g, normalizedIncludePaths, filtersByRelationship)
+                    ExtractIncludeFilters(
+                        g,
+                        normalizedIncludePaths,
+                        filtersByRelationship,
+                        strictValidation
+                    )
                 )
                 .OfType<FilterGroup>()
                 .Where(g => g.Filters.Count > 0 || g.Groups.Count > 0)

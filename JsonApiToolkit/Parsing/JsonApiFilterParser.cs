@@ -1,3 +1,4 @@
+using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying.Filtering;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -19,13 +20,43 @@ public static class JsonApiFilterParser
     /// </summary>
     private const int MinFilterKeyLength = 9;
 
+    private static readonly string[] s_validOperators =
+    [
+        "eq",
+        "ne",
+        "gt",
+        "ge",
+        "lt",
+        "le",
+        "like",
+        "in",
+        "nin",
+        "isnull",
+        "isnotnull",
+    ];
+
+    private static bool IsGroupName(string segment) =>
+        segment.Equals("and", StringComparison.OrdinalIgnoreCase)
+        || segment.Equals("or", StringComparison.OrdinalIgnoreCase)
+        || segment.Equals("not", StringComparison.OrdinalIgnoreCase);
+
+    private static JsonApiBadRequestException MalformedFilterKey(string key) =>
+        new(
+            $"Malformed filter parameter: '{key}'.",
+            JsonApiErrorCodes.ValidationFailed,
+            new ErrorSource { Parameter = key }
+        );
+
     /// <summary>
     /// Validates that a filter key has the expected format: filter[...]
     /// </summary>
     private static bool IsValidFilterKey(string key) =>
         key.Length >= MinFilterKeyLength && key.StartsWith("filter[") && key.EndsWith("]");
 
-    private static FilterOperator ParseFilterOperator(string operatorStr)
+    private static FilterOperator ParseFilterOperator(
+        string operatorStr,
+        bool strictValidation = false
+    )
     {
         return operatorStr.ToLowerInvariant() switch
         {
@@ -40,7 +71,9 @@ public static class JsonApiFilterParser
             "nin" => FilterOperator.Nin,
             "isnull" => FilterOperator.IsNull,
             "isnotnull" => FilterOperator.IsNotNull,
-            _ => FilterOperator.Eq,
+            _ => strictValidation
+                ? throw JsonApiErrors.InvalidFilterOperator(operatorStr, s_validOperators)
+                : FilterOperator.Eq,
         };
     }
 
@@ -53,11 +86,15 @@ public static class JsonApiFilterParser
         string key,
         string value,
         FilterGroup group,
-        ILogger? logger = null
+        ILogger? logger = null,
+        bool strictValidation = false
     )
     {
         if (!IsValidFilterKey(key))
         {
+            if (strictValidation)
+                throw MalformedFilterKey(key);
+
             logger?.LogWarning("Malformed filter key ignored: {Key}", key);
             return;
         }
@@ -74,7 +111,7 @@ public static class JsonApiFilterParser
             {
                 Field = field,
                 Value = value,
-                Operator = ParseFilterOperator(operatorStr),
+                Operator = ParseFilterOperator(operatorStr, strictValidation),
                 IsIncludeFilter = false, // Dot notation = primary filter
             };
 
@@ -93,12 +130,17 @@ public static class JsonApiFilterParser
             {
                 Field = $"{relationship}.{field}", // Combine for downstream processing
                 Value = value,
-                Operator = ParseFilterOperator(operatorStr),
+                Operator = ParseFilterOperator(operatorStr, strictValidation),
                 IsIncludeFilter = true, // Bracket syntax = include filter
             };
 
             group.Filters.Add(parameter);
+            return;
         }
+
+        // 4+ segments: not a supported filter shape (silently ignored by default)
+        if (strictValidation)
+            throw MalformedFilterKey(key);
     }
 
     /// <summary>
@@ -112,7 +154,8 @@ public static class JsonApiFilterParser
         string groupName,
         LogicalOperator op,
         FilterGroup parentGroup,
-        ILogger? logger = null
+        ILogger? logger = null,
+        bool strictValidation = false
     )
     {
         string prefix = $"filter[{groupName}][";
@@ -124,7 +167,7 @@ public static class JsonApiFilterParser
         var newGroup = new FilterGroup { LogicalOperator = op };
 
         var indexGroups = groupKeys
-            .Select(k => TryParseGroupIndex(k, prefix, logger))
+            .Select(k => TryParseGroupIndex(k, prefix, logger, strictValidation))
             .Where(x => x.HasValue)
             .Select(x => x!.Value)
             .GroupBy(x => x.Index);
@@ -138,6 +181,9 @@ public static class JsonApiFilterParser
                 // Validate key length before substring
                 if (item.Key.Length <= itemPrefix.Length)
                 {
+                    if (strictValidation)
+                        throw MalformedFilterKey(item.Key);
+
                     logger?.LogWarning(
                         "Malformed logical group filter key ignored: {Key}",
                         item.Key
@@ -154,7 +200,10 @@ public static class JsonApiFilterParser
                 {
                     // Standard: filter[or][0][field][op]=value or filter[or][0][rel.field][op]=value
                     condition.Field = parts[0];
-                    condition.Operator = ParseFilterOperator(parts[1].TrimEnd(']'));
+                    condition.Operator = ParseFilterOperator(
+                        parts[1].TrimEnd(']'),
+                        strictValidation
+                    );
                     condition.IsIncludeFilter = false; // Dot notation = primary filter
                 }
                 else if (parts.Length == 3)
@@ -162,8 +211,20 @@ public static class JsonApiFilterParser
                     // Include filter: filter[or][0][rel][field][op]=value
                     string relationship = parts[0];
                     string field = parts[1];
+
+                    if (strictValidation && IsGroupName(relationship))
+                    {
+                        throw JsonApiErrors.UnsupportedFilterGroup(
+                            $"Nested filter groups are not supported: '{item.Key}'.",
+                            item.Key
+                        );
+                    }
+
                     condition.Field = $"{relationship}.{field}";
-                    condition.Operator = ParseFilterOperator(parts[2].TrimEnd(']'));
+                    condition.Operator = ParseFilterOperator(
+                        parts[2].TrimEnd(']'),
+                        strictValidation
+                    );
                     condition.IsIncludeFilter = true; // Bracket syntax = include filter
                 }
                 else if (parts.Length == 1)
@@ -175,6 +236,15 @@ public static class JsonApiFilterParser
                 }
                 else
                 {
+                    if (strictValidation)
+                    {
+                        throw JsonApiErrors.UnsupportedFilterGroup(
+                            $"Unsupported filter group syntax: '{item.Key}'. "
+                                + "Nested filter groups are not supported.",
+                            item.Key
+                        );
+                    }
+
                     // Unsupported format, skip
                     logger?.LogWarning(
                         "Unsupported logical group filter format ignored: {Key}",
@@ -199,11 +269,15 @@ public static class JsonApiFilterParser
     private static (string Key, int Index)? TryParseGroupIndex(
         string key,
         string prefix,
-        ILogger? logger
+        ILogger? logger,
+        bool strictValidation = false
     )
     {
         if (key.Length <= prefix.Length)
         {
+            if (strictValidation)
+                throw MalformedFilterKey(key);
+
             logger?.LogWarning("Malformed logical group filter key ignored: {Key}", key);
             return null;
         }
@@ -213,6 +287,9 @@ public static class JsonApiFilterParser
 
         if (closeBracketIndex <= 0)
         {
+            if (strictValidation)
+                throw MalformedFilterKey(key);
+
             logger?.LogWarning("Malformed logical group filter key ignored: {Key}", key);
             return null;
         }
@@ -221,6 +298,9 @@ public static class JsonApiFilterParser
 
         if (!int.TryParse(indexStr, out int index))
         {
+            if (strictValidation)
+                throw MalformedFilterKey(key);
+
             logger?.LogWarning(
                 "Invalid group index '{IndexStr}' in filter key ignored: {Key}",
                 indexStr,

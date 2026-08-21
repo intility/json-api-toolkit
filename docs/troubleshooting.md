@@ -42,7 +42,7 @@ EF Core's `Microsoft.EntityFrameworkCore.Database.Command` logger at `Informatio
 
 ### Filter looks wrong but returns 200 with no error
 
-Malformed filter, sort, and include parameters are logged at warning level and silently skipped, not thrown. Check your logs at `Warning` level for `JsonApiToolkit`. You'll see exactly what was rejected.
+Malformed filter, sort, and include parameters are logged at warning level and silently skipped, not thrown. Check your logs at `Warning` level for `JsonApiToolkit`. You'll see exactly what was rejected. To turn these into 400 responses, enable `StrictQueryValidation` (see [Security](security.md#strict-query-validation)).
 
 ### Filter on an aggregation DTO is ignored
 

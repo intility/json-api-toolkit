@@ -50,7 +50,8 @@ builder.Services.AddJsonApiToolkit(options =>
     options.MaxIncludeDepth = 3;         // max include path depth
     options.MaxPageSize = 100;           // max items per page
     options.DefaultPageSize = 10;
-    options.StrictPagination = false;    // reject vs clamp invalid pagination
+    options.StrictPagination = false;      // reject vs clamp invalid pagination
+    options.StrictQueryValidation = false; // reject vs skip invalid query params
 });
 ```
 
@@ -79,6 +80,31 @@ Exceeded limits return:
 ```
 
 Raise the limits if your application genuinely needs them, but monitor query performance when you do.
+
+## Strict query validation
+
+By default, invalid query parameters are logged at warning level and skipped:
+the request returns 200 and the bad parameter simply has no effect. Enable
+`StrictQueryValidation` to return 400 Bad Request instead:
+
+```csharp
+builder.Services.AddJsonApiToolkit(options => options.StrictQueryValidation = true);
+```
+
+With strict query validation on, the first invalid parameter fails the request:
+
+| Request shape | Error code |
+|---------------|------------|
+| Unknown filter field (`filter[bogus]=x`) | `INVALID_FILTER_FIELD` |
+| Unconvertible filter value (`filter[createdAt]=abc`) | `INVALID_FILTER_VALUE` |
+| Unknown filter operator (`filter[title][contains]=x`) | `INVALID_FILTER_OPERATOR` |
+| Unknown sort field (`sort=bogus`, `sort=author.name`) | `INVALID_SORT_FIELD` |
+| `filter[and][...]` or nested groups | `UNSUPPORTED_FILTER_GROUP` |
+| Bracket include-filter without matching `include` | `FILTER_NOT_ALLOWED` |
+| Malformed filter key (`filter[x`) | `VALIDATION_FAILED` |
+
+Without the flag, unconvertible filter values on non-string properties surface
+as 500 Internal Server Error; strict mode turns them into descriptive 400s.
 
 ## Strict pagination
 

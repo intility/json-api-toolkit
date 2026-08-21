@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using JsonApiToolkit.Helpers;
+using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,8 @@ public static class SortingHandler
     public static IQueryable<T> ApplySorting<T>(
         this IQueryable<T> query,
         List<SortParameter> sortParameters,
-        ILogger? logger = null
+        ILogger? logger = null,
+        bool strictValidation = false
     )
     {
         if (sortParameters == null || sortParameters.Count == 0)
@@ -36,7 +38,17 @@ public static class SortingHandler
             );
 
             if (property == null)
+            {
+                if (strictValidation)
+                    throw JsonApiErrors.InvalidSortField(sortParam.Field, entityType);
+
+                logger?.LogWarning(
+                    "Sort field '{Field}' not found on {EntityType}, ignored",
+                    sortParam.Field,
+                    entityType.Name
+                );
                 continue;
+            }
 
             ParameterExpression parameter = Expression.Parameter(entityType, "x");
             MemberExpression propertyAccess = Expression.Property(parameter, property);

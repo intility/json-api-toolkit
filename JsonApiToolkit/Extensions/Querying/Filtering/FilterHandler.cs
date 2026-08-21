@@ -15,7 +15,8 @@ public static class FilterHandler
     public static IQueryable<T> ApplyFilters<T>(
         this IQueryable<T> query,
         FilterGroup filterGroup,
-        ILogger? logger = null
+        ILogger? logger = null,
+        bool strictValidation = false
     )
     {
         if (
@@ -24,9 +25,10 @@ public static class FilterHandler
         )
             return query;
 
-        Expression<Func<T, bool>>? lambda = new FilterExpressionComposer(logger).Compose<T>(
-            filterGroup
-        );
+        Expression<Func<T, bool>>? lambda = new FilterExpressionComposer(
+            logger,
+            strictValidation: strictValidation
+        ).Compose<T>(filterGroup);
 
         if (lambda != null)
             return query.Where(lambda);

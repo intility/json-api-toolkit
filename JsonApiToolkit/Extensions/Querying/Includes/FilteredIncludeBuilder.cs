@@ -19,7 +19,8 @@ public static class FilteredIncludeBuilder
         this IQueryable<T> query,
         List<string>? includePaths,
         List<IncludeFilter> includeFilters,
-        ILogger? logger = null
+        ILogger? logger = null,
+        bool strictValidation = false
     )
         where T : class
     {
@@ -46,7 +47,14 @@ public static class FilteredIncludeBuilder
             query =
                 filtersByRelationship.TryGetValue(includePath, out var filterGroup)
                 && (filterGroup.Filters.Count > 0 || filterGroup.Groups.Count > 0)
-                    ? ApplyFilteredIncludeChain(query, segments, filterGroup, typeof(T), logger)
+                    ? ApplyFilteredIncludeChain(
+                        query,
+                        segments,
+                        filterGroup,
+                        typeof(T),
+                        logger,
+                        strictValidation
+                    )
                     : query.Include(includePath);
         }
 
@@ -58,7 +66,8 @@ public static class FilteredIncludeBuilder
         string[] pathSegments,
         FilterGroup filterGroup,
         Type rootType,
-        ILogger? logger
+        ILogger? logger,
+        bool strictValidation = false
     )
         where T : class
     {
@@ -71,11 +80,19 @@ public static class FilteredIncludeBuilder
                 pathSegments[0],
                 filterGroup,
                 rootType,
-                logger
+                logger,
+                strictValidation
             );
 
         if (pathSegments.Length == 2)
-            return ApplyTwoLevelFilteredInclude(query, pathSegments, filterGroup, rootType, logger);
+            return ApplyTwoLevelFilteredInclude(
+                query,
+                pathSegments,
+                filterGroup,
+                rootType,
+                logger,
+                strictValidation
+            );
 
         logger?.LogWarning(
             "Filtered includes beyond 2 levels are not supported. Include path '{Path}' will use unfiltered include. Filters will be ignored.",
@@ -89,7 +106,8 @@ public static class FilteredIncludeBuilder
         string[] pathSegments,
         FilterGroup filterGroup,
         Type rootType,
-        ILogger? logger
+        ILogger? logger,
+        bool strictValidation = false
     )
         where T : class
     {
@@ -132,10 +150,10 @@ public static class FilteredIncludeBuilder
             var navParam = Expression.Parameter(firstNavType, "nav");
             var secondNavAccess = Expression.Property(navParam, secondProperty);
 
-            var whereLambda = new FilterExpressionComposer(logger).Compose(
-                filterGroup,
-                elementType
-            );
+            var whereLambda = new FilterExpressionComposer(
+                logger,
+                strictValidation: strictValidation
+            ).Compose(filterGroup, elementType);
 
             if (whereLambda != null)
             {
@@ -199,7 +217,8 @@ public static class FilteredIncludeBuilder
         string navigationPath,
         FilterGroup filterGroup,
         Type entityType,
-        ILogger? logger
+        ILogger? logger,
+        bool strictValidation = false
     )
         where T : class
     {
@@ -220,7 +239,8 @@ public static class FilteredIncludeBuilder
                     navigationProperty,
                     elementType,
                     filterGroup,
-                    logger
+                    logger,
+                    strictValidation
                 );
 
                 query = EfCoreIncludeExpressions.ApplyIncludeExpression(query, includeExpression);
@@ -247,13 +267,17 @@ public static class FilteredIncludeBuilder
         PropertyInfo navigationProperty,
         Type elementType,
         FilterGroup filterGroup,
-        ILogger? logger
+        ILogger? logger,
+        bool strictValidation = false
     )
     {
         var entityParameter = Expression.Parameter(entityType, "e");
         var navigationAccess = Expression.Property(entityParameter, navigationProperty);
 
-        var whereLambda = new FilterExpressionComposer(logger).Compose(filterGroup, elementType);
+        var whereLambda = new FilterExpressionComposer(
+            logger,
+            strictValidation: strictValidation
+        ).Compose(filterGroup, elementType);
         if (whereLambda == null)
             return null;
 
