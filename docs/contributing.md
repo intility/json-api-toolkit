@@ -2,22 +2,42 @@
 
 ## Prerequisites
 
-- .NET 10 SDK 
+- .NET 10 SDK, [Deno](https://deno.com) 2.x, [just](https://github.com/casey/just), [lefthook](https://lefthook.dev)
+  (all pinned in `mise.toml`; run `mise install` if you use [mise](https://mise.jdx.dev))
 - `uv` for the docs site (`brew install uv` or `mise use uv`)
 
 ## Setup
 
 ```bash
-dotnet tool restore   # csharpier + dotnet-api-docs
-dotnet restore
+just setup   # dotnet tool restore, dotnet restore, lefthook install
 ```
 
+This installs git hooks (lefthook) that format-check on commit and type-check
+on push; see `.lefthook.yml`. CI (`ci-cd.yml`, `typescript-ci.yml`,
+`contract-tests.yml`) is still the source of truth and runs the full suites.
+
 ## Daily Commands
+
+Run `just` (no arguments) to list all recipes, or `just --list`.
+
+```bash
+just format          # format .NET + TypeScript
+just check           # format-check + type-check everything, no fixes
+just test            # .NET tests + TypeScript unit tests, in parallel
+just test-contract   # build & run samples/ContractApi, run the Deno contract suite against it
+just test-all        # check + test + test-contract (what CI runs)
+```
+
+Narrower recipes (`format-dotnet`, `format-ts`, `test-dotnet`, `test-ts`,
+`lint`, `clean`) are also available; see the `justfile`.
+
+Equivalent plain commands, if you don't have `just`:
 
 ```bash
 dotnet build --configuration Release
 dotnet test  --configuration Release
-dotnet csharpier format .  
+dotnet csharpier format .
+cd clients/typescript && deno task test
 ```
 
 ## Docs

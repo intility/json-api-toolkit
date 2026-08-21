@@ -1,2 +1,5 @@
 [tools]
 dotnet = "10.0.201"
+deno = "2.7.13"
+just = "latest"
+lefthook = "latest"
