@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>jsonapi-typegen</ToolCommandName>
+    <PackageId>Intility.JsonApiToolkit.TypeGen</PackageId>
+    <Title>JsonApiToolkit TypeGen</Title>
+    <Version>2.1.8</Version>
+    <Authors>Intility</Authors>
+    <Company>Intility</Company>
+    <Description>Generates TypeScript resource types from [JsonApiResource]-attributed C# models.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Reuses EntityMapper's attribute/relationship classification so the
+         generated types can never drift from what the toolkit actually
+         serializes on the wire. -->
+    <ProjectReference Include="..\JsonApiToolkit\JsonApiToolkit.csproj"/>
+  </ItemGroup>
+</Project>

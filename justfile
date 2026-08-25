@@ -116,9 +116,21 @@ test-contract:
 
     cd {{ts}} && deno task test:contract
 
-# Everything CI runs: format check, unit tests, and the contract suite
+# Regenerate api-types.gen.ts for the ContractApi sample from its [JsonApiResource] types.
+# Pass "--check" to verify instead of regenerating (what CI runs).
 [group('quality')]
-test-all: check test test-contract
+typegen *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dotnet build JsonApiToolkit.TypeGen --configuration Release
+    dotnet build {{sample}} --configuration Release
+    dotnet run --project JsonApiToolkit.TypeGen --configuration Release --no-build -- \
+        --assembly {{sample}}/bin/Release/net10.0/ContractApi.dll \
+        --out {{sample}}/api-types.gen.ts {{args}}
+
+# Everything CI runs: format check, unit tests, the contract suite, and typegen drift
+[group('quality')]
+test-all: check test test-contract (typegen "--check")
 
 # ---------------------------------------------------------------------------
 # Clean
