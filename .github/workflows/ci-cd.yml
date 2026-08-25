@@ -27,6 +27,8 @@ jobs:
             dotnet:
               - 'JsonApiToolkit/**'
               - 'JsonApiToolkit.Tests/**'
+              - 'JsonApiToolkit.TypeGen/**'
+              - 'JsonApiToolkit.TypeGen.Tests/**'
               - 'samples/**'
               - 'JsonApiToolkit.sln'
               - 'Directory.Build.props'
@@ -59,6 +61,14 @@ jobs:
 
       - name: Test
         run: dotnet test --configuration Release --verbosity normal --no-restore
+
+      - name: Typegen drift check
+        run: |
+          dotnet build JsonApiToolkit.TypeGen --configuration Release
+          dotnet build samples/ContractApi --configuration Release
+          dotnet run --project JsonApiToolkit.TypeGen --configuration Release --no-build -- \
+            --assembly samples/ContractApi/bin/Release/net10.0/ContractApi.dll \
+            --out samples/ContractApi/api-types.gen.ts --check
 
   status:
     name: Build and Test
