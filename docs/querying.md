@@ -81,6 +81,14 @@ fields[books]=title&fields[author]=name&include=author
 
 By default, sparse fieldsets only filter at serialization time; EF Core still loads full entities. Set `EnableDatabaseProjection = true` to push the projection into the SQL `SELECT`. See [Performance](performance.md).
 
+By default, an included resource's `type` is the camelCased CLR class name (e.g. `Author` becomes `author`), which may not match the string your controller uses for the primary resource. Types marked with `[JsonApiResource("people")]` can use that declared name instead:
+
+```csharp
+builder.Services.AddJsonApiToolkit(options => options.UseResourceAttributeTypeNames = true);
+```
+
+Types without the attribute still fall back to the camelCased class name.
+
 ## Putting it together
 
 ```
