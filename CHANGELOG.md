@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.2.0](https://github.com/intility/json-api-toolkit/compare/v2.1.8...v2.2.0) (2026-08-25)
+
+
+### Features
+
+* add opt-in strict query validation ([#199](https://github.com/intility/json-api-toolkit/issues/199)) ([1a1a323](https://github.com/intility/json-api-toolkit/commit/1a1a3231a2ccb815cd5ff4f1fe842d723402a6d7))
+* preserve query string in pagination links (opt-in) ([#200](https://github.com/intility/json-api-toolkit/issues/200)) ([f2ebc68](https://github.com/intility/json-api-toolkit/commit/f2ebc686d0c0e563afff4ea83f6d6fb52f45bf5d))
+* **typegen:** add jsonapi-typegen dotnet tool ([#204](https://github.com/intility/json-api-toolkit/issues/204)) ([2e720b8](https://github.com/intility/json-api-toolkit/commit/2e720b8b10e7fb4d4ce8de2c7e712ded76f8d689))
+
+
+### Code Refactoring
+
+* consolidate filter builders into FilterExpressionComposer ([#195](https://github.com/intility/json-api-toolkit/issues/195)) ([4c7cd01](https://github.com/intility/json-api-toolkit/commit/4c7cd0162bcd51becd6fe1b5d15f6e95a725c3f7))
+* **filtering:** consolidate filter builders into FilterExpressionCo ([4c7cd01](https://github.com/intility/json-api-toolkit/commit/4c7cd0162bcd51becd6fe1b5d15f6e95a725c3f7))
+
+
+### CI
+
+* **actions:** Bump github/codeql-action/analyze from 4.37.7 to 4.37.8 ([#202](https://github.com/intility/json-api-toolkit/issues/202)) ([71af8fb](https://github.com/intility/json-api-toolkit/commit/71af8fb72830212a2130b547af8deb236a934581))
+* **actions:** Bump github/codeql-action/init from 4.37.7 to 4.37.8 ([#203](https://github.com/intility/json-api-toolkit/issues/203)) ([204b739](https://github.com/intility/json-api-toolkit/commit/204b73904fa7670a8f370fd0673eb14c477a6bc9))
+* check typegen output for drift in CI ([#205](https://github.com/intility/json-api-toolkit/issues/205)) ([309e7eb](https://github.com/intility/json-api-toolkit/commit/309e7eb1b0c7704cc5e07c536d4b750143057da2))
+
+
+### Tests
+
+* add ContractApi sample and TS contract test suite ([#197](https://github.com/intility/json-api-toolkit/issues/197)) ([716af3c](https://github.com/intility/json-api-toolkit/commit/716af3c5c4d85cbc197d2983c3adfd9b6e616167))
+
 ## [2.1.8](https://github.com/intility/json-api-toolkit/compare/v2.1.7...v2.1.8) (2026-08-20)
 
 
