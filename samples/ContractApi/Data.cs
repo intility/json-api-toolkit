@@ -1,7 +1,9 @@
+using JsonApiToolkit.Attributes;
 using Microsoft.EntityFrameworkCore;
 
 namespace ContractApi;
 
+[JsonApiResource("authors")]
 public class Author
 {
     public int Id { get; set; }
@@ -9,6 +11,7 @@ public class Author
     public string? Email { get; set; }
 }
 
+[JsonApiResource("articles")]
 public class Article
 {
     public int Id { get; set; }
@@ -23,6 +26,7 @@ public class Article
     public List<Comment> Comments { get; set; } = [];
 }
 
+[JsonApiResource("comments")]
 public class Comment
 {
     public int Id { get; set; }
@@ -69,8 +73,8 @@ public static class Seed
             }
         );
 
-        var commentId = 1;
-        for (var i = 1; i <= 25; i++)
+        int commentId = 1;
+        for (int i = 1; i <= 25; i++)
         {
             db.Articles.Add(
                 new Article
@@ -95,7 +99,7 @@ public static class Seed
             // Two comments each on the first ten articles
             if (i <= 10)
             {
-                for (var j = 1; j <= 2; j++)
+                for (int j = 1; j <= 2; j++)
                 {
                     db.Comments.Add(
                         new Comment

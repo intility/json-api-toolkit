@@ -25,6 +25,9 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="JsonApiToolkit.Tests"/>
+    <!-- Reuses TypeHelpers' collection/element-type logic so the typegen
+         tool's array handling can never drift from the mapper's. -->
+    <InternalsVisibleTo Include="JsonApiToolkit.TypeGen"/>
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App"/>

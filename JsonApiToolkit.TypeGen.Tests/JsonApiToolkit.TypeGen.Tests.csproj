@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JsonApiToolkit.TypeGen\JsonApiToolkit.TypeGen.csproj" />
+    <!-- A real, separately-built assembly to prove the tool's cross-assembly
+         attribute matching and dependency resolution actually work, not just
+         the pure string emission (see CliIntegrationTests). -->
+    <ProjectReference Include="..\samples\ContractApi\ContractApi.csproj" />
+  </ItemGroup>
+</Project>

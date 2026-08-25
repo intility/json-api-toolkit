@@ -4,9 +4,14 @@ internal static class TypeHelpers
 {
     internal static bool IsCollectionType(Type type)
     {
+        // string implements IEnumerable<char> but is not a collection here,
+        // matching GetCollectionElementType.
+        if (type == typeof(string))
+            return false;
+
         if (type.IsGenericType)
         {
-            var genericTypeDef = type.GetGenericTypeDefinition();
+            Type genericTypeDef = type.GetGenericTypeDefinition();
             return genericTypeDef == typeof(ICollection<>)
                 || genericTypeDef == typeof(IList<>)
                 || genericTypeDef == typeof(List<>)
@@ -34,7 +39,7 @@ internal static class TypeHelpers
         )
             return collectionType.GetGenericArguments()[0];
 
-        var enumerableInterface = collectionType
+        Type? enumerableInterface = collectionType
             .GetInterfaces()
             .FirstOrDefault(i =>
                 i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)
