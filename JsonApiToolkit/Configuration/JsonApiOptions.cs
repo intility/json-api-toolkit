@@ -78,4 +78,15 @@ public class JsonApiOptions
     /// Not compatible with NativeAOT compilation. Default: false.
     /// </summary>
     public bool EnableDatabaseProjection { get; set; } = false;
+
+    /// <summary>
+    /// When true, an included resource's "type" (and any relationship linkage pointing
+    /// at it) uses the wire name declared by its <c>[JsonApiResource]</c> attribute
+    /// instead of the camelCased CLR class name. Types without the attribute keep
+    /// falling back to the camelCased class name. Fixes the asymmetry where the
+    /// primary resource uses the controller-supplied type string but included
+    /// resources use the class name, so fields[type] can target both consistently.
+    /// Default: false (camelCased class name, for backwards compatibility).
+    /// </summary>
+    public bool UseResourceAttributeTypeNames { get; set; }
 }

@@ -23,7 +23,8 @@ public static class JsonApiMapper
         string resourceType,
         List<string>? includedRelationships = null,
         ILogger? logger = null,
-        Dictionary<string, List<string>>? fields = null
+        Dictionary<string, List<string>>? fields = null,
+        bool useAttributeTypeName = false
     )
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -123,7 +124,10 @@ public static class JsonApiMapper
                                     new ResourceIdentifier
                                     {
                                         Id = itemId,
-                                        Type = EntityMapper.GetResourceType(itemType),
+                                        Type = EntityMapper.GetResourceType(
+                                            itemType,
+                                            useAttributeTypeName
+                                        ),
                                     }
                                 );
                             }
@@ -141,7 +145,10 @@ public static class JsonApiMapper
                                     relationship.Data = new ResourceIdentifier
                                     {
                                         Id = relItemId,
-                                        Type = EntityMapper.GetResourceType(relItemType),
+                                        Type = EntityMapper.GetResourceType(
+                                            relItemType,
+                                            useAttributeTypeName
+                                        ),
                                     };
                                 }
                             }
@@ -168,6 +175,11 @@ public static class JsonApiMapper
     /// <param name="includedRelationships">Optional list of relationship paths to include</param>
     /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <param name="fields">Optional sparse fieldsets per resource type</param>
+    /// <param name="useAttributeTypeName">
+    /// When true, included resources' "type" comes from their <c>[JsonApiResource]</c>
+    /// attribute instead of the camelCased CLR class name (see
+    /// <see cref="Configuration.JsonApiOptions.UseResourceAttributeTypeNames"/>).
+    /// </param>
     /// <returns>A fully populated JSON:API document representing the entity</returns>
     /// <remarks>
     /// <para>
@@ -192,7 +204,8 @@ public static class JsonApiMapper
         string selfLink,
         List<string>? includedRelationships = null,
         ILogger? logger = null,
-        Dictionary<string, List<string>>? fields = null
+        Dictionary<string, List<string>>? fields = null,
+        bool useAttributeTypeName = false
     )
         where T : class
     {
@@ -207,7 +220,8 @@ public static class JsonApiMapper
             resourceType,
             includedRelationships,
             logger,
-            fields
+            fields,
+            useAttributeTypeName
         );
         resource.Links = new Links { Self = selfLink };
 
@@ -230,7 +244,8 @@ public static class JsonApiMapper
                 includedRelationships,
                 included,
                 logger,
-                fields: fields
+                fields: fields,
+                useAttributeTypeName: useAttributeTypeName
             );
 
             logger?.LogDebug(
@@ -266,6 +281,11 @@ public static class JsonApiMapper
     /// <param name="logger">Optional logger for debugging and tracing</param>
     /// <param name="fields">Optional sparse fieldsets per resource type</param>
     /// <param name="preserveQueryInLinks">When true, pagination links keep the full query string with only the page parameters replaced</param>
+    /// <param name="useAttributeTypeName">
+    /// When true, included resources' "type" comes from their <c>[JsonApiResource]</c>
+    /// attribute instead of the camelCased CLR class name (see
+    /// <see cref="Configuration.JsonApiOptions.UseResourceAttributeTypeNames"/>).
+    /// </param>
     /// <returns>The JSON:API collection document.</returns>
     public static JsonApiCollectionDocument<ResourceObject> ToCollectionDocument<T>(
         IEnumerable<T> entities,
@@ -275,7 +295,8 @@ public static class JsonApiMapper
         List<string>? includedRelationships = null,
         ILogger? logger = null,
         Dictionary<string, List<string>>? fields = null,
-        bool preserveQueryInLinks = false
+        bool preserveQueryInLinks = false,
+        bool useAttributeTypeName = false
     )
         where T : class
     {
@@ -295,7 +316,8 @@ public static class JsonApiMapper
                     resourceType,
                     includedRelationships,
                     logger,
-                    fields
+                    fields,
+                    useAttributeTypeName
                 );
                 resource.Links = new Links { Self = $"{baseUrl}/{resource.Id}" };
                 return resource;
@@ -354,7 +376,8 @@ public static class JsonApiMapper
                 includedRelationships,
                 included,
                 logger,
-                fields: fields
+                fields: fields,
+                useAttributeTypeName: useAttributeTypeName
             );
 
             logger?.LogDebug(

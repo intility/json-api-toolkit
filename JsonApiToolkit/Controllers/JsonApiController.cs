@@ -93,7 +93,8 @@ public abstract class JsonApiController : ControllerBase
             baseUrl,
             mappedIncludes,
             Logger,
-            parameters.Fields
+            parameters.Fields,
+            Options.UseResourceAttributeTypeNames
         );
         return Ok(document);
     }
@@ -179,7 +180,8 @@ public abstract class JsonApiController : ControllerBase
             mappedIncludes,
             Logger,
             parameters.Fields,
-            Options.PreserveQueryInPaginationLinks
+            Options.PreserveQueryInPaginationLinks,
+            Options.UseResourceAttributeTypeNames
         );
         return Ok(document);
     }
@@ -256,7 +258,8 @@ public abstract class JsonApiController : ControllerBase
             mappedIncludes,
             Logger,
             parameters.Fields,
-            Options.PreserveQueryInPaginationLinks
+            Options.PreserveQueryInPaginationLinks,
+            Options.UseResourceAttributeTypeNames
         );
 
         return Ok(document);
@@ -349,7 +352,8 @@ public abstract class JsonApiController : ControllerBase
             selfUrl,
             mappedIncludes,
             Logger,
-            parameters.Fields
+            parameters.Fields,
+            Options.UseResourceAttributeTypeNames
         );
         return Created(selfUrl, document);
     }
@@ -592,7 +596,8 @@ public abstract class JsonApiController : ControllerBase
                         mappedIncludes,
                         Logger,
                         parameters.Fields,
-                        Options.PreserveQueryInPaginationLinks
+                        Options.PreserveQueryInPaginationLinks,
+                        Options.UseResourceAttributeTypeNames
                     );
 
                 return Ok(projectedDocument);
