@@ -2,42 +2,82 @@ version: 2
 
 updates:
   # NuGet packages
-  - package-ecosystem: nuget
-    directory: /
+  - package-ecosystem: "nuget"
+    directory: "/"
     schedule:
-      interval: weekly
-      day: monday
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     labels:
-      - dependencies
-      - nuget
+      - "dependencies"
+      - "nuget"
     commit-message:
-      prefix: "build(nuget)"
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
     groups:
-      microsoft:
+      backend:
         patterns:
-          - "Microsoft.*"
+          - "*"
         update-types:
-          - minor
-          - patch
-      testing:
-        patterns:
-          - "xunit*"
-          - "Moq*"
-          - "coverlet*"
-        update-types:
-          - minor
-          - patch
+          - "minor"
+          - "patch"
 
-  # GitHub Actions
-  - package-ecosystem: github-actions
-    directory: /
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
     labels:
-      - dependencies
-      - github-actions
+      - "dependencies"
+      - "github-actions"
     commit-message:
-      prefix: "ci(actions)"
+      prefix: "ci"
+      prefix-development: "ci"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Docs (pip)
+  - package-ecosystem: "pip"
+    directory: "/docs"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    labels:
+      - "dependencies"
+      - "pip"
+    commit-message:
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      docs:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
