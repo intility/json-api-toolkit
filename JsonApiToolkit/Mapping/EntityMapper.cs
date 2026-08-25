@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using JsonApiToolkit.Attributes;
 using JsonApiToolkit.Extensions;
 using JsonApiToolkit.Extensions.Querying;
 
@@ -107,13 +108,22 @@ public static class EntityMapper
         && HasIdProperty(p.PropertyType);
 
     /// <summary>
-    /// Gets the JSON:API resource type name (entity class name in camelCase).
-    /// Example: "Person" becomes "person".
+    /// Gets the JSON:API resource type name.
+    /// Default: entity class name in camelCase (e.g. "Person" becomes "person").
+    /// When <paramref name="useAttributeTypeName"/> is true and the type carries
+    /// <see cref="JsonApiResourceAttribute"/>, its declared wire type is used instead.
     /// </summary>
-    public static string GetResourceType(Type type)
+    public static string GetResourceType(Type type, bool useAttributeTypeName = false)
     {
-        string name = type.Name;
-        return name.ToCamelCase();
+        if (useAttributeTypeName)
+        {
+            string? attributeTypeName =
+                type.GetCustomAttribute<JsonApiResourceAttribute>()?.TypeName;
+            if (attributeTypeName != null)
+                return attributeTypeName;
+        }
+
+        return type.Name.ToCamelCase();
     }
 
     /// <summary>

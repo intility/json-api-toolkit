@@ -1,3 +1,4 @@
+using JsonApiToolkit.Attributes;
 using JsonApiToolkit.Mapping;
 using JsonApiToolkit.Models.Resources;
 
@@ -7,6 +8,7 @@ public class InclusionMapperTests
 {
     #region Test Models
 
+    [JsonApiResource("people")]
     private class Author
     {
         public int Id { get; set; }
@@ -731,6 +733,78 @@ public class InclusionMapperTests
         Assert.Equal(4, included.Count);
         Assert.Equal(2, included.Count(r => r.Type == "book"));
         Assert.Equal(2, included.Count(r => r.Type == "author"));
+    }
+
+    #endregion
+
+    #region Attribute Type Names
+
+    [Fact]
+    public void AddIncludedResources_UseAttributeTypeNameFalse_UsesCamelCasedClassName()
+    {
+        var author = new Author { Id = 1, Name = "John" };
+        var book = new Book
+        {
+            Id = 100,
+            Title = "Test Book",
+            Author = author,
+        };
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "author" };
+
+        InclusionMapper.AddIncludedResources(book, includePaths, included);
+
+        Assert.Equal("author", included[0].Type);
+    }
+
+    [Fact]
+    public void AddIncludedResources_UseAttributeTypeNameTrue_UsesJsonApiResourceTypeName()
+    {
+        var author = new Author { Id = 1, Name = "John" };
+        var book = new Book
+        {
+            Id = 100,
+            Title = "Test Book",
+            Author = author,
+        };
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "author" };
+
+        InclusionMapper.AddIncludedResources(
+            book,
+            includePaths,
+            included,
+            useAttributeTypeName: true
+        );
+
+        Assert.Equal("people", included[0].Type);
+    }
+
+    [Fact]
+    public void AddIncludedResources_UseAttributeTypeNameTrue_FallsBackWithoutAttribute()
+    {
+        // Chapter has no [JsonApiResource], so it still falls back to the class name.
+        var chapter = new Chapter { Id = 10, Title = "Chapter 1" };
+        var book = new Book
+        {
+            Id = 100,
+            Title = "Test Book",
+            Chapters = new List<Chapter> { chapter },
+        };
+
+        var included = new List<ResourceObject>();
+        var includePaths = new List<string> { "chapters" };
+
+        InclusionMapper.AddIncludedResources(
+            book,
+            includePaths,
+            included,
+            useAttributeTypeName: true
+        );
+
+        Assert.Equal("chapter", included[0].Type);
     }
 
     #endregion
