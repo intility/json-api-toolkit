@@ -9,8 +9,10 @@ import {
   BASE_URL,
   type ContractArticle,
   PUBLISHED_ARTICLES,
+  STRICT_BASE_URL,
   TOTAL_ARTICLES,
 } from './helpers.ts';
+import { Article, Author } from '../../../samples/ContractApi/api-types.gen.ts';
 
 const articles = createJsonApiClient({ baseUrl: BASE_URL })
   .resource<ContractArticle>('articles');
@@ -54,6 +56,36 @@ Deno.test('get', async (t) => {
     );
     assertEquals(error.status, 404);
   });
+});
+
+Deno.test('generated descriptors (strict instance)', async (t) => {
+  // UseResourceAttributeTypeNames is on here, so included resources carry
+  // the [JsonApiResource] type name and match their descriptor.
+  const generated = createJsonApiClient({
+    baseUrl: STRICT_BASE_URL,
+    resources: [Author],
+  }).resource(Article);
+
+  await t.step('null-stripped attributes come back as null', async () => {
+    const article = await generated.get(2); // even id: publishedAt is null
+    assertEquals(article.publishedAt, null);
+    assertEquals(article.body, 'Body of article 2');
+  });
+
+  await t.step('un-included relationships are null / []', async () => {
+    const article = await generated.get(2);
+    assertEquals(article.author, null);
+    assertEquals(article.comments, []);
+  });
+
+  await t.step(
+    'included resources are filled from their descriptor',
+    async () => {
+      const article = await generated.get(2, (q) => q.include('author'));
+      assertEquals(article.author?.name, 'Bjarne Moen');
+      assertEquals(article.author?.email, null); // stripped on the wire
+    },
+  );
 });
 
 Deno.test('writes', async (t) => {

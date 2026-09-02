@@ -14,6 +14,7 @@ public static class TypeGenCli
     {
         string? assemblyPath = null;
         string? outPath = null;
+        string clientImport = "@intility/json-api-client";
         bool check = false;
 
         for (int i = 0; i < args.Length; i++)
@@ -25,6 +26,9 @@ public static class TypeGenCli
                     break;
                 case "--out":
                     outPath = args[++i];
+                    break;
+                case "--client-import":
+                    clientImport = args[++i];
                     break;
                 case "--check":
                     check = true;
@@ -38,7 +42,8 @@ public static class TypeGenCli
         if (assemblyPath is null || outPath is null)
         {
             Console.Error.WriteLine(
-                "Usage: jsonapi-typegen --assembly <path/to/Api.dll> --out <path/to/api-types.gen.ts> [--check]"
+                "Usage: jsonapi-typegen --assembly <path/to/Api.dll> --out <path/to/api-types.gen.ts> "
+                    + "[--client-import <specifier>] [--check]"
             );
             return 1;
         }
@@ -61,7 +66,7 @@ public static class TypeGenCli
             return 1;
         }
 
-        string generated = TypeScriptEmitter.Generate(resources);
+        string generated = TypeScriptEmitter.Generate(resources, clientImport);
 
         if (check)
         {

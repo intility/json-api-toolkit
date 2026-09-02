@@ -1,6 +1,9 @@
 import { assertEquals } from '@std/assert';
 import { hydrateResponse } from './hydrate.ts';
-import type { JsonApiResource } from './types/jsonapi.ts';
+import type {
+  JsonApiResource,
+  JsonApiResourceDescriptor,
+} from './types/jsonapi.ts';
 
 type User = { id: string; name: string; friend?: User | null };
 type Todo = {
@@ -97,6 +100,36 @@ Deno.test('hydrateResponse', async (t) => {
       },
     });
     assertEquals(data.owner, null);
+  });
+
+  await t.step('descriptor fills what the wire omits', () => {
+    type Article = {
+      id: string;
+      title: string;
+      body: string | null;
+      author: User | null;
+      comments: { id: string }[];
+    };
+    const descriptors = {
+      articles: {
+        type: 'articles',
+        attributes: ['title', 'body'],
+        toOne: ['author'],
+        toMany: ['comments'],
+      } satisfies JsonApiResourceDescriptor<Article>,
+    };
+    const { data } = hydrateResponse<Article>(
+      // body is null-stripped, author and comments are not included
+      { data: { id: '1', type: 'articles', attributes: { title: 'A' } } },
+      descriptors,
+    );
+    assertEquals(data, {
+      id: '1',
+      title: 'A',
+      body: null,
+      author: null,
+      comments: [],
+    });
   });
 
   await t.step('resolves nested includes, cycles stop at null', () => {

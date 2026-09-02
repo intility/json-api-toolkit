@@ -10,6 +10,7 @@ import {
   type List,
   type Single,
 } from './helpers.ts';
+import { Article } from '../../../samples/ContractApi/api-types.gen.ts';
 
 Deno.test('document shape', async (t) => {
   await t.step('primary resources use the controller type string', async () => {
@@ -103,7 +104,7 @@ Deno.test('sparse fieldsets', async (t) => {
     'fields[type] works for the primary resource via the builder',
     async () => {
       const qs = new JsonApiQueryBuilder<ContractArticle>()
-        .fields<ContractArticle>('articles', ['title', 'publishedAt'])
+        .fields(Article, ['title', 'publishedAt'])
         .page(1, 2)
         .build();
       const { doc } = await getDoc<List>(`articles?${qs}`);

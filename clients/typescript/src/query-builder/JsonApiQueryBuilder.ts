@@ -7,6 +7,10 @@ import type {
 } from '../types/query-builder.ts';
 import { FilterGroupBuilder } from './FilterGroupBuilder.ts';
 import type { FilterGroup } from '../types/filters.ts';
+import type {
+  JsonApiResourceDescriptor,
+  JsonApiResourceDescriptorBase,
+} from '../types/jsonapi.ts';
 
 /**
  * Recursively serializes a filter group into JSON:API query parameter key-value pairs.
@@ -129,17 +133,25 @@ export class JsonApiQueryBuilder<T> {
   }
 
   /**
-   * Set sparse fieldsets for a resource type.
-   * Produces `fields[type]=field1,field2` in the query string.
-   * Pass a type parameter for type-safe field suggestions.
-   * @param type - The JSON:API resource type name
-   * @param fields - The attribute names to include
+   * Set a sparse fieldset for a resource: `fields[type]=field1,field2`.
+   * Pass a generated descriptor for the wire type and typed field names.
    */
-  fields<R = unknown>(
-    type: string,
-    fields: (unknown extends R ? string : DirectAttributeKeys<R>)[],
+  fields<R>(
+    descriptor: JsonApiResourceDescriptor<R>,
+    fields: DirectAttributeKeys<R>[],
+  ): this;
+  /** Sparse fieldset by wire type name, untyped field names. */
+  fields(type: string, fields: string[]): this;
+  /** Sparse fieldset by wire type name, field names typed against `R`. */
+  fields<R>(type: string, fields: DirectAttributeKeys<R>[]): this;
+  fields(
+    source: string | JsonApiResourceDescriptorBase,
+    fields: string[],
   ): this {
-    this.fieldsets.set(type, fields as string[]);
+    this.fieldsets.set(
+      typeof source === 'string' ? source : source.type,
+      fields,
+    );
     return this;
   }
 

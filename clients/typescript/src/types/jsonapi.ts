@@ -51,6 +51,35 @@ export interface JsonApiLinks {
   next?: string;
 }
 
+/**
+ * Runtime shape of one resource, emitted by `dotnet jsonapi-typegen` next to
+ * the interface it describes. Lets hydration be honest about what the wire
+ * omits: null-stripped attributes become `null`, un-included relationships
+ * become `null` (to-one) or `[]` (to-many). Names are checked against `T`,
+ * so a stale generated file fails to compile.
+ */
+export interface JsonApiResourceDescriptor<T>
+  extends JsonApiResourceDescriptorBase {
+  readonly attributes: readonly (keyof T & string)[];
+  readonly toOne: readonly (keyof T & string)[];
+  readonly toMany: readonly (keyof T & string)[];
+}
+
+/** Untyped form of {@link JsonApiResourceDescriptor}, for registries. */
+export interface JsonApiResourceDescriptorBase {
+  /** Wire `type`, also the default collection path. */
+  readonly type: string;
+  readonly attributes: readonly string[];
+  readonly toOne: readonly string[];
+  readonly toMany: readonly string[];
+}
+
+/** Descriptors keyed by wire type, for resolving included resources. */
+export type JsonApiResourceDescriptors = Record<
+  string,
+  JsonApiResourceDescriptorBase
+>;
+
 export interface HydratedSingle<T> {
   data: T;
 }

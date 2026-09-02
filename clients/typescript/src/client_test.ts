@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects } from '@std/assert';
 import { createJsonApiClient } from './client.ts';
 import { JsonApiRequestError } from './errors.ts';
+import type { JsonApiResourceDescriptor } from './types/jsonapi.ts';
 
 type Todo = { id: string; title: string; completed: boolean };
 
@@ -87,6 +88,30 @@ Deno.test('list', async (t) => {
     const error = await assertRejects(() => todos.list(), JsonApiRequestError);
     assertEquals(error.status, 415);
     assertEquals(error.errors, []);
+  });
+});
+
+Deno.test('resource(descriptor)', async (t) => {
+  await t.step('paths from the wire type and fills omissions', async () => {
+    type Article = { id: string; title: string; author: Todo | null };
+    const Article: JsonApiResourceDescriptor<Article> = {
+      type: 'articles',
+      attributes: ['title'],
+      toOne: ['author'],
+      toMany: [],
+    };
+    const { fetch: f, lastRequest } = fakeFetch(() =>
+      jsonResponse(200, {
+        data: { id: '1', type: 'articles', attributes: { title: 'A' } },
+      })
+    );
+    const client = createJsonApiClient({
+      baseUrl: 'https://api.test',
+      fetch: f,
+    });
+    const article = await client.resource(Article).get(1);
+    assertEquals(lastRequest().url, 'https://api.test/articles/1');
+    assertEquals(article, { id: '1', title: 'A', author: null });
   });
 });
 
