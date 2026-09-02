@@ -2,21 +2,14 @@ import { assertEquals, assertRejects } from '@std/assert';
 import { createJsonApiClient } from './client.ts';
 import { JsonApiRequestError } from './errors.ts';
 
-// hydrateResponse always stamps `type` onto the flattened object today
-// (pre-existing behavior; the hydration honesty fixes are a separate PR).
-type Todo = { id: string; type: string; title: string; completed: boolean };
+type Todo = { id: string; title: string; completed: boolean };
 
 const todoDoc = {
   id: '1',
   type: 'todos',
   attributes: { title: 'a', completed: false },
 };
-const hydratedTodo: Todo = {
-  id: '1',
-  type: 'todos',
-  title: 'a',
-  completed: false,
-};
+const hydratedTodo: Todo = { id: '1', title: 'a', completed: false };
 
 /** Records the request it received and returns a canned Response. */
 function fakeFetch(

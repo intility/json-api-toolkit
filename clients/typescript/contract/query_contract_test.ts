@@ -8,6 +8,7 @@ import { JsonApiQueryBuilder } from '../src/index.ts';
 import {
   type ContractArticle,
   getDoc,
+  type List,
   PUBLISHED_ARTICLES,
   total,
   TOTAL_ARTICLES,
@@ -15,7 +16,7 @@ import {
 } from './helpers.ts';
 
 function list(qb: JsonApiQueryBuilder<ContractArticle>) {
-  return getDoc(
+  return getDoc<List>(
     `articles?${qb.page(1, 1).fields('articles', ['title']).build()}`,
   );
 }
@@ -105,7 +106,7 @@ Deno.test('simple filters', async (t) => {
   );
 
   await t.step('WART: unknown filter fields are silently ignored', async () => {
-    const { doc, status } = await getDoc(
+    const { doc, status } = await getDoc<List>(
       'articles?filter%5Bbogus%5D=x&page%5Bsize%5D=1',
     );
     assertEquals(status, 200);
@@ -171,9 +172,9 @@ Deno.test('dot-path filters', async (t) => {
         .include('author')
         .page(1, 1)
         .build();
-      const { doc } = await getDoc(`articles?${qs}`);
+      const { doc } = await getDoc<List>(`articles?${qs}`);
       assertEquals(total(doc), 9); // seed: authors round-robin, Astrid owns 9
-      assertEquals(doc.included[0].attributes.name, 'Astrid Berg');
+      assertEquals(doc.included?.[0].attributes.name, 'Astrid Berg');
     },
   );
 

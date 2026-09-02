@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import type {
   AttributeKeys,
   DirectAttributeKeys,
@@ -48,20 +47,24 @@ export class JsonApiQueryBuilder<T> {
    * @param field - The attribute to filter on
    * @param value - The value to filter by (uses "eq" operator)
    */
-  filter<K extends AttributeKeys<T>>(field: K, value: any): this;
+  filter<K extends AttributeKeys<T>>(field: K, value: unknown): this;
   /**
    * Add a simple filter with explicit operator.
    * @param field - The attribute to filter on
    * @param op - The filter operator
    * @param value - The value to filter by
    */
-  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any): this;
   filter<K extends AttributeKeys<T>>(
     field: K,
-    opOrValue: FilterOp | any,
-    value?: any,
-  ) {
-    const op: FilterOp = value === undefined ? 'eq' : opOrValue;
+    op: FilterOp,
+    value: unknown,
+  ): this;
+  filter<K extends AttributeKeys<T>>(
+    field: K,
+    opOrValue: unknown,
+    value?: unknown,
+  ): this {
+    const op = value === undefined ? 'eq' : (opOrValue as FilterOp);
     const val = value === undefined ? opOrValue : value;
     this.filterGroups.push({
       type: 'simple',

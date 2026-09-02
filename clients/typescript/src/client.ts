@@ -1,6 +1,6 @@
 import type {
+  HydratedList,
   JsonApiArrayResponse,
-  JsonApiPaginationMeta,
   JsonApiSingleResponse,
 } from './types/jsonapi.ts';
 import { hydrateResponse } from './hydrate.ts';
@@ -27,19 +27,13 @@ export interface RawQueryParams {
 
 export type QueryFn<T> = (builder: JsonApiQueryBuilder<T>) => unknown;
 
-export interface JsonApiListResult<T> {
-  data: T[];
-  /** Present only when the request was paginated (any `page[...]` param). */
-  pagination?: JsonApiPaginationMeta;
-}
-
 /**
  * Typed handle for one resource path. Bodies for `create`/`update` are
  * plain camelCase DTOs (the backend has no JSON:API request deserializer);
  * responses are JSON:API documents, hydrated into plain objects.
  */
 export interface JsonApiResourceHandle<T> {
-  list(query?: QueryFn<T> | RawQueryParams): Promise<JsonApiListResult<T>>;
+  list(query?: QueryFn<T> | RawQueryParams): Promise<HydratedList<T>>;
   get(id: string | number, query?: QueryFn<T>): Promise<T>;
   create(body: unknown): Promise<T>;
   update(id: string | number, body: unknown): Promise<T>;
@@ -112,7 +106,7 @@ export function createJsonApiClient(
   }
 
   function single<T>(doc: unknown): T {
-    return hydrateResponse<T>(doc as JsonApiSingleResponse<T>).data;
+    return hydrateResponse<T>(doc as JsonApiSingleResponse).data;
   }
 
   return {
@@ -121,8 +115,7 @@ export function createJsonApiClient(
       return {
         async list(query) {
           const doc = await send('GET', cleanPath, { qs: queryString(query) });
-          const hydrated = hydrateResponse<T>(doc as JsonApiArrayResponse<T>);
-          return { data: hydrated.data, pagination: hydrated.meta?.pagination };
+          return hydrateResponse<T>(doc as JsonApiArrayResponse);
         },
         async get(id, query) {
           return single<T>(

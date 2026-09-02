@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import type { AttributeKeys, FilterOp } from '../types/query-builder.ts';
 import type { FilterGroup } from '../types/filters.ts';
 
@@ -12,7 +11,11 @@ export class FilterGroupBuilder<T> {
   /**
    * Add a simple filter to this group.
    */
-  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any): this {
+  filter<K extends AttributeKeys<T>>(
+    field: K,
+    op: FilterOp,
+    value: unknown,
+  ): this {
     this.groups.push({
       type: 'simple',
       filter: { field, op, value },
