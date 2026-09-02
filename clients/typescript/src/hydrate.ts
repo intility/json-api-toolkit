@@ -3,6 +3,7 @@ import type {
   HydratedSingle,
   JsonApiArrayResponse,
   JsonApiResource,
+  JsonApiResourceDescriptors,
   JsonApiSingleResponse,
 } from './types/jsonapi.ts';
 
@@ -21,10 +22,15 @@ function buildIncludedMap(included: JsonApiResource[] = []): IncludedMap {
  * Relationships resolve from `included`; a linked resource that is not
  * included resolves to `null` (to-one) or is dropped (to-many). A cycle
  * back to a resource already on the current path resolves to `null`.
+ *
+ * With a descriptor for the resource's wire type, what the wire omits is
+ * filled in: null-stripped attributes as `null`, un-included relationships
+ * as `null` (to-one) or `[]` (to-many).
  */
 function hydrateOne<T>(
   resource: JsonApiResource,
   map: IncludedMap,
+  descriptors: JsonApiResourceDescriptors,
   path: Set<string>,
 ): T {
   const key = `${resource.type}:${resource.id}`;
@@ -37,7 +43,7 @@ function hydrateOne<T>(
   const resolve = (ref: { id: string; type: string }): unknown => {
     const related = map[ref.type]?.[ref.id];
     if (!related || nextPath.has(`${ref.type}:${ref.id}`)) return null;
-    return hydrateOne(related, map, nextPath);
+    return hydrateOne(related, map, descriptors, nextPath);
   };
 
   for (const [name, rel] of Object.entries(resource.relationships ?? {})) {
@@ -46,6 +52,16 @@ function hydrateOne<T>(
       : rel.data
       ? resolve(rel.data)
       : null;
+  }
+
+  const descriptor = descriptors[resource.type];
+  if (descriptor) {
+    for (const name of [...descriptor.attributes, ...descriptor.toOne]) {
+      out[name] ??= null;
+    }
+    for (const name of descriptor.toMany) {
+      out[name] ??= [];
+    }
   }
   return out as T;
 }
@@ -58,19 +74,24 @@ function hydrateOne<T>(
  */
 export function hydrateResponse<T>(
   response: JsonApiSingleResponse,
+  descriptors?: JsonApiResourceDescriptors,
 ): HydratedSingle<T>;
 export function hydrateResponse<T>(
   response: JsonApiArrayResponse,
+  descriptors?: JsonApiResourceDescriptors,
 ): HydratedList<T>;
 export function hydrateResponse<T>(
   response: JsonApiSingleResponse | JsonApiArrayResponse,
+  descriptors: JsonApiResourceDescriptors = {},
 ): HydratedSingle<T> | HydratedList<T> {
   const map = buildIncludedMap(response.included);
   if (Array.isArray(response.data)) {
     return {
-      data: response.data.map((res) => hydrateOne<T>(res, map, new Set())),
+      data: response.data.map((res) =>
+        hydrateOne<T>(res, map, descriptors, new Set())
+      ),
       pagination: response.meta?.pagination,
     };
   }
-  return { data: hydrateOne<T>(response.data, map, new Set()) };
+  return { data: hydrateOne<T>(response.data, map, descriptors, new Set()) };
 }

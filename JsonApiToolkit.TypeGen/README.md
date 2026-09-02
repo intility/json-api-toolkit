@@ -31,10 +31,36 @@ jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts 
 ## How it works
 
 Mark your resource models with `[JsonApiResource]` in the API project. The
-tool loads the assembly, finds the attributed types, and emits one
-TypeScript interface per resource, with attributes and relationships
-classified the same way JsonApiToolkit maps them.
+tool loads the assembly, finds the attributed types, and emits, per
+resource, one TypeScript interface and one descriptor constant of the same
+name:
 
-The generated types pair with
+```ts
+export interface Article {
+  id: string;
+  title: string;
+  publishedAt: string | null;
+  author: Author | null;
+  comments: Comment[];
+}
+
+export const Article: JsonApiResourceDescriptor<Article> = {
+  type: "articles",
+  attributes: ["title", "publishedAt"],
+  toOne: ["author"],
+  toMany: ["comments"],
+};
+```
+
+Attributes and relationships are classified the same way JsonApiToolkit
+maps them. The descriptor is what
 [`@intility/json-api-client`](https://jsr.io/@intility/json-api-client)
-for type-safe queries and hydration on the frontend.
+needs to keep hydration honest: `client.resource(Article)` infers the type,
+uses the wire type as the path, and fills in what the wire omits
+(null-stripped attributes as `null`, un-included relationships as `null` or
+`[]`). Set `UseResourceAttributeTypeNames` in the API's `JsonApiOptions` so
+included resources carry the same type names and match their descriptors.
+
+The descriptor type is imported from `@intility/json-api-client` by default.
+Pass `--client-import <specifier>` to point at a different module (for
+example a relative path inside a monorepo).

@@ -18,36 +18,39 @@ export type Primitive =
 type StringKeys<T> = Extract<keyof T, string>;
 
 /**
- * Extracts keys from T whose values are primitives (attributes),
- * but excludes "id" and "type".
+ * Attribute values: primitives and primitive arrays (JSON columns).
+ * Nullability is stripped first, so `string | null` classifies as `string`.
+ */
+type IsAttribute<V> = NonNullable<V> extends Primitive | Primitive[] ? true
+  : false;
+
+/**
+ * Extracts keys from T whose values are attributes, excluding "id" and "type".
  */
 export type DirectAttributeKeys<T> = Exclude<
   {
-    [K in StringKeys<T>]: T[K] extends Primitive ? K : never;
+    [K in StringKeys<T>]: IsAttribute<T[K]> extends true ? K : never;
   }[StringKeys<T>],
   'id' | 'type'
 >;
 
 /**
- * Extract keys from T whose values are objects or arrays (relationships).
+ * Extracts keys from T whose values are objects or object arrays
+ * (relationships). `User | null` and optional properties count.
  */
 export type RelationshipKeys<T> = {
-  [K in StringKeys<T>]: T[K] extends Array<unknown> | object
-    ? (T[K] extends Primitive ? never : K)
+  [K in StringKeys<T>]: IsAttribute<T[K]> extends true ? never
+    : NonNullable<T[K]> extends object ? K
     : never;
 }[StringKeys<T>];
 
 /**
- * Extracts primitive attributes from a relationship type (excluding arrays).
+ * Extracts attributes from a to-one relationship's type (to-many yields none).
  */
-type RelationshipAttributeKeys<T, R extends keyof T> = T[R] extends
-  Array<unknown> ? never
-  : T[R] extends object ? Exclude<
-      {
-        [K in StringKeys<T[R]>]: T[R][K] extends Primitive ? K : never;
-      }[StringKeys<T[R]>],
-      'id' | 'type'
-    >
+type RelationshipAttributeKeys<T, R extends keyof T> = NonNullable<
+  T[R]
+> extends Array<unknown> ? never
+  : NonNullable<T[R]> extends object ? DirectAttributeKeys<NonNullable<T[R]>>
   : never;
 
 /**

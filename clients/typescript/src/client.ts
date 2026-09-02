@@ -1,6 +1,9 @@
 import type {
   HydratedList,
   JsonApiArrayResponse,
+  JsonApiResourceDescriptor,
+  JsonApiResourceDescriptorBase,
+  JsonApiResourceDescriptors,
   JsonApiSingleResponse,
 } from './types/jsonapi.ts';
 import { hydrateResponse } from './hydrate.ts';
@@ -18,6 +21,12 @@ export interface JsonApiClientOptions {
    * handling, and parsing. Defaults to the global `fetch`.
    */
   fetch?: typeof fetch;
+  /**
+   * Generated descriptors for resources that show up as `included` but
+   * never get their own handle. Descriptors passed to `resource()` are
+   * registered automatically.
+   */
+  resources?: readonly JsonApiResourceDescriptorBase[];
 }
 
 /** Pre-built query string, for interop with externally-built params (e.g. gjallarbru). */
@@ -42,7 +51,20 @@ export interface JsonApiResourceHandle<T> {
 }
 
 export interface JsonApiClient {
-  /** @param path Collection path relative to `baseUrl`, e.g. "articles". */
+  /**
+   * Handle for a generated resource. `T` is inferred from the descriptor;
+   * hydration fills what the wire omits (see {@link JsonApiResourceDescriptor}).
+   * @param path Collection path relative to `baseUrl`; defaults to the wire type.
+   */
+  resource<T>(
+    descriptor: JsonApiResourceDescriptor<T>,
+    path?: string,
+  ): JsonApiResourceHandle<T>;
+  /**
+   * Handle for a hand-typed resource. No descriptor, so absent attributes
+   * and un-included relationships stay `undefined`.
+   * @param path Collection path relative to `baseUrl`, e.g. "articles".
+   */
   resource<T>(path: string): JsonApiResourceHandle<T>;
 }
 
@@ -79,6 +101,8 @@ export function createJsonApiClient(
 ): JsonApiClient {
   const fetchImpl = options.fetch ?? fetch;
   const baseUrl = options.baseUrl.replace(/\/+$/, '');
+  const descriptors: JsonApiResourceDescriptors = {};
+  for (const d of options.resources ?? []) descriptors[d.type] = d;
 
   async function send(
     method: string,
@@ -106,16 +130,22 @@ export function createJsonApiClient(
   }
 
   function single<T>(doc: unknown): T {
-    return hydrateResponse<T>(doc as JsonApiSingleResponse).data;
+    return hydrateResponse<T>(doc as JsonApiSingleResponse, descriptors).data;
   }
 
   return {
-    resource<T>(path: string): JsonApiResourceHandle<T> {
-      const cleanPath = path.replace(/^\/+|\/+$/g, '');
+    resource<T>(
+      source: JsonApiResourceDescriptor<T> | string,
+      path?: string,
+    ): JsonApiResourceHandle<T> {
+      if (typeof source !== 'string') descriptors[source.type] = source;
+      const cleanPath =
+        (path ?? (typeof source === 'string' ? source : source.type))
+          .replace(/^\/+|\/+$/g, '');
       return {
         async list(query) {
           const doc = await send('GET', cleanPath, { qs: queryString(query) });
-          return hydrateResponse<T>(doc as JsonApiArrayResponse);
+          return hydrateResponse<T>(doc as JsonApiArrayResponse, descriptors);
         },
         async get(id, query) {
           return single<T>(
