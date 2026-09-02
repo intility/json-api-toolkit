@@ -7,7 +7,7 @@
  * contract keeps seeing the pristine seed.
  */
 import { assert, assertEquals } from '@std/assert';
-import { getDoc, request } from './helpers.ts';
+import { type Errors, getDoc, request, type Single } from './helpers.ts';
 
 Deno.test('write path', async (t) => {
   let createdId = '';
@@ -15,16 +15,20 @@ Deno.test('write path', async (t) => {
   await t.step(
     'POST plain DTO returns 201 + Location + JSON:API document',
     async () => {
-      const { doc, status, headers } = await request('POST', 'articles', {
-        body: {
-          title: 'Contract test article',
-          body: 'Written by the contract suite',
-          published: true,
-          publishedAt: '2025-03-01T09:00:00Z',
-          authorId: 2,
-          tags: ['contract'],
+      const { doc, status, headers } = await request<Single>(
+        'POST',
+        'articles',
+        {
+          body: {
+            title: 'Contract test article',
+            body: 'Written by the contract suite',
+            published: true,
+            publishedAt: '2025-03-01T09:00:00Z',
+            authorId: 2,
+            tags: ['contract'],
+          },
         },
-      });
+      );
       assertEquals(status, 201);
       createdId = doc.data.id;
       assert(headers.get('location')?.endsWith(`/articles/${createdId}`));
@@ -39,7 +43,7 @@ Deno.test('write path', async (t) => {
   await t.step(
     'POST without required field is 400 REQUIRED_FIELD_MISSING',
     async () => {
-      const { doc, status } = await request('POST', 'articles', {
+      const { doc, status } = await request<Errors>('POST', 'articles', {
         body: { body: 'no title here' },
       });
       assertEquals(status, 400);
@@ -52,9 +56,13 @@ Deno.test('write path', async (t) => {
   await t.step(
     'PATCH applies partial updates, other fields untouched',
     async () => {
-      const { doc, status } = await request('PATCH', `articles/${createdId}`, {
-        body: { viewCount: 5 },
-      });
+      const { doc, status } = await request<Single>(
+        'PATCH',
+        `articles/${createdId}`,
+        {
+          body: { viewCount: 5 },
+        },
+      );
       assertEquals(status, 200);
       assertEquals(doc.data.attributes.viewCount, 5);
       assertEquals(doc.data.attributes.title, 'Contract test article');
@@ -65,9 +73,13 @@ Deno.test('write path', async (t) => {
   await t.step(
     'PATCH on a missing resource is 404 RESOURCE_NOT_FOUND',
     async () => {
-      const { doc, status } = await request('PATCH', 'articles/999999', {
-        body: { title: 'nope' },
-      });
+      const { doc, status } = await request<Errors>(
+        'PATCH',
+        'articles/999999',
+        {
+          body: { title: 'nope' },
+        },
+      );
       assertEquals(status, 404);
       assertEquals(doc.errors[0].code, 'RESOURCE_NOT_FOUND');
     },

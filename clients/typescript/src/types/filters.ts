@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import type { AttributeKeys, FilterOp } from './query-builder.ts';
 
 /**
@@ -7,7 +6,7 @@ import type { AttributeKeys, FilterOp } from './query-builder.ts';
 export type SimpleFilter<T> = {
   field: AttributeKeys<T>;
   op: FilterOp;
-  value: any;
+  value: unknown;
 };
 
 /**

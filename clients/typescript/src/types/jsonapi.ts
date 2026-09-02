@@ -1,5 +1,6 @@
-// deno-lint-ignore-file no-explicit-any
-export interface JsonApiResource<T = any> {
+export type JsonApiAttributes = Record<string, unknown>;
+
+export interface JsonApiResource<T = JsonApiAttributes> {
   id: string;
   type: string;
   attributes: T;
@@ -12,21 +13,25 @@ export type JsonApiRelationship =
   | { data: Array<{ id: string; type: string }> }
   | { data: null };
 
-export interface JsonApiSingleResponse<T = any> {
+export type JsonApiMeta = Record<string, unknown> & {
+  pagination?: JsonApiPaginationMeta;
+};
+
+export interface JsonApiSingleResponse<T = JsonApiAttributes> {
   data: JsonApiResource<T>;
   included?: JsonApiResource[];
-  meta?: { pagination?: JsonApiPaginationMeta };
+  meta?: JsonApiMeta;
   links?: JsonApiLinks;
 }
 
-export interface JsonApiArrayResponse<T = any> {
+export interface JsonApiArrayResponse<T = JsonApiAttributes> {
   data: JsonApiResource<T>[];
   included?: JsonApiResource[];
-  meta?: { pagination?: JsonApiPaginationMeta };
+  meta?: JsonApiMeta;
   links?: JsonApiLinks;
 }
 
-export type JsonApiResponse<T = any> =
+export type JsonApiResponse<T = JsonApiAttributes> =
   | JsonApiSingleResponse<T>
   | JsonApiArrayResponse<T>;
 
@@ -46,27 +51,12 @@ export interface JsonApiLinks {
   next?: string;
 }
 
-/**
- * Type for hydrated single resource result.
- */
-export interface HydratedSingleResult<T> {
+export interface HydratedSingle<T> {
   data: T;
-  meta?: { pagination?: JsonApiPaginationMeta };
-  links?: JsonApiLinks;
 }
 
-/**
- * Type for hydrated array resource result.
- */
-export interface HydratedArrayResult<T> {
+export interface HydratedList<T> {
   data: T[];
-  meta?: { pagination?: JsonApiPaginationMeta };
-  links?: JsonApiLinks;
+  /** Present only when the request was paginated (any `page[...]` param). */
+  pagination?: JsonApiPaginationMeta;
 }
-
-/**
- * Union type for hydrated query result.
- */
-export type HydratedQueryResult<T> =
-  | HydratedSingleResult<T>
-  | HydratedArrayResult<T>;
