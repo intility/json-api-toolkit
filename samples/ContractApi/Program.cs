@@ -5,6 +5,13 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ContractDbContext>(o => o.UseInMemoryDatabase("contract-api"));
+builder
+    .Services.AddAuthentication("Test")
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, TestAuthHandler>(
+        "Test",
+        null
+    );
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddJsonApiToolkit(o =>
 {
@@ -17,6 +24,8 @@ builder.Services.AddJsonApiToolkit(o =>
 });
 
 var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
