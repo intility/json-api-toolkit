@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { isJsonApiErrorResponse } from './errors.ts';
+import { isJsonApiErrorResponse, JsonApiRequestError } from './errors.ts';
 import { JsonApiErrorCodes } from './types/errors.ts';
 
 Deno.test('isJsonApiErrorResponse', async (t) => {
@@ -107,5 +107,52 @@ Deno.test('JsonApiErrorCodes', async (t) => {
 
   await t.step('has 19 error codes', () => {
     assertEquals(Object.keys(JsonApiErrorCodes).length, 19);
+  });
+});
+
+Deno.test('JsonApiRequestError', async (t) => {
+  await t.step('message falls back to the status when no errors', () => {
+    const error = new JsonApiRequestError(500, []);
+    assertEquals(error.message, 'Request failed with status 500');
+    assertEquals(error.status, 500);
+    assertEquals(error.errors, []);
+  });
+
+  await t.step('message uses the first error title', () => {
+    const error = new JsonApiRequestError(404, [
+      { status: '404', title: 'Not Found' },
+    ]);
+    assertEquals(error.message, 'Not Found');
+  });
+
+  await t.step('hasCode matches any error with that code', () => {
+    const error = new JsonApiRequestError(400, [
+      { code: JsonApiErrorCodes.VALIDATION_FAILED },
+      { code: JsonApiErrorCodes.REQUIRED_FIELD_MISSING },
+    ]);
+    assertEquals(error.hasCode(JsonApiErrorCodes.VALIDATION_FAILED), true);
+    assertEquals(error.hasCode(JsonApiErrorCodes.RESOURCE_NOT_FOUND), false);
+  });
+
+  await t.step("fieldErrors groups by the pointer's last segment", () => {
+    const error = new JsonApiRequestError(400, [
+      {
+        code: JsonApiErrorCodes.VALIDATION_FAILED,
+        source: { pointer: '/data/attributes/email' },
+      },
+      {
+        code: JsonApiErrorCodes.REQUIRED_FIELD_MISSING,
+        source: { pointer: '/data/attributes/email' },
+      },
+      {
+        code: JsonApiErrorCodes.REQUIRED_FIELD_MISSING,
+        source: { pointer: '/data/attributes/title' },
+      },
+      { code: JsonApiErrorCodes.AUTHENTICATION_REQUIRED }, // no pointer
+    ]);
+    const fields = error.fieldErrors();
+    assertEquals(Object.keys(fields).sort(), ['email', 'title']);
+    assertEquals(fields.email.length, 2);
+    assertEquals(fields.title.length, 1);
   });
 });
