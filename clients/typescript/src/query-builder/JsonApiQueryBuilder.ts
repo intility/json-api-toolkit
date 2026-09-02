@@ -73,7 +73,7 @@ export class JsonApiQueryBuilder<T> {
   /**
    * Add an "or" logical filter group.
    */
-  or(cb: (b: FilterGroupBuilder<T>) => void) {
+  or(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.filterGroups.push({
@@ -86,7 +86,7 @@ export class JsonApiQueryBuilder<T> {
   /**
    * Add an "and" logical filter group.
    */
-  and(cb: (b: FilterGroupBuilder<T>) => void) {
+  and(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.filterGroups.push({
@@ -99,7 +99,7 @@ export class JsonApiQueryBuilder<T> {
   /**
    * Add a "not" logical filter group.
    */
-  not(cb: (b: FilterGroupBuilder<T>) => void) {
+  not(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.filterGroups.push({
@@ -112,7 +112,7 @@ export class JsonApiQueryBuilder<T> {
   /**
    * Set sort fields (comma-separated, supports -field for descending).
    */
-  sort(...fields: Sort<T>) {
+  sort(...fields: Sort<T>): this {
     this.sorts = fields;
     return this;
   }
@@ -120,7 +120,7 @@ export class JsonApiQueryBuilder<T> {
   /**
    * Set included relationships (comma-separated, supports dot notation).
    */
-  include(...fields: Include<T>) {
+  include(...fields: Include<T>): this {
     this.includes = fields;
     return this;
   }
@@ -135,7 +135,7 @@ export class JsonApiQueryBuilder<T> {
   fields<R = unknown>(
     type: string,
     fields: (unknown extends R ? string : DirectAttributeKeys<R>)[],
-  ) {
+  ): this {
     this.fieldsets.set(type, fields as string[]);
     return this;
   }
@@ -143,7 +143,7 @@ export class JsonApiQueryBuilder<T> {
   /**
    * Set pagination (page number and size).
    */
-  page(number: number, size: number) {
+  page(number: number, size: number): this {
     this.pagination = { number, size };
     return this;
   }

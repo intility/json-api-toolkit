@@ -1,0 +1,119 @@
+name: Next Snapshot
+
+on:
+  push:
+    branches:
+      - next
+
+concurrency:
+  group: next-snapshot
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      toolkit: ${{ steps.filter.outputs.toolkit }}
+      typegen: ${{ steps.filter.outputs.typegen }}
+      typescript: ${{ steps.filter.outputs.typescript }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            toolkit:
+              - 'JsonApiToolkit/**'
+              - 'Directory.Build.props'
+            typegen:
+              - 'JsonApiToolkit.TypeGen/**'
+              - 'Directory.Build.props'
+            typescript:
+              - 'clients/typescript/**'
+
+  dotnet:
+    name: Publish .NET Snapshot
+    needs: changes
+    if: needs.changes.outputs.toolkit == 'true' || needs.changes.outputs.typegen == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore --locked-mode
+
+      - name: Test
+        run: dotnet test --configuration Release --verbosity normal --no-restore
+
+      - name: Pack JsonApiToolkit
+        if: needs.changes.outputs.toolkit == 'true'
+        run: |
+          BASE=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' JsonApiToolkit/JsonApiToolkit.csproj)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          dotnet pack JsonApiToolkit/JsonApiToolkit.csproj -c Release --no-restore \
+            -p:Version="$MAJOR.$MINOR.$((PATCH + 1))-next.${{ github.run_number }}"
+
+      - name: Pack JsonApiToolkit.TypeGen
+        if: needs.changes.outputs.typegen == 'true'
+        run: |
+          BASE=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' JsonApiToolkit.TypeGen/JsonApiToolkit.TypeGen.csproj)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          dotnet pack JsonApiToolkit.TypeGen/JsonApiToolkit.TypeGen.csproj -c Release --no-restore \
+            -p:Version="$MAJOR.$MINOR.$((PATCH + 1))-next.${{ github.run_number }}"
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish to NuGet.org
+        run: dotnet nuget push "JsonApiToolkit*/bin/Release/*.nupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --skip-duplicate
+
+  typescript:
+    name: Publish TypeScript Snapshot
+    needs: changes
+    if: needs.changes.outputs.typescript == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: clients/typescript
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+
+      - name: Test
+        run: deno task test
+
+      - name: Set Snapshot Version
+        run: |
+          BASE=$(jq -r .version deno.json)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          jq --arg v "$MAJOR.$MINOR.$((PATCH + 1))-next.${{ github.run_number }}" \
+            '.version = $v' deno.json > deno.json.tmp
+          mv deno.json.tmp deno.json
+
+      - name: Publish to JSR
+        run: deno publish --allow-dirty

@@ -1,10 +1,10 @@
-# jsonapi-ts-tools
+# json-api-client
 
-[![🚀 Release](https://github.com/intility/jsonapi-ts-tools/actions/workflows/release.yml/badge.svg)](https://github.com/intility/jsonapi-ts-tools/actions/workflows/release.yml)
+[![TypeScript Release](https://github.com/intility/json-api-toolkit/actions/workflows/typescript-release.yml/badge.svg)](https://github.com/intility/json-api-toolkit/actions/workflows/typescript-release.yml)
 
-**jsonapi-ts-tools** is a lightweight, Deno-based TypeScript library designed to
+**json-api-client** is a lightweight, Deno-based TypeScript library designed to
 make working with
-[JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit) responses
+[JsonApiToolkit](https://github.com/intility/json-api-toolkit) responses
 in TypeScript applications easier.
 
 ## Features
@@ -18,19 +18,25 @@ in TypeScript applications easier.
 ## Prerequisites
 
 - **JsonApiToolkit**: This library is designed to work with
-  [JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit). Make
+  [JsonApiToolkit](https://github.com/intility/json-api-toolkit). Make
   sure the api you want to interact with is using JsonApiToolkit.
 
 ## Getting Started
 
-You can read more about jsonapi-ts-tools & JsonApiToolkit
-[**here**](https://intility.github.io/Intility.JsonApiToolkit/docs/integrations/ts-tools.html),
+You can read more about json-api-client & JsonApiToolkit
+[**here**](https://intility.github.io/json-api-toolkit/),
 or follow the instructions below for a quick start.
 
 ### Installation
 
+The package is published on [JSR](https://jsr.io/@intility/json-api-client):
+
 ```bash
-npm install @intility/jsonapi-ts-tools
+# Deno
+deno add jsr:@intility/json-api-client
+
+# Node.js (via the jsr CLI)
+npx jsr add @intility/json-api-client
 ```
 
 ### Define your types
@@ -73,7 +79,7 @@ import {
   hydrateResponse,
   JsonApiArrayResponse,
   JsonApiSingleResponse,
-} from '@intility/jsonapi-ts-tools';
+} from '@intility/json-api-client';
 
 // For list endpoints (returns array of resources)
 export function useHydratedListQuery<THydrated>(
@@ -225,7 +231,7 @@ the error structure produced by
 import {
   isJsonApiErrorResponse,
   JsonApiErrorCodes,
-} from "@intility/jsonapi-ts-tools";
+} from "@intility/json-api-client";
 
 const response = await fetch("/api/todos");
 const body = await response.json();

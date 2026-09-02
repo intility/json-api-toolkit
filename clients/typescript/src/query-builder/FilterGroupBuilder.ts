@@ -12,7 +12,7 @@ export class FilterGroupBuilder<T> {
   /**
    * Add a simple filter to this group.
    */
-  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any) {
+  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any): this {
     this.groups.push({
       type: 'simple',
       filter: { field, op, value },
@@ -23,7 +23,7 @@ export class FilterGroupBuilder<T> {
   /**
    * Add an "or" logical group to this group.
    */
-  or(cb: (b: FilterGroupBuilder<T>) => void) {
+  or(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.groups.push({
@@ -36,7 +36,7 @@ export class FilterGroupBuilder<T> {
   /**
    * Add an "and" logical group to this group.
    */
-  and(cb: (b: FilterGroupBuilder<T>) => void) {
+  and(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.groups.push({
@@ -49,7 +49,7 @@ export class FilterGroupBuilder<T> {
   /**
    * Add a "not" logical group to this group.
    */
-  not(cb: (b: FilterGroupBuilder<T>) => void) {
+  not(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.groups.push({

@@ -9,7 +9,7 @@
     <ToolCommandName>jsonapi-typegen</ToolCommandName>
     <PackageId>Intility.JsonApiToolkit.TypeGen</PackageId>
     <Title>JsonApiToolkit TypeGen</Title>
-    <Version>2.1.8</Version>
+    <Version>0.1.0</Version>
     <Authors>Intility</Authors>
     <Company>Intility</Company>
     <Description>Generates TypeScript resource types from [JsonApiResource]-attributed C# models.</Description>
