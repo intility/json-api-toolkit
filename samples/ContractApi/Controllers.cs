@@ -1,6 +1,7 @@
 using JsonApiToolkit.Attributes;
 using JsonApiToolkit.Controllers;
 using JsonApiToolkit.Models.Errors;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -76,6 +77,7 @@ public class ArticlesController(ContractDbContext db) : JsonApiController
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize]
     public async Task<IActionResult> DeleteAsync(int id)
     {
         var article =
