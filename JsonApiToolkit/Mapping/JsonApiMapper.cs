@@ -421,14 +421,15 @@ public static class JsonApiMapper
         string query = queryStart >= 0 ? selfLink[queryStart..] : string.Empty;
 
         var builder = new Microsoft.AspNetCore.Http.Extensions.QueryBuilder();
-        foreach (var kvp in Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query))
+        foreach (
+            var kvp in Microsoft
+                .AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query)
+                .Where(kvp =>
+                    !kvp.Key.Equals("page[number]", StringComparison.OrdinalIgnoreCase)
+                    && !kvp.Key.Equals("page[size]", StringComparison.OrdinalIgnoreCase)
+                )
+        )
         {
-            if (
-                kvp.Key.Equals("page[number]", StringComparison.OrdinalIgnoreCase)
-                || kvp.Key.Equals("page[size]", StringComparison.OrdinalIgnoreCase)
-            )
-                continue;
-
             foreach (string? value in kvp.Value)
                 builder.Add(kvp.Key, value ?? string.Empty);
         }
