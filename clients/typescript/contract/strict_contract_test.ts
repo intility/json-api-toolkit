@@ -20,22 +20,25 @@ function strictGet<T = unknown>(qs: string) {
 
 Deno.test('strict query validation: rejected shapes', async (t) => {
   await t.step('and group is 400 UNSUPPORTED_FILTER_GROUP', async () => {
-    const qs = new JsonApiQueryBuilder<ContractArticle>()
-      .and((b) => b.filter('published', 'eq', false))
-      .build();
+    // The builder can no longer construct filter[and] at all (removed, see
+    // DESIGN.md); hand-build the wire shape to prove the backend still
+    // rejects it if some other caller sends it.
+    const qs = new URLSearchParams({
+      'filter[and][0][published]': 'false',
+    }).toString();
     const { doc, status } = await strictGet<Errors>(qs);
     assertEquals(status, 400);
     assertEquals(doc.errors[0].code, 'UNSUPPORTED_FILTER_GROUP');
   });
 
   await t.step('nested group is 400 UNSUPPORTED_FILTER_GROUP', async () => {
-    const qs = new JsonApiQueryBuilder<ContractArticle>()
-      .or((b) =>
-        b.filter('title', 'eq', 'Article 01').and((bb) =>
-          bb.filter('published', 'eq', true)
-        )
-      )
-      .build();
+    // The builder can no longer construct nesting at all (compile error,
+    // see DESIGN.md); hand-build the wire shape to prove the backend still
+    // rejects it if some other caller sends it.
+    const qs = new URLSearchParams({
+      'filter[or][0][title]': 'Article 01',
+      'filter[or][1][and][0][published]': 'true',
+    }).toString();
     const { doc, status } = await strictGet<Errors>(qs);
     assertEquals(status, 400);
     assertEquals(doc.errors[0].code, 'UNSUPPORTED_FILTER_GROUP');

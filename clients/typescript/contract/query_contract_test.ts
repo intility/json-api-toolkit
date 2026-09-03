@@ -137,11 +137,15 @@ Deno.test('filter groups', async (t) => {
   await t.step(
     'WART: and group serializes to filter[and] and is silently dropped',
     async () => {
-      const { doc, status } = await list(
-        new JsonApiQueryBuilder<ContractArticle>().and((b) =>
-          b.filter('published', 'eq', false)
-        ),
-      );
+      // The builder can no longer construct filter[and] at all (removed,
+      // see DESIGN.md); hand-build the wire shape to prove the backend
+      // still silently drops it if some other caller sends it.
+      const params = new URLSearchParams({
+        'filter[and][0][published]': 'false',
+        'page[size]': '1',
+        'fields[articles]': 'title',
+      });
+      const { doc, status } = await getDoc<List>(`articles?${params}`);
       assertEquals(status, 200);
       assertEquals(total(doc), TOTAL_ARTICLES); // filter had no effect
     },
@@ -150,13 +154,16 @@ Deno.test('filter groups', async (t) => {
   await t.step(
     'WART: nested groups are silently dropped, siblings still apply',
     async () => {
-      const { doc } = await list(
-        new JsonApiQueryBuilder<ContractArticle>().or((b) =>
-          b.filter('title', 'eq', 'Article 01').and((bb) =>
-            bb.filter('published', 'eq', true)
-          )
-        ),
-      );
+      // The builder can no longer construct nesting at all (compile error,
+      // see DESIGN.md); hand-build the wire shape to prove the backend
+      // still silently drops it if some other caller sends it.
+      const params = new URLSearchParams({
+        'filter[or][0][title]': 'Article 01',
+        'filter[or][1][and][0][published]': 'true',
+        'page[size]': '1',
+        'fields[articles]': 'title',
+      });
+      const { doc } = await getDoc<List>(`articles?${params}`);
       // nested and-branch vanishes; only title=Article 01 remains in the OR
       assertEquals(total(doc), 1);
     },

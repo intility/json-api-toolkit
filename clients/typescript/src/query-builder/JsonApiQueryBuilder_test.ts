@@ -90,19 +90,6 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
     assertEquals(params.get('filter[or][1][title]'), 'B');
   });
 
-  await t.step('and() group', () => {
-    const qs = new JsonApiQueryBuilder<Todo>()
-      .and((b) => {
-        b.filter('completed', 'eq', 'true');
-        b.filter('title', 'like', '%urgent%');
-      })
-      .build();
-
-    const params = parse(qs);
-    assertEquals(params.get('filter[and][0][completed]'), 'true');
-    assertEquals(params.get('filter[and][1][title][like]'), '%urgent%');
-  });
-
   await t.step('not() group', () => {
     const qs = new JsonApiQueryBuilder<Todo>()
       .not((b) => {
@@ -111,26 +98,6 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
       .build();
 
     assertEquals(parse(qs).get('filter[not][0][completed]'), 'true');
-  });
-
-  await t.step('nested logical groups', () => {
-    const qs = new JsonApiQueryBuilder<Todo>()
-      .or((b) => {
-        b.filter('title', 'eq', 'A');
-        b.and((inner) => {
-          inner.filter('completed', 'eq', 'true');
-          inner.filter('dueDate', 'gt', '2025-01-01');
-        });
-      })
-      .build();
-
-    const params = parse(qs);
-    assertEquals(params.get('filter[or][0][title]'), 'A');
-    assertEquals(params.get('filter[or][1][and][0][completed]'), 'true');
-    assertEquals(
-      params.get('filter[or][1][and][1][dueDate][gt]'),
-      '2025-01-01',
-    );
   });
 
   // --- Sorting ---

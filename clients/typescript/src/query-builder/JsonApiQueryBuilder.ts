@@ -13,26 +13,31 @@ import type {
 } from '../types/jsonapi.ts';
 
 /**
- * Recursively serializes a filter group into JSON:API query parameter key-value pairs.
+ * Serializes one attribute filter into a `filter[...]` query parameter.
  */
-function serializeFilterGroup<T>(
-  group: FilterGroup<T>,
-  prefix: string[] = [],
-): [string, string][] {
+function serializeSimpleFilter(
+  filter: { field: unknown; op: string; value: unknown },
+  prefix: string[],
+): [string, string] {
+  const { field, op, value } = filter;
+  const key = op === 'eq'
+    ? [...prefix, String(field)]
+    : [...prefix, String(field), op];
+  const val = Array.isArray(value) ? value.join(',') : value;
+  return [`filter${key.map((k) => `[${k}]`).join('')}`, String(val)];
+}
+
+/**
+ * Serializes a filter group (a simple filter, or a flat or/not group) into
+ * JSON:API query parameter key-value pairs.
+ */
+function serializeFilterGroup<T>(group: FilterGroup<T>): [string, string][] {
   if (group.type === 'simple') {
-    const { field, op, value } = group.filter;
-    const key = op === 'eq'
-      ? [...prefix, String(field)]
-      : [...prefix, String(field), op];
-    let val = value;
-    if (Array.isArray(value)) val = value.join(',');
-    return [[`filter${key.map((k) => `[${k}]`).join('')}`, String(val)]];
-  } else {
-    // Logical group (or, and, not)
-    return group.filters.flatMap((f, i) =>
-      serializeFilterGroup(f, [...prefix, group.type, String(i)])
-    );
+    return [serializeSimpleFilter(group.filter, [])];
   }
+  return group.filters.map((f, i) =>
+    serializeSimpleFilter(f, [group.type, String(i)])
+  );
 }
 
 /**
@@ -85,19 +90,6 @@ export class JsonApiQueryBuilder<T> {
     cb(builder);
     this.filterGroups.push({
       type: 'or',
-      filters: builder.build(),
-    });
-    return this;
-  }
-
-  /**
-   * Add an "and" logical filter group.
-   */
-  and(cb: (b: FilterGroupBuilder<T>) => void): this {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.filterGroups.push({
-      type: 'and',
       filters: builder.build(),
     });
     return this;

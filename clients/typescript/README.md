@@ -207,19 +207,9 @@ const queryString = new JsonApiQueryBuilder<Todo>()
 ?filter[or][0][title][like]=%urgent%&filter[or][1][completed]=false
 ```
 
-You can also nest groups:
-
-```ts
-const queryString = new JsonApiQueryBuilder<Todo>()
-  .or((b) => {
-    b.filter("title", "eq", "Important");
-    b.and((inner) => {
-      inner.filter("completed", "eq", "true");
-      inner.filter("dueDate", "gt", "2025-01-01");
-    });
-  })
-  .build();
-```
+There is no `.and()`: top-level filters are already AND'd together. Groups
+take flat filter lists only; nesting a group inside `or()`/`not()` is a
+compile error, because the backend only parses one flat level.
 
 ### Error handling
 
