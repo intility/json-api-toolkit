@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.3.0](https://github.com/intility/json-api-toolkit/compare/v2.2.0...v2.3.0) (2026-09-03)
+
+
+### Features
+
+* unify fields[] type naming via [JsonApiResource] (opt-in) ([#209](https://github.com/intility/json-api-toolkit/issues/209)) ([969cb06](https://github.com/intility/json-api-toolkit/commit/969cb061ffc70225edcb493d6aa6aff9cc8dad84))
+
+
+### Bug Fixes
+
+* use Path.Join instead of Path.Combine in CLI test ([#213](https://github.com/intility/json-api-toolkit/issues/213)) ([396d240](https://github.com/intility/json-api-toolkit/commit/396d2406d46b4be715e20e85b5a5639b171822ca))
+
+
+### Code Refactoring
+
+* use LINQ Where in pagination link builder ([#212](https://github.com/intility/json-api-toolkit/issues/212)) ([1aa373a](https://github.com/intility/json-api-toolkit/commit/1aa373aeadec9c55d919874b4846511f4a6bde97))
+
+
+### Build System
+
+* **deps:** Bump intility-bifrost-mkdocs from 0.7.1 to 0.9.0 in /docs in the docs group ([#208](https://github.com/intility/json-api-toolkit/issues/208)) ([6347be5](https://github.com/intility/json-api-toolkit/commit/6347be5908926b09309c6b56a353b5045e63154e))
+* **deps:** Bump intility-bifrost-mkdocs in /docs in the docs group ([6347be5](https://github.com/intility/json-api-toolkit/commit/6347be5908926b09309c6b56a353b5045e63154e))
+
+
+### CI
+
+* **codeql:** exclude ContractApi test fixture from alerts ([#214](https://github.com/intility/json-api-toolkit/issues/214)) ([9bb8c02](https://github.com/intility/json-api-toolkit/commit/9bb8c02042e15c60a4edc5264abafd6b641d65f6))
+* **dependabot:** update groupings and add pip for the docs page ([#206](https://github.com/intility/json-api-toolkit/issues/206)) ([3dc2932](https://github.com/intility/json-api-toolkit/commit/3dc2932d83d5db30759c713315a9f3076bcd637d))
+
 ## [2.2.0](https://github.com/intility/json-api-toolkit/compare/v2.1.8...v2.2.0) (2026-08-25)
 
 
