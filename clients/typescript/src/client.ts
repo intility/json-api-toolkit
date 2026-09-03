@@ -42,8 +42,15 @@ export type QueryFn<T> = (builder: JsonApiQueryBuilder<T>) => unknown;
  * responses are JSON:API documents, hydrated into plain objects.
  */
 export interface JsonApiResourceHandle<T> {
+  /** Collection path relative to `baseUrl`, without slashes at either end. */
+  readonly path: string;
+  /**
+   * Serializes a query without sending it. Lets adapters build cache keys
+   * from the same string `list`/`get` send when given `{ params }`.
+   */
+  params(query?: QueryFn<T>): string;
   list(query?: QueryFn<T> | RawQueryParams): Promise<HydratedList<T>>;
-  get(id: string | number, query?: QueryFn<T>): Promise<T>;
+  get(id: string | number, query?: QueryFn<T> | RawQueryParams): Promise<T>;
   post(body: unknown): Promise<T>;
   patch(id: string | number, body: unknown): Promise<T>;
   /** 204 No Content on success. */
@@ -143,6 +150,8 @@ export function createJsonApiClient(
         (path ?? (typeof source === 'string' ? source : source.type))
           .replace(/^\/+|\/+$/g, '');
       return {
+        path: cleanPath,
+        params: queryString,
         async list(query) {
           const doc = await send('GET', cleanPath, { qs: queryString(query) });
           return hydrateResponse<T>(doc as JsonApiArrayResponse, descriptors);

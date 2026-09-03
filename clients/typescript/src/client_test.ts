@@ -164,3 +164,29 @@ Deno.test('writes', async (t) => {
     assertEquals(lastRequest().headers.get('content-type'), null);
   });
 });
+
+Deno.test('adapter surface', async (t) => {
+  await t.step('path is the cleaned collection path', () => {
+    const { todos } = setup(() => jsonResponse(200, { data: [] }));
+    assertEquals(todos.path, 'todos');
+  });
+
+  await t.step('params serializes without sending', () => {
+    const { todos, lastRequest } = setup(() => jsonResponse(200, { data: [] }));
+    const params = todos.params((q) => q.filter('completed', true).page(1, 20));
+    assertEquals(
+      params,
+      'filter%5Bcompleted%5D=true&page%5Bnumber%5D=1&page%5Bsize%5D=20',
+    );
+    assertEquals(lastRequest(), undefined);
+  });
+
+  await t.step('params round-trips through list and get', async () => {
+    const { todos, lastRequest } = setup(() =>
+      jsonResponse(200, { data: todoDoc })
+    );
+    const params = todos.params((q) => q.sort('title'));
+    await todos.get('1', { params });
+    assertEquals(lastRequest().url, `https://api.test/todos/1?${params}`);
+  });
+});
