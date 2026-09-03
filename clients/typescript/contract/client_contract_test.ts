@@ -89,8 +89,8 @@ Deno.test('generated descriptors (strict instance)', async (t) => {
 });
 
 Deno.test('writes', async (t) => {
-  await t.step('create, update, remove round trip', async () => {
-    const created = await articles.create({
+  await t.step('post, patch, delete round trip', async () => {
+    const created = await articles.post({
       title: 'Client contract test article',
       published: false,
       authorId: 2,
@@ -99,11 +99,11 @@ Deno.test('writes', async (t) => {
     assertEquals(created.title, 'Client contract test article');
     assert(created.id);
 
-    const updated = await articles.update(created.id, { viewCount: 7 });
+    const updated = await articles.patch(created.id, { viewCount: 7 });
     assertEquals(updated.viewCount, 7);
     assertEquals(updated.title, 'Client contract test article');
 
-    await articles.remove(created.id);
+    await articles.delete(created.id);
     await assertRejects(() => articles.get(created.id), JsonApiRequestError);
   });
 
@@ -111,7 +111,7 @@ Deno.test('writes', async (t) => {
     'validation failure surfaces via hasCode and fieldErrors',
     async () => {
       const error = await assertRejects(
-        () => articles.create({ body: 'no title' }),
+        () => articles.post({ body: 'no title' }),
         JsonApiRequestError,
       );
       assertEquals(error.hasCode('REQUIRED_FIELD_MISSING'), true);

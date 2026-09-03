@@ -37,17 +37,17 @@ export interface RawQueryParams {
 export type QueryFn<T> = (builder: JsonApiQueryBuilder<T>) => unknown;
 
 /**
- * Typed handle for one resource path. Bodies for `create`/`update` are
- * plain camelCase DTOs (the backend has no JSON:API request deserializer);
+ * Typed handle for one resource path. Bodies for `post`/`patch` are plain
+ * camelCase DTOs (the backend has no JSON:API request deserializer);
  * responses are JSON:API documents, hydrated into plain objects.
  */
 export interface JsonApiResourceHandle<T> {
   list(query?: QueryFn<T> | RawQueryParams): Promise<HydratedList<T>>;
   get(id: string | number, query?: QueryFn<T>): Promise<T>;
-  create(body: unknown): Promise<T>;
-  update(id: string | number, body: unknown): Promise<T>;
+  post(body: unknown): Promise<T>;
+  patch(id: string | number, body: unknown): Promise<T>;
   /** 204 No Content on success. */
-  remove(id: string | number): Promise<void>;
+  delete(id: string | number): Promise<void>;
 }
 
 export interface JsonApiClient {
@@ -152,13 +152,13 @@ export function createJsonApiClient(
             await send('GET', `${cleanPath}/${id}`, { qs: queryString(query) }),
           );
         },
-        async create(body) {
+        async post(body) {
           return single<T>(await send('POST', cleanPath, { body }));
         },
-        async update(id, body) {
+        async patch(id, body) {
           return single<T>(await send('PATCH', `${cleanPath}/${id}`, { body }));
         },
-        async remove(id) {
+        async delete(id) {
           await send('DELETE', `${cleanPath}/${id}`);
         },
       };

@@ -29,9 +29,9 @@
  *   q.filter('author.name', 'John').include('author').page(1, 25));
  *
  * const book = await books.get(id, (q) => q.include('author'));
- * const created = await books.create({ title: '...' });
- * await books.update(created.id, { title: 'renamed' });
- * await books.remove(created.id);
+ * const created = await books.post({ title: '...' });
+ * await books.patch(created.id, { title: 'renamed' });
+ * await books.delete(created.id);
  * ```
  *
  * @module

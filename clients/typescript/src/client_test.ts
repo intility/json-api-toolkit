@@ -127,35 +127,38 @@ Deno.test('get', async (t) => {
 });
 
 Deno.test('writes', async (t) => {
-  await t.step('create posts a plain DTO with the JSON:API type', async () => {
-    const { todos, lastRequest } = setup(() =>
-      jsonResponse(201, { data: todoDoc })
-    );
-    const created = await todos.create({ title: 'a' });
-    const req = lastRequest();
-    assertEquals(req.method, 'POST');
-    assertEquals(req.url, 'https://api.test/todos');
-    assertEquals(req.headers.get('content-type'), 'application/vnd.api+json');
-    assertEquals(await req.json(), { title: 'a' });
-    assertEquals(created, hydratedTodo);
-  });
+  await t.step(
+    'post sends a plain DTO with the JSON:API content type',
+    async () => {
+      const { todos, lastRequest } = setup(() =>
+        jsonResponse(201, { data: todoDoc })
+      );
+      const created = await todos.post({ title: 'a' });
+      const req = lastRequest();
+      assertEquals(req.method, 'POST');
+      assertEquals(req.url, 'https://api.test/todos');
+      assertEquals(req.headers.get('content-type'), 'application/vnd.api+json');
+      assertEquals(await req.json(), { title: 'a' });
+      assertEquals(created, hydratedTodo);
+    },
+  );
 
-  await t.step('update patches the id path with a partial DTO', async () => {
+  await t.step('patch hits the id path with a partial DTO', async () => {
     const { todos, lastRequest } = setup(() =>
       jsonResponse(200, { data: todoDoc })
     );
-    await todos.update('1', { completed: true });
+    await todos.patch('1', { completed: true });
     const req = lastRequest();
     assertEquals(req.method, 'PATCH');
     assertEquals(req.url, 'https://api.test/todos/1');
     assertEquals(await req.json(), { completed: true });
   });
 
-  await t.step('remove sends no body and resolves void on 204', async () => {
+  await t.step('delete sends no body and resolves void on 204', async () => {
     const { todos, lastRequest } = setup(() =>
       new Response(null, { status: 204 })
     );
-    assertEquals(await todos.remove(1), undefined);
+    assertEquals(await todos.delete(1), undefined);
     assertEquals(lastRequest().method, 'DELETE');
     assertEquals(lastRequest().url, 'https://api.test/todos/1');
     assertEquals(lastRequest().headers.get('content-type'), null);
