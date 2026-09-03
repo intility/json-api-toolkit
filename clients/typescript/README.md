@@ -173,6 +173,55 @@ This will create a query string that looks like this:
 > [!TIP]
 > The query builder supports nested includes using dot notation.
 
+A `Date` filter value serializes to ISO 8601 (`date.toISOString()`), not
+`String(date)`'s locale format. `in`/`nin` values join with commas:
+
+```ts
+new JsonApiQueryBuilder<Todo>().filter("dueDate", "in", [
+  new Date("2025-01-01"),
+  new Date("2025-02-01"),
+]);
+// filter[dueDate][in]=2025-01-01T00:00:00.000Z,2025-02-01T00:00:00.000Z
+```
+
+> [!WARNING]
+> There is no escaping for a comma inside a value; a string value
+> containing a literal comma breaks the join for `in`/`nin`.
+
+`.sort()` only accepts direct attributes, unlike `.filter()`: the backend
+silently ignores a dot-path sort field instead of walking the relationship,
+so a type-safe "this compiles but does nothing" trap isn't worth having.
+
+Repeat `.sort()` or `.include()` calls append, same as `.filter()`, rather
+than replacing what an earlier call set:
+
+```ts
+new JsonApiQueryBuilder<Todo>().sort("title").sort("-dueDate");
+// same as .sort("title", "-dueDate") -> sort=title,-dueDate
+```
+
+`.filter("owner.name", ...)` is type-checked one relationship level deep.
+Deeper paths (the backend walks dot-paths up to 5 segments, including through
+a to-many relationship via `Any()`, e.g. `"comments.author.name"`) still
+compile, but only the first segment is checked against a real relationship;
+everything past the first dot is on the honor system, same as `in`/`nin`
+comma-joining not escaping commas.
+
+Null checks use dedicated methods, since the `isnull`/`isnotnull` operators
+ignore whatever value you'd otherwise pass:
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .filterNull("dueDate")
+  .build();
+```
+
+```
+?filter[dueDate][isnull]=true
+```
+
+`filterNotNull("dueDate")` works the same way with `isnotnull`.
+
 ### Sparse fieldsets
 
 Request only the fields you need to reduce payload size:
@@ -189,6 +238,39 @@ const queryString = new JsonApiQueryBuilder<Todo>()
 ```
 ?filter[completed]=false&include=owner&fields[todos]=title,dueDate&fields[users]=name
 ```
+
+`fields()` also takes a generated resource descriptor (see
+`dotnet jsonapi-typegen`) instead of a hand-written type string, so the wire
+`type` can't drift from what the descriptor says:
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .fields(TodoDescriptor, ["title", "dueDate"])
+  .build();
+```
+
+### Filtering included resources
+
+`filterIncluded()` trims which resources come back in `included`, without
+touching the primary `data` array. Distinct from dot-path filtering
+(`.filter("owner.name", ...)`), which filters the primary resource itself by
+a related field. Requires the relationship to also be passed to `.include()`.
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .filterIncluded("tags", "label", "eq", "urgent")
+  .include("tags")
+  .build();
+```
+
+```
+?filter[tags][label][eq]=urgent&include=tags
+```
+
+> [!NOTE]
+> The backend's filtered-include only applies to to-many relationships (EF
+> Core's collection `.Where()`); on a to-one relationship, `filterIncluded()`
+> compiles but has no effect.
 
 ### Filter groups
 

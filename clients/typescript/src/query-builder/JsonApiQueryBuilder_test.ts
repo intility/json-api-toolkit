@@ -1,5 +1,6 @@
 import { assertEquals } from '@std/assert';
 import { JsonApiQueryBuilder } from './JsonApiQueryBuilder.ts';
+import type { JsonApiResourceDescriptor } from '../types/jsonapi.ts';
 
 interface User {
   id: string;
@@ -28,6 +29,14 @@ interface Todo {
 function parse(query: string): URLSearchParams {
   return new URLSearchParams(query);
 }
+
+/** Fixture as `dotnet jsonapi-typegen` would emit it next to `Todo`. */
+const TodoDescriptor: JsonApiResourceDescriptor<Todo> = {
+  type: 'todos',
+  attributes: ['title', 'completed', 'dueDate'],
+  toOne: ['owner'],
+  toMany: ['tags'],
+};
 
 Deno.test('JsonApiQueryBuilder', async (t) => {
   // --- Filters ---
@@ -67,6 +76,34 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
     assertEquals(parse(qs).get('filter[title][in]'), 'a,b,c');
   });
 
+  await t.step('Date value serializes to ISO 8601, not a locale string', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .filter('dueDate', 'gt', new Date('2025-01-20T00:00:00.000Z'))
+      .build();
+
+    assertEquals(
+      parse(qs).get('filter[dueDate][gt]'),
+      '2025-01-20T00:00:00.000Z',
+    );
+  });
+
+  await t.step(
+    'array of Date values in an "in" filter also serializes to ISO',
+    () => {
+      const qs = new JsonApiQueryBuilder<Todo>()
+        .filter('dueDate', 'in', [
+          new Date('2025-01-01T00:00:00.000Z'),
+          new Date('2025-02-01T00:00:00.000Z'),
+        ])
+        .build();
+
+      assertEquals(
+        parse(qs).get('filter[dueDate][in]'),
+        '2025-01-01T00:00:00.000Z,2025-02-01T00:00:00.000Z',
+      );
+    },
+  );
+
   await t.step('nested attribute filter (dot notation)', () => {
     const qs = new JsonApiQueryBuilder<Todo>()
       .filter('owner.name', 'Alice')
@@ -74,6 +111,52 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
 
     assertEquals(parse(qs).get('filter[owner.name]'), 'Alice');
   });
+
+  await t.step('deep dot-path filter (escape hatch, 2+ levels)', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .filter('owner.company.name', 'eq', 'Acme')
+      .build();
+
+    assertEquals(parse(qs).get('filter[owner.company.name]'), 'Acme');
+  });
+
+  await t.step('filterNull() emits filter[field][isnull]', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .filterNull('dueDate')
+      .build();
+
+    assertEquals(parse(qs).get('filter[dueDate][isnull]'), 'true');
+  });
+
+  await t.step('filterNotNull() emits filter[field][isnotnull]', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .filterNotNull('dueDate')
+      .build();
+
+    assertEquals(parse(qs).get('filter[dueDate][isnotnull]'), 'true');
+  });
+
+  await t.step(
+    'filterIncluded() on a to-one relationship emits filter[rel][field][op]',
+    () => {
+      const qs = new JsonApiQueryBuilder<Todo>()
+        .filterIncluded('owner', 'name', 'like', 'Ali')
+        .build();
+
+      assertEquals(parse(qs).get('filter[owner][name][like]'), 'Ali');
+    },
+  );
+
+  await t.step(
+    'filterIncluded() on a to-many relationship emits filter[rel][field][op]',
+    () => {
+      const qs = new JsonApiQueryBuilder<Todo>()
+        .filterIncluded('tags', 'label', 'eq', 'urgent')
+        .build();
+
+      assertEquals(parse(qs).get('filter[tags][label][eq]'), 'urgent');
+    },
+  );
 
   // --- Logical groups ---
 
@@ -126,11 +209,29 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
     assertEquals(parse(qs).get('sort'), 'title,-dueDate');
   });
 
+  await t.step('repeat sort() calls append, same as filter()', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .sort('title')
+      .sort('-dueDate')
+      .build();
+
+    assertEquals(parse(qs).get('sort'), 'title,-dueDate');
+  });
+
   // --- Includes ---
 
   await t.step('include relationships', () => {
     const qs = new JsonApiQueryBuilder<Todo>()
       .include('owner', 'tags')
+      .build();
+
+    assertEquals(parse(qs).get('include'), 'owner,tags');
+  });
+
+  await t.step('repeat include() calls append, same as filter()', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .include('owner')
+      .include('tags')
       .build();
 
     assertEquals(parse(qs).get('include'), 'owner,tags');
@@ -149,6 +250,14 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
   await t.step('fields for a resource type', () => {
     const qs = new JsonApiQueryBuilder<Todo>()
       .fields('todos', ['title', 'completed'])
+      .build();
+
+    assertEquals(parse(qs).get('fields[todos]'), 'title,completed');
+  });
+
+  await t.step('fields from a generated resource descriptor', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .fields(TodoDescriptor, ['title', 'completed'])
       .build();
 
     assertEquals(parse(qs).get('fields[todos]'), 'title,completed');

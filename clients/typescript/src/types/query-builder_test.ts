@@ -13,7 +13,7 @@ type Article = {
   tags: string[];
   author: Author | null;
   editor?: Author;
-  comments: { id: string; text: string }[];
+  comments: { id: string; text: string; author: Author }[];
 };
 
 // Nullable and optional relationships are relationships.
@@ -33,7 +33,15 @@ const id: AttributeKeys<Article> = 'id';
 // @ts-expect-error to-many relationships do not expose nested attributes
 const commentText: AttributeKeys<Article> = 'comments.text';
 
+// Deep paths (2+ dots) are a checked-first-segment escape hatch: the
+// backend walks dot-paths through to-many relationships via Any(), which
+// the type helpers above don't model past one level.
+const deepPath: AttributeKeys<Article> = 'comments.author.name';
+// @ts-expect-error the first segment of a deep path must be a real relationship
+const deepPathBogusRelationship: AttributeKeys<Article> = 'bogus.author.name';
+
 Deno.test('type probes compile', () => {
   void [author, editor, comments, tags, publishedAt, tagsAttr, authorEmail];
   void [id, commentText];
+  void [deepPath, deepPathBogusRelationship];
 });

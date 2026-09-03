@@ -62,18 +62,6 @@ Deno.test('strict query validation: rejected shapes', async (t) => {
     },
   );
 
-  await t.step(
-    'Date value wart is 400 INVALID_FILTER_VALUE, not 500',
-    async () => {
-      const qs = new JsonApiQueryBuilder<ContractArticle>()
-        .filter('publishedAt', 'gt', new Date('2025-01-20T00:00:00Z'))
-        .build();
-      const { doc, status } = await strictGet<Errors>(qs);
-      assertEquals(status, 400);
-      assertEquals(doc.errors[0].code, 'INVALID_FILTER_VALUE');
-    },
-  );
-
   await t.step('unknown operator is 400 INVALID_FILTER_OPERATOR', async () => {
     const { doc, status } = await strictGet<Errors>(
       'filter%5Btitle%5D%5Bcontains%5D=x',
@@ -89,9 +77,11 @@ Deno.test('strict query validation: rejected shapes', async (t) => {
   });
 
   await t.step('dot-path sort is 400 INVALID_SORT_FIELD', async () => {
-    const qs = new JsonApiQueryBuilder<ContractArticle>()
-      .sort('author.name')
-      .build();
+    // The builder can no longer construct this at all (sort() is
+    // restricted to DirectAttributeKeys<T>, see DESIGN.md); hand-build the
+    // wire shape to prove the backend still rejects it if some other
+    // caller sends it.
+    const qs = new URLSearchParams({ sort: 'author.name' }).toString();
     const { doc, status } = await strictGet<Errors>(qs);
     assertEquals(status, 400);
     assertEquals(doc.errors[0].code, 'INVALID_SORT_FIELD');
@@ -125,10 +115,20 @@ Deno.test('strict query validation: valid queries unaffected', async (t) => {
     assertEquals(doc.data[0].id, '25');
 
     const isnull = new JsonApiQueryBuilder<ContractArticle>()
-      .filter('publishedAt', 'isnull', true)
+      .filterNull('publishedAt')
       .page(1, 1)
       .build();
     const { doc: nulls } = await strictGet<List>(isnull);
     assertEquals(total(nulls), 12);
+  });
+
+  await t.step('a Date filter value (ISO 8601) still works', async () => {
+    const qs = new JsonApiQueryBuilder<ContractArticle>()
+      .filter('publishedAt', 'gt', new Date('2025-01-20T00:00:00Z'))
+      .page(1, 1)
+      .build();
+    const { doc, status } = await strictGet<List>(qs);
+    assertEquals(status, 200);
+    assertEquals(total(doc), 3); // articles 21, 23, 25
   });
 });

@@ -1,11 +1,11 @@
-import type { AttributeKeys, FilterOp } from './query-builder.ts';
+import type { AttributeKeys, WireFilterOp } from './query-builder.ts';
 
 /**
  * Represents a simple filter on a single attribute.
  */
 export type SimpleFilter<T> = {
   field: AttributeKeys<T>;
-  op: FilterOp;
+  op: WireFilterOp;
   value: unknown;
 };
 

@@ -54,6 +54,16 @@ type RelationshipAttributeKeys<T, R extends keyof T> = NonNullable<
   : never;
 
 /**
+ * Direct attribute keys of a relationship's target type, whether the
+ * relationship is to-one or to-many. Used for `filterIncluded()`, which
+ * (unlike dot-path filtering) reaches through to-many relationships too.
+ */
+export type IncludedAttributeKeys<T, R extends RelationshipKeys<T>> =
+  DirectAttributeKeys<
+    NonNullable<T[R]> extends Array<infer E> ? E : NonNullable<T[R]>
+  >;
+
+/**
  * Nested relationship attribute keys in the format "relationship.attribute".
  */
 type NestedAttributeKeys<T> = {
@@ -63,12 +73,34 @@ type NestedAttributeKeys<T> = {
 }[RelationshipKeys<T>];
 
 /**
- * Combined attribute keys: direct attributes + nested relationship attributes.
+ * Escape hatch for filter paths deeper than one relationship level, e.g.
+ * "comments.author.name" (a to-many relationship's to-one relationship's
+ * attribute). The backend walks dot-paths up to a recursion guard
+ * (`FilterExpressionComposer.MaxRecursionDepth`, 5 segments) and goes
+ * through to-many relationships via `Any()`; modeling every reachable
+ * path at the type level isn't worth it, so only the first segment (a
+ * real relationship on `T`) is checked. Everything past the first dot is
+ * unverified at compile time; a typo two levels deep is a runtime 200
+ * with the filter silently ignored (or a 400 in strict mode), not a
+ * compile error.
  */
-export type AttributeKeys<T> = DirectAttributeKeys<T> | NestedAttributeKeys<T>;
+type DeepAttributeKeys<T> = {
+  [R in RelationshipKeys<T>]: `${R}.${string}.${string}`;
+}[RelationshipKeys<T>];
 
 /**
- * Supported JSON:API filter operators.
+ * Combined attribute keys: direct attributes, one typed level of nested
+ * relationship attributes, and the deep-path escape hatch above.
+ */
+export type AttributeKeys<T> =
+  | DirectAttributeKeys<T>
+  | NestedAttributeKeys<T>
+  | DeepAttributeKeys<T>;
+
+/**
+ * Supported JSON:API filter operators for `filter(field, op, value)`.
+ * Excludes `isnull`/`isnotnull`: use `filterNull()`/`filterNotNull()` instead,
+ * since those operators ignore the filter value entirely on the wire.
  */
 export type FilterOp =
   | 'eq' // equal
@@ -79,14 +111,25 @@ export type FilterOp =
   | 'le' // less than or equal
   | 'like' // like
   | 'in' // in
-  | 'nin' // not in
-  | 'isnull' // is null
-  | 'isnotnull'; // is not null
+  | 'nin'; // not in
 
 /**
- * Sort type for a JSON:API resource.
+ * The full set of operators the wire accepts, including the null checks.
+ * Internal: `SimpleFilter` needs this so `filterNull()`/`filterNotNull()`
+ * can construct a valid filter; the public `filter()` op param stays
+ * narrowed to `FilterOp`.
  */
-export type Sort<T> = Array<AttributeKeys<T> | `-${AttributeKeys<T>}`>;
+export type WireFilterOp = FilterOp | 'isnull' | 'isnotnull';
+
+/**
+ * Sort type for a JSON:API resource. Direct attributes only: the backend
+ * silently ignores a dot-path sort field (unlike filters, which do walk
+ * relationships), so `AttributeKeys<T>` would let a compiling call do
+ * nothing on the wire.
+ */
+export type Sort<T> = Array<
+  DirectAttributeKeys<T> | `-${DirectAttributeKeys<T>}`
+>;
 
 /**
  * Include type for a JSON:API resource (supports dot notation for nested relationships).
