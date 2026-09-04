@@ -26,9 +26,11 @@ public class CliIntegrationTests
             Assert.Contains("export interface Author", generated);
             Assert.Contains("export interface Comment", generated);
             Assert.Contains(
-                "Article: { type: \"articles\", relationships: [\"author\", \"comments\"] }",
+                "export const Article: JsonApiResourceDescriptor<Article> = {",
                 generated
             );
+            Assert.Contains("  toOne: [\"author\"],", generated);
+            Assert.Contains("  toMany: [\"comments\"],", generated);
 
             // --check passes right after generation...
             Assert.Equal(

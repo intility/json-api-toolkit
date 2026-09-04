@@ -1,35 +1,60 @@
-// deno-lint-ignore-file no-explicit-any
 import type {
   AttributeKeys,
   DirectAttributeKeys,
   FilterOp,
-  Include,
-  Sort,
+  IncludedAttributeKeys,
+  JsonApiInclude,
+  JsonApiSort,
+  RelationshipKeys,
 } from '../types/query-builder.ts';
 import { FilterGroupBuilder } from './FilterGroupBuilder.ts';
 import type { FilterGroup } from '../types/filters.ts';
+import type {
+  JsonApiResourceDescriptor,
+  JsonApiResourceDescriptorBase,
+} from '../types/jsonapi.ts';
 
 /**
- * Recursively serializes a filter group into JSON:API query parameter key-value pairs.
+ * Serializes a filter value to its wire string. `Date` becomes ISO 8601
+ * (not `String(date)`'s locale format, which the backend can't parse).
+ * Arrays (for `in`/`nin`) join with commas; there is no escaping for a
+ * comma inside an array element's own value.
  */
-function serializeFilterGroup<T>(
-  group: FilterGroup<T>,
-  prefix: string[] = [],
-): [string, string][] {
-  if (group.type === 'simple') {
-    const { field, op, value } = group.filter;
-    const key = op === 'eq'
-      ? [...prefix, String(field)]
-      : [...prefix, String(field), op];
-    let val = value;
-    if (Array.isArray(value)) val = value.join(',');
-    return [[`filter${key.map((k) => `[${k}]`).join('')}`, String(val)]];
-  } else {
-    // Logical group (or, and, not)
-    return group.filters.flatMap((f, i) =>
-      serializeFilterGroup(f, [...prefix, group.type, String(i)])
-    );
+function serializeValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(serializeValue).join(',');
   }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return String(value);
+}
+
+/**
+ * Serializes one attribute filter into a `filter[...]` query parameter.
+ */
+function serializeSimpleFilter(
+  filter: { field: unknown; op: string; value: unknown },
+  prefix: string[],
+): [string, string] {
+  const { field, op, value } = filter;
+  const key = op === 'eq'
+    ? [...prefix, String(field)]
+    : [...prefix, String(field), op];
+  return [`filter${key.map((k) => `[${k}]`).join('')}`, serializeValue(value)];
+}
+
+/**
+ * Serializes a filter group (a simple filter, or a flat or/not group) into
+ * JSON:API query parameter key-value pairs.
+ */
+function serializeFilterGroup<T>(group: FilterGroup<T>): [string, string][] {
+  if (group.type === 'simple') {
+    return [serializeSimpleFilter(group.filter, [])];
+  }
+  return group.filters.map((f, i) =>
+    serializeSimpleFilter(f, [group.type, String(i)])
+  );
 }
 
 /**
@@ -38,8 +63,14 @@ function serializeFilterGroup<T>(
  */
 export class JsonApiQueryBuilder<T> {
   private filterGroups: FilterGroup<T>[] = [];
-  private sorts: Sort<T> = [];
-  private includes: Include<T> = [];
+  private includeFilters: {
+    relationship: string;
+    field: string;
+    op: FilterOp;
+    value: unknown;
+  }[] = [];
+  private sorts: JsonApiSort<T> = [];
+  private includes: JsonApiInclude<T> = [];
   private pagination: { number?: number; size?: number } = {};
   private fieldsets: Map<string, string[]> = new Map();
 
@@ -47,21 +78,30 @@ export class JsonApiQueryBuilder<T> {
    * Add a simple filter.
    * @param field - The attribute to filter on
    * @param value - The value to filter by (uses "eq" operator)
+   *
+   * Note: TypeScript cannot reject the literal strings "isnull"/"isnotnull"
+   * here without also rejecting every other free-form string value, so this
+   * still compiles but produces meaningless wire output. Use `filterNull()`/
+   * `filterNotNull()` for null checks.
    */
-  filter<K extends AttributeKeys<T>>(field: K, value: any): this;
+  filter<K extends AttributeKeys<T>>(field: K, value: unknown): this;
   /**
    * Add a simple filter with explicit operator.
    * @param field - The attribute to filter on
    * @param op - The filter operator
    * @param value - The value to filter by
    */
-  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any): this;
   filter<K extends AttributeKeys<T>>(
     field: K,
-    opOrValue: FilterOp | any,
-    value?: any,
-  ) {
-    const op: FilterOp = value === undefined ? 'eq' : opOrValue;
+    op: FilterOp,
+    value: unknown,
+  ): this;
+  filter<K extends AttributeKeys<T>>(
+    field: K,
+    opOrValue: unknown,
+    value?: unknown,
+  ): this {
+    const op = value === undefined ? 'eq' : (opOrValue as FilterOp);
     const val = value === undefined ? opOrValue : value;
     this.filterGroups.push({
       type: 'simple',
@@ -71,9 +111,57 @@ export class JsonApiQueryBuilder<T> {
   }
 
   /**
+   * Filter where the attribute is null: `filter[field][isnull]`.
+   * The wire ignores the filter value for this operator; only its
+   * presence matters.
+   */
+  filterNull<K extends AttributeKeys<T>>(field: K): this {
+    this.filterGroups.push({
+      type: 'simple',
+      filter: { field, op: 'isnull', value: true },
+    });
+    return this;
+  }
+
+  /**
+   * Filter where the attribute is not null: `filter[field][isnotnull]`.
+   * The wire ignores the filter value for this operator; only its
+   * presence matters.
+   */
+  filterNotNull<K extends AttributeKeys<T>>(field: K): this {
+    this.filterGroups.push({
+      type: 'simple',
+      filter: { field, op: 'isnotnull', value: true },
+    });
+    return this;
+  }
+
+  /**
+   * Filter an included relationship, trimming what comes back in `included`:
+   * `filter[relationship][field][op]=value`. Distinct from dot-path
+   * filtering (`.filter("owner.name", ...)`), which filters the primary
+   * resource by a related field instead. Requires the relationship to also
+   * be passed to `.include()`, or the backend drops the filter.
+   */
+  filterIncluded<R extends RelationshipKeys<T>>(
+    relationship: R,
+    field: IncludedAttributeKeys<T, R>,
+    op: FilterOp,
+    value: unknown,
+  ): this {
+    this.includeFilters.push({
+      relationship: String(relationship),
+      field: String(field),
+      op,
+      value,
+    });
+    return this;
+  }
+
+  /**
    * Add an "or" logical filter group.
    */
-  or(cb: (b: FilterGroupBuilder<T>) => void) {
+  or(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.filterGroups.push({
@@ -84,22 +172,9 @@ export class JsonApiQueryBuilder<T> {
   }
 
   /**
-   * Add an "and" logical filter group.
-   */
-  and(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.filterGroups.push({
-      type: 'and',
-      filters: builder.build(),
-    });
-    return this;
-  }
-
-  /**
    * Add a "not" logical filter group.
    */
-  not(cb: (b: FilterGroupBuilder<T>) => void) {
+  not(cb: (b: FilterGroupBuilder<T>) => void): this {
     const builder = new FilterGroupBuilder<T>();
     cb(builder);
     this.filterGroups.push({
@@ -110,40 +185,50 @@ export class JsonApiQueryBuilder<T> {
   }
 
   /**
-   * Set sort fields (comma-separated, supports -field for descending).
+   * Add sort fields (supports -field for descending). Repeat calls append,
+   * same as `filter()`, instead of replacing the previous fields.
    */
-  sort(...fields: Sort<T>) {
-    this.sorts = fields;
+  sort(...fields: JsonApiSort<T>): this {
+    this.sorts.push(...fields);
     return this;
   }
 
   /**
-   * Set included relationships (comma-separated, supports dot notation).
+   * Add included relationships (supports dot notation). Repeat calls
+   * append, same as `filter()`, instead of replacing the previous fields.
    */
-  include(...fields: Include<T>) {
-    this.includes = fields;
+  include(...fields: JsonApiInclude<T>): this {
+    this.includes.push(...fields);
     return this;
   }
 
   /**
-   * Set sparse fieldsets for a resource type.
-   * Produces `fields[type]=field1,field2` in the query string.
-   * Pass a type parameter for type-safe field suggestions.
-   * @param type - The JSON:API resource type name
-   * @param fields - The attribute names to include
+   * Set a sparse fieldset for a resource: `fields[type]=field1,field2`.
+   * Pass a generated descriptor for the wire type and typed field names.
    */
-  fields<R = unknown>(
-    type: string,
-    fields: (unknown extends R ? string : DirectAttributeKeys<R>)[],
-  ) {
-    this.fieldsets.set(type, fields as string[]);
+  fields<R>(
+    descriptor: JsonApiResourceDescriptor<R>,
+    fields: DirectAttributeKeys<R>[],
+  ): this;
+  /** Sparse fieldset by wire type name, untyped field names. */
+  fields(type: string, fields: string[]): this;
+  /** Sparse fieldset by wire type name, field names typed against `R`. */
+  fields<R>(type: string, fields: DirectAttributeKeys<R>[]): this;
+  fields(
+    source: string | JsonApiResourceDescriptorBase,
+    fields: string[],
+  ): this {
+    this.fieldsets.set(
+      typeof source === 'string' ? source : source.type,
+      fields,
+    );
     return this;
   }
 
   /**
    * Set pagination (page number and size).
    */
-  page(number: number, size: number) {
+  page(number: number, size: number): this {
     this.pagination = { number, size };
     return this;
   }
@@ -159,6 +244,16 @@ export class JsonApiQueryBuilder<T> {
       for (const [key, value] of serializeFilterGroup(group)) {
         params.append(key, value);
       }
+    }
+
+    // Included-relationship filters: filter[relationship][field][op]=value.
+    // Unlike a plain filter, the op segment is never omitted for "eq": the
+    // backend's bracket-filter parser always expects exactly 3 segments.
+    for (const { relationship, field, op, value } of this.includeFilters) {
+      params.append(
+        `filter[${relationship}][${field}][${op}]`,
+        serializeValue(value),
+      );
     }
 
     // Sort

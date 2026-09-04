@@ -1,68 +1,29 @@
-// deno-lint-ignore-file no-explicit-any
 import type { AttributeKeys, FilterOp } from '../types/query-builder.ts';
-import type { FilterGroup } from '../types/filters.ts';
+import type { SimpleFilter } from '../types/filters.ts';
 
 /**
- * Builder for logical filter groups (or, and, not).
- * Alows for chaining and nesting of filter groups.
+ * Builder for the flat filter list inside an `or()`/`not()` group.
+ * No nesting: the backend only parses one flat level of a logical group.
  */
 export class FilterGroupBuilder<T> {
-  private groups: FilterGroup<T>[] = [];
+  private filters: SimpleFilter<T>[] = [];
 
   /**
    * Add a simple filter to this group.
    */
-  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any) {
-    this.groups.push({
-      type: 'simple',
-      filter: { field, op, value },
-    });
+  filter<K extends AttributeKeys<T>>(
+    field: K,
+    op: FilterOp,
+    value: unknown,
+  ): this {
+    this.filters.push({ field, op, value });
     return this;
   }
 
   /**
-   * Add an "or" logical group to this group.
+   * Returns the built flat filter list.
    */
-  or(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.groups.push({
-      type: 'or',
-      filters: builder.groups,
-    });
-    return this;
-  }
-
-  /**
-   * Add an "and" logical group to this group.
-   */
-  and(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.groups.push({
-      type: 'and',
-      filters: builder.groups,
-    });
-    return this;
-  }
-
-  /**
-   * Add a "not" logical group to this group.
-   */
-  not(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.groups.push({
-      type: 'not',
-      filters: builder.groups,
-    });
-    return this;
-  }
-
-  /**
-   * Returns the built filter group array.
-   */
-  build(): FilterGroup<T>[] {
-    return this.groups;
+  build(): SimpleFilter<T>[] {
+    return this.filters;
   }
 }

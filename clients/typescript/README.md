@@ -1,10 +1,10 @@
-# jsonapi-ts-tools
+# json-api-client
 
-[![🚀 Release](https://github.com/intility/jsonapi-ts-tools/actions/workflows/release.yml/badge.svg)](https://github.com/intility/jsonapi-ts-tools/actions/workflows/release.yml)
+[![TypeScript Release](https://github.com/intility/json-api-toolkit/actions/workflows/typescript-release.yml/badge.svg)](https://github.com/intility/json-api-toolkit/actions/workflows/typescript-release.yml)
 
-**jsonapi-ts-tools** is a lightweight, Deno-based TypeScript library designed to
+**json-api-client** is a lightweight, Deno-based TypeScript library designed to
 make working with
-[JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit) responses
+[JsonApiToolkit](https://github.com/intility/json-api-toolkit) responses
 in TypeScript applications easier.
 
 ## Features
@@ -18,19 +18,25 @@ in TypeScript applications easier.
 ## Prerequisites
 
 - **JsonApiToolkit**: This library is designed to work with
-  [JsonApiToolkit](https://github.com/intility/Intility.JsonApiToolkit). Make
+  [JsonApiToolkit](https://github.com/intility/json-api-toolkit). Make
   sure the api you want to interact with is using JsonApiToolkit.
 
 ## Getting Started
 
-You can read more about jsonapi-ts-tools & JsonApiToolkit
-[**here**](https://intility.github.io/Intility.JsonApiToolkit/docs/integrations/ts-tools.html),
+You can read more about json-api-client & JsonApiToolkit
+[**here**](https://intility.github.io/json-api-toolkit/),
 or follow the instructions below for a quick start.
 
 ### Installation
 
+The package is published on [JSR](https://jsr.io/@intility/json-api-client):
+
 ```bash
-npm install @intility/jsonapi-ts-tools
+# Deno
+deno add jsr:@intility/json-api-client
+
+# Node.js (via the jsr CLI)
+npx jsr add @intility/json-api-client
 ```
 
 ### Define your types
@@ -60,88 +66,49 @@ export interface Tag {
 }
 ```
 
-### Create hooks for hydrated JSON:API responses
+### TanStack Query
 
-This library has zero dependencies, therefore no hook is provided. You can use
-any library to fetch data, but here is an example using `react-query`:
+The `tanstack-query` subpath wraps a resource handle in plain option objects
+for `useQuery`, `useInfiniteQuery`, and `useMutation`. The core has no
+dependency on TanStack; the adapter only needs a `QueryClient` with
+`invalidateQueries`.
 
 ```ts
-import { QueryKey, useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { createJsonApiClient } from '@intility/json-api-client';
 import {
-  HydratedArrayResult,
-  HydratedSingleResult,
-  hydrateResponse,
-  JsonApiArrayResponse,
-  JsonApiSingleResponse,
-} from '@intility/jsonapi-ts-tools';
+  createJsonApiErrorHandler,
+  jsonApiResource,
+} from '@intility/json-api-client/tanstack-query';
+import {
+  MutationCache,
+  QueryClient,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from '@tanstack/react-query';
 
-// For list endpoints (returns array of resources)
-export function useHydratedListQuery<THydrated>(
-  queryKey: QueryKey,
-  options?: Omit<
-    UseQueryOptions<JsonApiArrayResponse, Error, HydratedArrayResult<THydrated>>,
-    'queryKey' | 'select'
-  >,
-) {
-  return useQuery<JsonApiArrayResponse, Error, HydratedArrayResult<THydrated>>({
-    queryKey,
-    select: (data) => hydrateResponse<THydrated>(data),
-    ...options,
-  });
-}
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    // Shows one message per failed mutation. Mutations with their own onError are skipped.
+    onError: createJsonApiErrorHandler({ show: (message) => toast(message) }),
+  }),
+});
 
-// For single resource endpoints (returns single resource)
-export function useHydratedSingleQuery<THydrated>(
-  queryKey: QueryKey,
-  options?: Omit<
-    UseQueryOptions<JsonApiSingleResponse, Error, HydratedSingleResult<THydrated>>,
-    'queryKey' | 'select'
-  >,
-) {
-  return useQuery<JsonApiSingleResponse, Error, HydratedSingleResult<THydrated>>({
-    queryKey,
-    select: (data) => hydrateResponse<THydrated>(data),
-    ...options,
-  });
-}
-```
+const client = createJsonApiClient({ baseUrl: '/api', fetch: authorizedFetch });
+const todos = jsonApiResource(client.resource<Todo>('todos'), queryClient);
 
-Then in your component, you can use the hooks to fetch and automatically hydrate
-your data. Make sure to pass the correct type for the hydrated data.
+// Reads. The option objects also work in loaders: queryClient.prefetchQuery(todos.list()).
+const { data } = useQuery(todos.list((q) => q.filter('completed', true).page(1, 20)));
+const { data: todo } = useQuery(todos.detail(id, (q) => q.include('owner')));
+const pages = useInfiniteQuery(todos.infiniteList(20, (q) => q.sort('title')));
 
-```ts
-// For a list of todos
-const { data, isLoading } = useHydratedListQuery<Todo>(
-  [queryKey, "todos", queryString],
-);
-
-// For a single todo
-const { data, isLoading } = useHydratedSingleQuery<Todo>(
-  [queryKey, "todos", id],
-);
-```
-
-> [!IMPORTANT]
-> This example uses a default `queryFn` which is pointed at with the `queryKey`.
-> You can use any `queryFn` you want.
-
-Now you can use the `data` object in your component.
-
-```tsx
-{
-  isLoading ? <div>Loading…</div> : (
-    <ul>
-      {data.data.map((todo) => (
-        <li key={todo.id}>
-          <h2>{todo.title}</h2>
-          <p>Due date: {todo.dueDate}</p>
-          <p>Owner: {todo.owner.name}</p>
-          <p>Tags: {todo.tags.map((tag) => tag.label).join(", ")}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
+// Writes. post invalidates lists; patch and delete invalidate lists and details.
+const create = useMutation(todos.post<{ title: string }>());
+const update = useMutation(todos.patch<{ completed: boolean }>());
+const remove = useMutation(todos.delete());
+create.mutate({ title: 'Buy milk' });
+update.mutate({ id, body: { completed: true } });
+remove.mutate(id);
 ```
 
 ### Query builder
@@ -167,6 +134,55 @@ This will create a query string that looks like this:
 > [!TIP]
 > The query builder supports nested includes using dot notation.
 
+A `Date` filter value serializes to ISO 8601 (`date.toISOString()`), not
+`String(date)`'s locale format. `in`/`nin` values join with commas:
+
+```ts
+new JsonApiQueryBuilder<Todo>().filter("dueDate", "in", [
+  new Date("2025-01-01"),
+  new Date("2025-02-01"),
+]);
+// filter[dueDate][in]=2025-01-01T00:00:00.000Z,2025-02-01T00:00:00.000Z
+```
+
+> [!WARNING]
+> There is no escaping for a comma inside a value; a string value
+> containing a literal comma breaks the join for `in`/`nin`.
+
+`.sort()` only accepts direct attributes, unlike `.filter()`: the backend
+silently ignores a dot-path sort field instead of walking the relationship,
+so a type-safe "this compiles but does nothing" trap isn't worth having.
+
+Repeat `.sort()` or `.include()` calls append, same as `.filter()`, rather
+than replacing what an earlier call set:
+
+```ts
+new JsonApiQueryBuilder<Todo>().sort("title").sort("-dueDate");
+// same as .sort("title", "-dueDate") -> sort=title,-dueDate
+```
+
+`.filter("owner.name", ...)` is type-checked one relationship level deep.
+Deeper paths (the backend walks dot-paths up to 5 segments, including through
+a to-many relationship via `Any()`, e.g. `"comments.author.name"`) still
+compile, but only the first segment is checked against a real relationship;
+everything past the first dot is on the honor system, same as `in`/`nin`
+comma-joining not escaping commas.
+
+Null checks use dedicated methods, since the `isnull`/`isnotnull` operators
+ignore whatever value you'd otherwise pass:
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .filterNull("dueDate")
+  .build();
+```
+
+```
+?filter[dueDate][isnull]=true
+```
+
+`filterNotNull("dueDate")` works the same way with `isnotnull`.
+
 ### Sparse fieldsets
 
 Request only the fields you need to reduce payload size:
@@ -183,6 +199,39 @@ const queryString = new JsonApiQueryBuilder<Todo>()
 ```
 ?filter[completed]=false&include=owner&fields[todos]=title,dueDate&fields[users]=name
 ```
+
+`fields()` also takes a generated resource descriptor (see
+`dotnet jsonapi-typegen`) instead of a hand-written type string, so the wire
+`type` can't drift from what the descriptor says:
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .fields(TodoDescriptor, ["title", "dueDate"])
+  .build();
+```
+
+### Filtering included resources
+
+`filterIncluded()` trims which resources come back in `included`, without
+touching the primary `data` array. Distinct from dot-path filtering
+(`.filter("owner.name", ...)`), which filters the primary resource itself by
+a related field. Requires the relationship to also be passed to `.include()`.
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .filterIncluded("tags", "label", "eq", "urgent")
+  .include("tags")
+  .build();
+```
+
+```
+?filter[tags][label][eq]=urgent&include=tags
+```
+
+> [!NOTE]
+> The backend's filtered-include only applies to to-many relationships (EF
+> Core's collection `.Where()`); on a to-one relationship, `filterIncluded()`
+> compiles but has no effect.
 
 ### Filter groups
 
@@ -201,19 +250,9 @@ const queryString = new JsonApiQueryBuilder<Todo>()
 ?filter[or][0][title][like]=%urgent%&filter[or][1][completed]=false
 ```
 
-You can also nest groups:
-
-```ts
-const queryString = new JsonApiQueryBuilder<Todo>()
-  .or((b) => {
-    b.filter("title", "eq", "Important");
-    b.and((inner) => {
-      inner.filter("completed", "eq", "true");
-      inner.filter("dueDate", "gt", "2025-01-01");
-    });
-  })
-  .build();
-```
+There is no `.and()`: top-level filters are already AND'd together. Groups
+take flat filter lists only; nesting a group inside `or()`/`not()` is a
+compile error, because the backend only parses one flat level.
 
 ### Error handling
 
@@ -225,7 +264,7 @@ the error structure produced by
 import {
   isJsonApiErrorResponse,
   JsonApiErrorCodes,
-} from "@intility/jsonapi-ts-tools";
+} from "@intility/json-api-client";
 
 const response = await fetch("/api/todos");
 const body = await response.json();

@@ -4,11 +4,11 @@
  */
 import { assert, assertEquals, assertFalse } from '@std/assert';
 import { isJsonApiErrorResponse } from '../src/index.ts';
-import { getDoc, request } from './helpers.ts';
+import { type Errors, getDoc, type List, request } from './helpers.ts';
 
 Deno.test('not found', async (t) => {
   await t.step('WART: plain GET 404 has no error code', async () => {
-    const { doc, status } = await getDoc('articles/999');
+    const { doc, status } = await getDoc<Errors>('articles/999');
     assertEquals(status, 404);
     assertEquals(doc.errors, [
       { status: '404', title: 'Not Found', detail: 'Resource not found' },
@@ -19,7 +19,7 @@ Deno.test('not found', async (t) => {
   await t.step(
     'explicit JsonApiErrors.NotFound carries RESOURCE_NOT_FOUND and meta',
     async () => {
-      const { doc, status } = await request('DELETE', 'articles/999');
+      const { doc, status } = await request<Errors>('DELETE', 'articles/999');
       assertEquals(status, 404);
       assertEquals(doc.errors[0].code, 'RESOURCE_NOT_FOUND');
       assertEquals(doc.errors[0].meta, { resourceType: 'articles', id: 999 });
@@ -31,7 +31,7 @@ Deno.test('include allowlisting', async (t) => {
   await t.step(
     'unlisted include is 403 INCLUDE_NOT_ALLOWED with meta',
     async () => {
-      const { doc, status } = await getDoc('articles/3?include=bogus');
+      const { doc, status } = await getDoc<Errors>('articles/3?include=bogus');
       assertEquals(status, 403);
       assertEquals(doc.errors[0].code, 'INCLUDE_NOT_ALLOWED');
       assertEquals(doc.errors[0].meta, {
@@ -43,10 +43,10 @@ Deno.test('include allowlisting', async (t) => {
   );
 
   await t.step('empty [AllowedIncludes] forbids every include', async () => {
-    const { doc, status } = await getDoc('authors?include=articles');
+    const { doc, status } = await getDoc<Errors>('authors?include=articles');
     assertEquals(status, 403);
     assertEquals(doc.errors[0].code, 'INCLUDE_NOT_ALLOWED');
-    assertEquals(doc.errors[0].meta.allowedIncludes, []);
+    assertEquals(doc.errors[0].meta?.allowedIncludes, []);
   });
 
   await t.step(
@@ -54,19 +54,19 @@ Deno.test('include allowlisting', async (t) => {
     async () => {
       // filter[or][field][op] parses as an include-filter on a relationship
       // named "or", which a non-empty allowlist then rejects
-      const { doc, status } = await getDoc(
+      const { doc, status } = await getDoc<Errors>(
         'articles/3?filter%5Bor%5D%5BviewCount%5D%5Bgt%5D=230',
       );
       assertEquals(status, 403);
       assertEquals(doc.errors[0].code, 'FILTER_NOT_ALLOWED');
-      assertEquals(doc.errors[0].meta.forbiddenFilterPaths, ['or']);
+      assertEquals(doc.errors[0].meta?.forbiddenFilterPaths, ['or']);
     },
   );
 
   await t.step(
     'indexed (builder-emitted) groups pass the allowlist and apply',
     async () => {
-      const { doc, status } = await getDoc(
+      const { doc, status } = await getDoc<List>(
         'authors?filter%5Bor%5D%5B0%5D%5Bname%5D=x',
       );
       assertEquals(status, 200);
@@ -108,7 +108,7 @@ Deno.test('server errors', async (t) => {
   await t.step(
     'WART: unconvertible filter values are 500, not 400',
     async () => {
-      const { doc, status } = await getDoc(
+      const { doc, status } = await getDoc<Errors>(
         'articles?filter%5BpublishedAt%5D=isnull',
       );
       assertEquals(status, 500);

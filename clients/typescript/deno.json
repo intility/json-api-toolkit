@@ -1,10 +1,24 @@
 {
-  "name": "@intility/jsonapi-ts-tools",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
-  },
+  "name": "@intility/json-api-client",
   "version": "0.6.0",
-  "exports": "./index.js",
+  "description": "TypeScript tools for JSON:API: response hydration, a type-safe query builder, and error types for JsonApiToolkit backends.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tanstack-query": "./src/tanstack-query.ts"
+  },
+  "publish": {
+    "exclude": [
+      "contract/",
+      "dist/",
+      "build_npm.ts",
+      "CLAUDE.md",
+      "CODEOWNERS",
+      "CHANGELOG.md",
+      "deno.lock",
+      "**/*_test.ts"
+    ]
+  },
   "tasks": {
     "check": "deno check src/**/*.ts contract/**/*.ts",
     "lint": "deno lint --ignore=README.md,.github/,CLAUDE.md,CODEOWNERS,CHANGELOG.md",

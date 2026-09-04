@@ -51,15 +51,27 @@ public class TypeScriptEmitterTests
             (typeof(Part), "parts"),
         };
 
-        var ts = TypeScriptEmitter.Generate(resources);
+        var ts = TypeScriptEmitter.Generate(resources, "@intility/json-api-client");
 
+        Assert.Contains(
+            "import type { JsonApiResourceDescriptor } from \"@intility/json-api-client\";",
+            ts
+        );
         Assert.Contains("description: string | null;", ts);
         Assert.Contains("retiredAt: string | null;", ts);
         Assert.Contains("tags: string[];", ts);
         Assert.Contains("ownerId: number;", ts);
         Assert.Contains("owner: Owner | null;", ts);
         Assert.Contains("parts: Part[];", ts);
-        Assert.Contains("Widget: { type: \"widgets\", relationships: [\"owner\", \"parts\"] }", ts);
+
+        Assert.Contains("export const Widget: JsonApiResourceDescriptor<Widget> = {", ts);
+        Assert.Contains("  type: \"widgets\",", ts);
+        Assert.Contains(
+            "  attributes: [\"name\", \"description\", \"retiredAt\", \"tags\", \"ownerId\"],",
+            ts
+        );
+        Assert.Contains("  toOne: [\"owner\"],", ts);
+        Assert.Contains("  toMany: [\"parts\"],", ts);
 
         // UnmappedThing has no [JsonApiResource]: the property is dropped, not guessed at.
         Assert.DoesNotContain("extra", ts);
