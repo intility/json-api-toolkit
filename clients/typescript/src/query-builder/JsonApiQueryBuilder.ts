@@ -2,10 +2,10 @@ import type {
   AttributeKeys,
   DirectAttributeKeys,
   FilterOp,
-  Include,
   IncludedAttributeKeys,
+  JsonApiInclude,
+  JsonApiSort,
   RelationshipKeys,
-  Sort,
 } from '../types/query-builder.ts';
 import { FilterGroupBuilder } from './FilterGroupBuilder.ts';
 import type { FilterGroup } from '../types/filters.ts';
@@ -69,8 +69,8 @@ export class JsonApiQueryBuilder<T> {
     op: FilterOp;
     value: unknown;
   }[] = [];
-  private sorts: Sort<T> = [];
-  private includes: Include<T> = [];
+  private sorts: JsonApiSort<T> = [];
+  private includes: JsonApiInclude<T> = [];
   private pagination: { number?: number; size?: number } = {};
   private fieldsets: Map<string, string[]> = new Map();
 
@@ -188,7 +188,7 @@ export class JsonApiQueryBuilder<T> {
    * Add sort fields (supports -field for descending). Repeat calls append,
    * same as `filter()`, instead of replacing the previous fields.
    */
-  sort(...fields: Sort<T>): this {
+  sort(...fields: JsonApiSort<T>): this {
     this.sorts.push(...fields);
     return this;
   }
@@ -197,7 +197,7 @@ export class JsonApiQueryBuilder<T> {
    * Add included relationships (supports dot notation). Repeat calls
    * append, same as `filter()`, instead of replacing the previous fields.
    */
-  include(...fields: Include<T>): this {
+  include(...fields: JsonApiInclude<T>): this {
     this.includes.push(...fields);
     return this;
   }

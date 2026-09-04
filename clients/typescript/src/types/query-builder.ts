@@ -3,7 +3,7 @@ type UUID = `${string}-${string}-${string}-${string}-${string}`;
 /**
  * Primitive types for attribute detection.
  */
-export type Primitive =
+export type JsonApiPrimitive =
   | string
   | number
   | boolean
@@ -21,7 +21,8 @@ type StringKeys<T> = Extract<keyof T, string>;
  * Attribute values: primitives and primitive arrays (JSON columns).
  * Nullability is stripped first, so `string | null` classifies as `string`.
  */
-type IsAttribute<V> = NonNullable<V> extends Primitive | Primitive[] ? true
+type IsAttribute<V> = NonNullable<V> extends
+  JsonApiPrimitive | JsonApiPrimitive[] ? true
   : false;
 
 /**
@@ -127,13 +128,13 @@ export type WireFilterOp = FilterOp | 'isnull' | 'isnotnull';
  * relationships), so `AttributeKeys<T>` would let a compiling call do
  * nothing on the wire.
  */
-export type Sort<T> = Array<
+export type JsonApiSort<T> = Array<
   DirectAttributeKeys<T> | `-${DirectAttributeKeys<T>}`
 >;
 
 /**
  * Include type for a JSON:API resource (supports dot notation for nested relationships).
  */
-export type Include<T> = Array<
+export type JsonApiInclude<T> = Array<
   RelationshipKeys<T> | `${RelationshipKeys<T>}.${string}`
 >;
