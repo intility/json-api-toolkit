@@ -3,7 +3,10 @@ import { build, emptyDir } from '@deno/dnt';
 await emptyDir('./dist');
 
 await build({
-  entryPoints: ['./src/index.ts'],
+  entryPoints: [
+    './src/index.ts',
+    { name: './tanstack-query', path: './src/tanstack-query.ts' },
+  ],
   outDir: './dist',
   shims: {
     deno: true,

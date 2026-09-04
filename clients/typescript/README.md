@@ -66,88 +66,49 @@ export interface Tag {
 }
 ```
 
-### Create hooks for hydrated JSON:API responses
+### TanStack Query
 
-This library has zero dependencies, therefore no hook is provided. You can use
-any library to fetch data, but here is an example using `react-query`:
+The `tanstack-query` subpath wraps a resource handle in plain option objects
+for `useQuery`, `useInfiniteQuery`, and `useMutation`. The core has no
+dependency on TanStack; the adapter only needs a `QueryClient` with
+`invalidateQueries`.
 
 ```ts
-import { QueryKey, useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { createJsonApiClient } from '@intility/json-api-client';
 import {
-  HydratedArrayResult,
-  HydratedSingleResult,
-  hydrateResponse,
-  JsonApiArrayResponse,
-  JsonApiSingleResponse,
-} from '@intility/json-api-client';
+  createJsonApiErrorHandler,
+  jsonApiResource,
+} from '@intility/json-api-client/tanstack-query';
+import {
+  MutationCache,
+  QueryClient,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from '@tanstack/react-query';
 
-// For list endpoints (returns array of resources)
-export function useHydratedListQuery<THydrated>(
-  queryKey: QueryKey,
-  options?: Omit<
-    UseQueryOptions<JsonApiArrayResponse, Error, HydratedArrayResult<THydrated>>,
-    'queryKey' | 'select'
-  >,
-) {
-  return useQuery<JsonApiArrayResponse, Error, HydratedArrayResult<THydrated>>({
-    queryKey,
-    select: (data) => hydrateResponse<THydrated>(data),
-    ...options,
-  });
-}
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    // Shows one message per failed mutation. Mutations with their own onError are skipped.
+    onError: createJsonApiErrorHandler({ show: (message) => toast(message) }),
+  }),
+});
 
-// For single resource endpoints (returns single resource)
-export function useHydratedSingleQuery<THydrated>(
-  queryKey: QueryKey,
-  options?: Omit<
-    UseQueryOptions<JsonApiSingleResponse, Error, HydratedSingleResult<THydrated>>,
-    'queryKey' | 'select'
-  >,
-) {
-  return useQuery<JsonApiSingleResponse, Error, HydratedSingleResult<THydrated>>({
-    queryKey,
-    select: (data) => hydrateResponse<THydrated>(data),
-    ...options,
-  });
-}
-```
+const client = createJsonApiClient({ baseUrl: '/api', fetch: authorizedFetch });
+const todos = jsonApiResource(client.resource<Todo>('todos'), queryClient);
 
-Then in your component, you can use the hooks to fetch and automatically hydrate
-your data. Make sure to pass the correct type for the hydrated data.
+// Reads. The option objects also work in loaders: queryClient.prefetchQuery(todos.list()).
+const { data } = useQuery(todos.list((q) => q.filter('completed', true).page(1, 20)));
+const { data: todo } = useQuery(todos.detail(id, (q) => q.include('owner')));
+const pages = useInfiniteQuery(todos.infiniteList(20, (q) => q.sort('title')));
 
-```ts
-// For a list of todos
-const { data, isLoading } = useHydratedListQuery<Todo>(
-  [queryKey, "todos", queryString],
-);
-
-// For a single todo
-const { data, isLoading } = useHydratedSingleQuery<Todo>(
-  [queryKey, "todos", id],
-);
-```
-
-> [!IMPORTANT]
-> This example uses a default `queryFn` which is pointed at with the `queryKey`.
-> You can use any `queryFn` you want.
-
-Now you can use the `data` object in your component.
-
-```tsx
-{
-  isLoading ? <div>Loading…</div> : (
-    <ul>
-      {data.data.map((todo) => (
-        <li key={todo.id}>
-          <h2>{todo.title}</h2>
-          <p>Due date: {todo.dueDate}</p>
-          <p>Owner: {todo.owner.name}</p>
-          <p>Tags: {todo.tags.map((tag) => tag.label).join(", ")}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
+// Writes. post invalidates lists; patch and delete invalidate lists and details.
+const create = useMutation(todos.post<{ title: string }>());
+const update = useMutation(todos.patch<{ completed: boolean }>());
+const remove = useMutation(todos.delete());
+create.mutate({ title: 'Buy milk' });
+update.mutate({ id, body: { completed: true } });
+remove.mutate(id);
 ```
 
 ### Query builder

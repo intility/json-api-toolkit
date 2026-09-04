@@ -3,7 +3,10 @@
   "version": "0.6.0",
   "description": "TypeScript tools for JSON:API: response hydration, a type-safe query builder, and error types for JsonApiToolkit backends.",
   "license": "MIT",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tanstack-query": "./src/tanstack-query.ts"
+  },
   "publish": {
     "exclude": [
       "contract/",
