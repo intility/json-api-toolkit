@@ -41,6 +41,11 @@ npx jsr add @intility/json-api-client
 
 ### Define your types
 
+Hand-write these, or generate them from your C# models with
+[`dotnet jsonapi-typegen`](https://intility.github.io/json-api-toolkit/typegen/)
+(`Intility.JsonApiToolkit.TypeGen`), which also emits the resource
+descriptors the query builder's `fields()` needs.
+
 ```ts
 export interface Todo {
   id: string;
