@@ -137,6 +137,13 @@ export function createJsonApiClient(
   }
 
   function single<T>(doc: unknown): T {
+    if (Array.isArray((doc as { data?: unknown })?.data)) {
+      throw new TypeError(
+        'Expected a single-resource JSON:API document, got a collection ' +
+          '(data was an array). The endpoint likely used a list-style ' +
+          'response builder for a single-resource action.',
+      );
+    }
     return hydrateResponse<T>(doc as JsonApiSingleResponse, descriptors).data;
   }
 

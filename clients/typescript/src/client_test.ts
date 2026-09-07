@@ -124,6 +124,18 @@ Deno.test('get', async (t) => {
     assertEquals(lastRequest().url, 'https://api.test/todos/1?include=owner');
     assertEquals(todo, hydratedTodo);
   });
+
+  await t.step(
+    'throws when the endpoint answers with a collection document',
+    async () => {
+      const { todos } = setup(() => jsonResponse(200, { data: [todoDoc] }));
+      await assertRejects(
+        () => todos.get(1),
+        TypeError,
+        'Expected a single-resource JSON:API document',
+      );
+    },
+  );
 });
 
 Deno.test('writes', async (t) => {
