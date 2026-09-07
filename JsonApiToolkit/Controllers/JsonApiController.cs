@@ -371,6 +371,7 @@ public abstract class JsonApiController : ControllerBase
         var error = new JsonApiError
         {
             Status = "404",
+            Code = JsonApiErrorCodes.ResourceNotFound,
             Title = "Not Found",
             Detail = detail,
         };
