@@ -116,6 +116,23 @@ update.mutate({ id, body: { completed: true } });
 remove.mutate(id);
 ```
 
+`post()`/`patch()`/`delete()` each return `{ mutationFn, onSuccess }`, where
+`onSuccess` runs the cache invalidation. Spreading that object into
+`useMutation` and adding your own `onSuccess` (for a toast, a redirect, etc.)
+replaces it instead of composing, so the invalidation silently stops
+running. Call the base one yourself:
+
+```ts
+const base = todos.post<{ title: string }>();
+const create = useMutation({
+  ...base,
+  onSuccess: async (...args) => {
+    await base.onSuccess();
+    toast.success('Created');
+  },
+});
+```
+
 #### Showing errors with Bifrost floating messages
 
 Bifrost exposes `showFloatingMessage` only through the `useFloatingMessage`
@@ -267,7 +284,9 @@ const queryString = new JsonApiQueryBuilder<Todo>()
 `filterIncluded()` trims which resources come back in `included`, without
 touching the primary `data` array. Distinct from dot-path filtering
 (`.filter("owner.name", ...)`), which filters the primary resource itself by
-a related field. Requires the relationship to also be passed to `.include()`.
+a related field, including through a to-many relationship
+(`.filter("tags.label", ...)`, "only todos with a matching tag"). Requires
+the relationship to also be passed to `.include()`.
 
 ```ts
 const queryString = new JsonApiQueryBuilder<Todo>()
@@ -305,6 +324,23 @@ const queryString = new JsonApiQueryBuilder<Todo>()
 There is no `.and()`: top-level filters are already AND'd together. Groups
 take flat filter lists only; nesting a group inside `or()`/`not()` is a
 compile error, because the backend only parses one flat level.
+
+`filterIncluded()` also works inside a group, same trimming semantics as
+the top-level version:
+
+```ts
+const queryString = new JsonApiQueryBuilder<Todo>()
+  .or((b) => {
+    b.filter("title", "like", "urgent");
+    b.filterIncluded("tags", "label", "like", "urgent");
+  })
+  .include("tags")
+  .build();
+```
+
+```
+?filter[or][0][title][like]=urgent&filter[or][1][tags][label][like]=urgent&include=tags
+```
 
 ### Error handling
 

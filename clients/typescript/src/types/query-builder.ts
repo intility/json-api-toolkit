@@ -46,18 +46,8 @@ export type RelationshipKeys<T> = {
 }[StringKeys<T>];
 
 /**
- * Extracts attributes from a to-one relationship's type (to-many yields none).
- */
-type RelationshipAttributeKeys<T, R extends keyof T> = NonNullable<
-  T[R]
-> extends Array<unknown> ? never
-  : NonNullable<T[R]> extends object ? DirectAttributeKeys<NonNullable<T[R]>>
-  : never;
-
-/**
  * Direct attribute keys of a relationship's target type, whether the
- * relationship is to-one or to-many. Used for `filterIncluded()`, which
- * (unlike dot-path filtering) reaches through to-many relationships too.
+ * relationship is to-one or to-many.
  */
 export type IncludedAttributeKeys<T, R extends RelationshipKeys<T>> =
   DirectAttributeKeys<
@@ -65,12 +55,18 @@ export type IncludedAttributeKeys<T, R extends RelationshipKeys<T>> =
   >;
 
 /**
- * Nested relationship attribute keys in the format "relationship.attribute".
+ * Nested relationship attribute keys in the format "relationship.attribute",
+ * one level deep. Covers a to-one relationship's attribute AND a to-many
+ * relationship's element attribute: the backend walks a single dot segment
+ * through a to-many via `Any()` the same way it walks a to-one, restricting
+ * the primary resources returned (e.g. `translations.title`, "only services
+ * with a matching translation"). Distinct from `filterIncluded()`, which
+ * instead trims which related resources come back in `included` without
+ * restricting the primary resources at all.
  */
 type NestedAttributeKeys<T> = {
-  [R in RelationshipKeys<T>]: RelationshipAttributeKeys<T, R> extends never
-    ? never
-    : `${R}.${RelationshipAttributeKeys<T, R>}`;
+  [R in RelationshipKeys<T>]: IncludedAttributeKeys<T, R> extends never ? never
+    : `${R}.${IncludedAttributeKeys<T, R>}`;
 }[RelationshipKeys<T>];
 
 /**

@@ -112,6 +112,20 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
     assertEquals(parse(qs).get('filter[owner.name]'), 'Alice');
   });
 
+  await t.step(
+    'one-dot filter through a to-many relationship restricts the primary resource',
+    () => {
+      const qs = new JsonApiQueryBuilder<Todo>()
+        .filter('tags.label', 'like', 'urgent')
+        .build();
+
+      // Same key shape as a to-one dot-path filter; distinct from
+      // filterIncluded()'s filter[tags][label][op] bracket form, which
+      // trims `included` instead of restricting which todos come back.
+      assertEquals(parse(qs).get('filter[tags.label][like]'), 'urgent');
+    },
+  );
+
   await t.step('deep dot-path filter (escape hatch, 2+ levels)', () => {
     const qs = new JsonApiQueryBuilder<Todo>()
       .filter('owner.company.name', 'eq', 'Acme')

@@ -30,8 +30,12 @@ const tagsAttr: AttributeKeys<Article> = 'tags';
 const authorEmail: AttributeKeys<Article> = 'author.email';
 // @ts-expect-error id is never a filterable attribute
 const id: AttributeKeys<Article> = 'id';
-// @ts-expect-error to-many relationships do not expose nested attributes
+// One-dot paths also reach through a to-many relationship's element type:
+// the backend restricts the primary resources via Any() the same way it
+// does for a to-one, so "comments.text" is a real, typed filter path.
 const commentText: AttributeKeys<Article> = 'comments.text';
+// @ts-expect-error a to-many element's own relationship isn't one dot deep
+const commentAuthorName: AttributeKeys<Article> = 'comments.author';
 
 // Deep paths (2+ dots) are a checked-first-segment escape hatch: the
 // backend walks dot-paths through to-many relationships via Any(), which
@@ -42,6 +46,6 @@ const deepPathBogusRelationship: AttributeKeys<Article> = 'bogus.author.name';
 
 Deno.test('type probes compile', () => {
   void [author, editor, comments, tags, publishedAt, tagsAttr, authorEmail];
-  void [id, commentText];
+  void [id, commentText, commentAuthorName];
   void [deepPath, deepPathBogusRelationship];
 });
