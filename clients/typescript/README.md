@@ -111,6 +111,53 @@ update.mutate({ id, body: { completed: true } });
 remove.mutate(id);
 ```
 
+#### Showing errors with Bifrost floating messages
+
+Bifrost exposes `showFloatingMessage` only through the `useFloatingMessage`
+hook, and hooks cannot run inside a `MutationCache` handler. Bridge the two
+with a component rendered under the `<FloatingMessage>` provider. It stores
+the hook's function in a module variable that the handler calls.
+
+```tsx
+// floating-message-bridge.tsx
+import type { ReactNode } from 'react';
+import useFloatingMessage from '@intility/bifrost-react/hooks/useFloatingMessage';
+
+let show: ((message: ReactNode) => void) | undefined;
+
+export function showFloatingError(message: ReactNode): void {
+  show?.(message);
+}
+
+export function FloatingMessageBridge() {
+  const { showFloatingMessage } = useFloatingMessage();
+  show = (message) => showFloatingMessage(message, { state: 'alert' });
+  return null;
+}
+```
+
+```tsx
+// app setup
+const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onError: createJsonApiErrorHandler({ show: showFloatingError }),
+  }),
+});
+
+<QueryClientProvider client={queryClient}>
+  <Nav>
+    <FloatingMessage>
+      <FloatingMessageBridge />
+      <App />
+    </FloatingMessage>
+  </Nav>
+</QueryClientProvider>;
+```
+
+Mutations that set `onError` in their `useMutation` options skip the global
+message. Callbacks passed to `mutate(vars, { onError })` do not, because
+TanStack stores those on the observer, not on the mutation.
+
 ### Query builder
 
 In addition to hydrating your data, you can use the query builder to create
