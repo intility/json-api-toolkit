@@ -45,6 +45,22 @@ function serializeSimpleFilter(
 }
 
 /**
+ * Serializes one included-relationship filter inside a group into
+ * `filter[or][0][relationship][field][op]=value`. The op segment is never
+ * omitted, matching the ungrouped form (`filterIncluded`).
+ */
+function serializeIncludedGroupFilter(
+  filter: { relationship: string; field: string; op: string; value: unknown },
+  prefix: string[],
+): [string, string] {
+  const key = [...prefix, filter.relationship, filter.field, filter.op];
+  return [
+    `filter${key.map((k) => `[${k}]`).join('')}`,
+    serializeValue(filter.value),
+  ];
+}
+
+/**
  * Serializes a filter group (a simple filter, or a flat or/not group) into
  * JSON:API query parameter key-value pairs.
  */
@@ -53,7 +69,9 @@ function serializeFilterGroup<T>(group: FilterGroup<T>): [string, string][] {
     return [serializeSimpleFilter(group.filter, [])];
   }
   return group.filters.map((f, i) =>
-    serializeSimpleFilter(f, [group.type, String(i)])
+    'relationship' in f
+      ? serializeIncludedGroupFilter(f, [group.type, String(i)])
+      : serializeSimpleFilter(f, [group.type, String(i)])
   );
 }
 

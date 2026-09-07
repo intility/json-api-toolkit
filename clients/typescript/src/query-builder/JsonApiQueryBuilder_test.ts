@@ -183,6 +183,19 @@ Deno.test('JsonApiQueryBuilder', async (t) => {
     assertEquals(parse(qs).get('filter[not][0][completed]'), 'true');
   });
 
+  await t.step('or() group mixing filter and filterIncluded', () => {
+    const qs = new JsonApiQueryBuilder<Todo>()
+      .or((b) => {
+        b.filter('title', 'like', 'x');
+        b.filterIncluded('tags', 'label', 'like', 'x');
+      })
+      .build();
+
+    const params = parse(qs);
+    assertEquals(params.get('filter[or][0][title][like]'), 'x');
+    assertEquals(params.get('filter[or][1][tags][label][like]'), 'x');
+  });
+
   // --- Sorting ---
 
   await t.step('sort ascending', () => {

@@ -1,12 +1,18 @@
 import { assertEquals } from '@std/assert';
 import { FilterGroupBuilder } from './FilterGroupBuilder.ts';
 
+interface Owner {
+  id: string;
+  name: string;
+}
+
 interface Todo {
   id: string;
   type: string;
   title: string;
   completed: boolean;
   dueDate: string;
+  owner: Owner;
 }
 
 Deno.test('FilterGroupBuilder', async (t) => {
@@ -42,5 +48,29 @@ Deno.test('FilterGroupBuilder', async (t) => {
       .filter('completed', 'eq', true);
 
     assertEquals(returned, builder);
+  });
+
+  await t.step('filterIncluded adds a relationship-field filter', () => {
+    const builder = new FilterGroupBuilder<Todo>();
+    builder.filterIncluded('owner', 'name', 'like', 'a');
+
+    assertEquals(builder.build(), [
+      { relationship: 'owner', field: 'name', op: 'like', value: 'a' },
+    ]);
+  });
+
+  await t.step('filter and filterIncluded can mix in one group', () => {
+    const builder = new FilterGroupBuilder<Todo>();
+    builder.filter('title', 'eq', 'hello').filterIncluded(
+      'owner',
+      'name',
+      'like',
+      'a',
+    );
+
+    assertEquals(builder.build(), [
+      { field: 'title', op: 'eq', value: 'hello' },
+      { relationship: 'owner', field: 'name', op: 'like', value: 'a' },
+    ]);
   });
 });
