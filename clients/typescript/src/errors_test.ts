@@ -125,6 +125,13 @@ Deno.test('JsonApiRequestError', async (t) => {
     assertEquals(error.message, 'Not Found');
   });
 
+  await t.step('message prefers detail over title when both exist', () => {
+    const error = new JsonApiRequestError(404, [
+      { status: '404', title: 'Not Found', detail: 'Todo 7 does not exist' },
+    ]);
+    assertEquals(error.message, 'Todo 7 does not exist');
+  });
+
   await t.step('hasCode matches any error with that code', () => {
     const error = new JsonApiRequestError(400, [
       { code: JsonApiErrorCodes.VALIDATION_FAILED },

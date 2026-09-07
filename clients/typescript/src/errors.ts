@@ -39,7 +39,10 @@ export class JsonApiRequestError extends Error {
   readonly errors: JsonApiError[];
 
   constructor(status: number, errors: JsonApiError[]) {
-    super(errors[0]?.title ?? `Request failed with status ${status}`);
+    super(
+      errors[0]?.detail ?? errors[0]?.title ??
+        `Request failed with status ${status}`,
+    );
     this.name = 'JsonApiRequestError';
     this.status = status;
     this.errors = errors;
