@@ -7,11 +7,16 @@ import { isJsonApiErrorResponse } from '../src/index.ts';
 import { type Errors, getDoc, type List, request } from './helpers.ts';
 
 Deno.test('not found', async (t) => {
-  await t.step('WART: plain GET 404 has no error code', async () => {
+  await t.step('plain GET 404 carries RESOURCE_NOT_FOUND', async () => {
     const { doc, status } = await getDoc<Errors>('articles/999');
     assertEquals(status, 404);
     assertEquals(doc.errors, [
-      { status: '404', title: 'Not Found', detail: 'Resource not found' },
+      {
+        status: '404',
+        code: 'RESOURCE_NOT_FOUND',
+        title: 'Not Found',
+        detail: 'Resource not found',
+      },
     ]);
     assert(isJsonApiErrorResponse(doc));
   });
