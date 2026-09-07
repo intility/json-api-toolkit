@@ -15,7 +15,20 @@ namespace JsonApiToolkit.Extensions.Querying;
 /// nested collections), operator semantics, null-safety guards, and
 /// recursion-depth limiting.
 /// </summary>
-public sealed class FilterExpressionComposer
+/// <remarks>
+/// Creates a composer. The optional <paramref name="propertyResolver"/> maps a JSON
+/// field name to a CLR property; defaults to <see cref="QueryHelpers.GetPropertyByJsonName"/>.
+/// <paramref name="allowedCustomFilterKeys"/> is
+/// <see cref="Configuration.JsonApiOptions.AllowedCustomFilterKeys"/>: top-level filter
+/// keys that are not a real property but should not be rejected under
+/// <paramref name="strictValidation"/> either.
+/// </remarks>
+public sealed class FilterExpressionComposer(
+    ILogger? logger = null,
+    Func<Type, string, PropertyInfo?>? propertyResolver = null,
+    bool strictValidation = false,
+    IReadOnlySet<string>? allowedCustomFilterKeys = null
+)
 {
     /// <summary>
     /// Maximum recursion depth for nested collection navigations.
@@ -23,24 +36,12 @@ public sealed class FilterExpressionComposer
     /// </summary>
     internal const int MaxRecursionDepth = 5;
 
-    private readonly ILogger? _logger;
-    private readonly Func<Type, string, PropertyInfo?> _resolveProperty;
-    private readonly bool _strictValidation;
-
-    /// <summary>
-    /// Creates a composer. The optional <paramref name="propertyResolver"/> maps a JSON
-    /// field name to a CLR property; defaults to <see cref="QueryHelpers.GetPropertyByJsonName"/>.
-    /// </summary>
-    public FilterExpressionComposer(
-        ILogger? logger = null,
-        Func<Type, string, PropertyInfo?>? propertyResolver = null,
-        bool strictValidation = false
-    )
-    {
-        _logger = logger;
-        _resolveProperty = propertyResolver ?? QueryHelpers.GetPropertyByJsonName;
-        _strictValidation = strictValidation;
-    }
+    private readonly ILogger? _logger = logger;
+    private readonly Func<Type, string, PropertyInfo?> _resolveProperty =
+        propertyResolver ?? QueryHelpers.GetPropertyByJsonName;
+    private readonly bool _strictValidation = strictValidation;
+    private readonly IReadOnlySet<string> _allowedCustomFilterKeys =
+        allowedCustomFilterKeys ?? new HashSet<string>();
 
     /// <summary>
     /// Composes a predicate for <typeparamref name="T"/>, or null when the group
@@ -109,6 +110,17 @@ public sealed class FilterExpressionComposer
         PropertyInfo? property = _resolveProperty(parameter.Type, filter.Field);
         if (property == null)
         {
+            if (_allowedCustomFilterKeys.Contains(filter.Field))
+            {
+                _logger?.LogDebug(
+                    "Filter field '{Field}' is not a property on {EntityType}; skipping "
+                        + "as an allowed custom filter key (handled by the action itself).",
+                    filter.Field,
+                    parameter.Type.Name
+                );
+                return null;
+            }
+
             if (_strictValidation)
                 throw JsonApiErrors.InvalidFilterField(filter.Field, parameter.Type);
 

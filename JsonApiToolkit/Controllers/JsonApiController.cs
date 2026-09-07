@@ -72,7 +72,12 @@ public abstract class JsonApiController : ControllerBase
         if (parameters.Filter == null)
             return queryable;
 
-        return queryable.ApplyFilters(parameters.Filter, Logger, Options.StrictQueryValidation);
+        return queryable.ApplyFilters(
+            parameters.Filter,
+            Logger,
+            Options.StrictQueryValidation,
+            Options.AllowedCustomFilterKeys
+        );
     }
 
     /// <summary>
@@ -128,7 +133,8 @@ public abstract class JsonApiController : ControllerBase
             filteredQuery = filteredQuery.ApplyFilters(
                 mainFilters,
                 Logger,
-                Options.StrictQueryValidation
+                Options.StrictQueryValidation,
+                Options.AllowedCustomFilterKeys
             );
 
         // Apply includes (with or without filters)
@@ -445,7 +451,8 @@ public abstract class JsonApiController : ControllerBase
             filteredQuery = filteredQuery.ApplyFilters(
                 mainFilters,
                 Logger,
-                Options.StrictQueryValidation
+                Options.StrictQueryValidation,
+                Options.AllowedCustomFilterKeys
             );
 
         if (includeFilters.Count > 0)

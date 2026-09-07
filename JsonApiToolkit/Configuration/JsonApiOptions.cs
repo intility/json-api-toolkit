@@ -64,6 +64,17 @@ public class JsonApiOptions
     public bool StrictQueryValidation { get; set; }
 
     /// <summary>
+    /// Filter keys that <see cref="StrictQueryValidation"/> should not reject even though
+    /// they are not a property on the entity being queried. Use this for filter keys a
+    /// controller reads and applies itself (e.g. <c>filter[search][like]=x</c> backing a
+    /// hand-rolled search box) instead of adding a real property. Case-insensitive. The
+    /// toolkit still does not apply any filter for these keys; it only stops rejecting
+    /// their presence, the same as it would in non-strict mode. Default: empty.
+    /// </summary>
+    public HashSet<string> AllowedCustomFilterKeys { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// When true, pagination links (first/last/prev/next) preserve the request's full
     /// query string (filter, sort, include, fields) with only the page parameters
     /// replaced. Default: false (links are rebuilt from the bare path and drop all
