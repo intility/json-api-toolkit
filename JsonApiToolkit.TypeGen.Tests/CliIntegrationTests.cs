@@ -14,7 +14,7 @@ public class CliIntegrationTests
     public void Run_resolves_JsonApiResource_types_from_a_separately_built_assembly()
     {
         var contractApiDll = typeof(ContractApi.Author).Assembly.Location;
-        var outPath = Path.Combine(Path.GetTempPath(), $"cli-test-{Guid.NewGuid():N}.ts");
+        var outPath = Path.Join(Path.GetTempPath(), $"cli-test-{Guid.NewGuid():N}.ts");
 
         try
         {

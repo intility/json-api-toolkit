@@ -3,3 +3,7 @@ name: "JsonApiToolkit CodeQL"
 paths-ignore:
   - "**/bin/**"
   - "**/obj/**"
+  # Localhost-only contract-test fixture with in-memory seeded data.
+  # Not deployed and not a usage showcase, so auth alerts on it are noise.
+  # Authentication and authorization belong to the consuming application.
+  - "samples/ContractApi/**"

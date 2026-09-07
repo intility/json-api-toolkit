@@ -5,6 +5,9 @@ Guidance for using JsonApiToolkit safely: restricting includes, configuring quer
 > [!NOTE]
 > To **report a vulnerability** in JsonApiToolkit itself, see the [Security Policy](https://github.com/intility/json-api-toolkit/blob/main/SECURITY.md). This page is about using the toolkit securely.
 
+> [!NOTE]
+> JsonApiToolkit does not perform authentication or authorization. It builds queries and serializes responses inside your controllers. Protecting endpoints with `[Authorize]`, policies, and per-resource ownership checks is the responsibility of the consuming application.
+
 ## `[AllowedIncludes]`
 
 Without `[AllowedIncludes]`, every navigation property on your entities is includable via `?include=`. That can leak sensitive relationships and run expensive queries. The attribute restricts which relationships clients can request.
