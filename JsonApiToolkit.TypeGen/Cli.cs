@@ -10,6 +10,10 @@ namespace JsonApiToolkit.TypeGen;
 /// </summary>
 public static class TypeGenCli
 {
+    private const string UsageText =
+        "Usage: jsonapi-typegen --assembly <path/to/Api.dll> --out <path/to/api-types.gen.ts> "
+        + "[--client-import <specifier>] [--check]";
+
     public static int Run(string[] args)
     {
         string? assemblyPath = null;
@@ -21,6 +25,10 @@ public static class TypeGenCli
         {
             switch (args[i])
             {
+                case "--help":
+                case "-h":
+                    Console.WriteLine(UsageText);
+                    return 0;
                 case "--assembly":
                     assemblyPath = args[++i];
                     break;
@@ -41,10 +49,7 @@ public static class TypeGenCli
 
         if (assemblyPath is null || outPath is null)
         {
-            Console.Error.WriteLine(
-                "Usage: jsonapi-typegen --assembly <path/to/Api.dll> --out <path/to/api-types.gen.ts> "
-                    + "[--client-import <specifier>] [--check]"
-            );
+            Console.Error.WriteLine(UsageText);
             return 1;
         }
 

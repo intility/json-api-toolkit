@@ -50,4 +50,11 @@ public class CliIntegrationTests
             File.Delete(outPath);
         }
     }
+
+    [Fact]
+    public void Run_prints_usage_and_exits_zero_for_help()
+    {
+        Assert.Equal(0, TypeGenCli.Run(["--help"]));
+        Assert.Equal(0, TypeGenCli.Run(["-h"]));
+    }
 }
