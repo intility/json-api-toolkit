@@ -5,6 +5,7 @@ nav:
   - Guides:
       - querying.md
       - build-query.md
+      - typegen.md
       - error-handling.md
       - security.md
       - performance.md

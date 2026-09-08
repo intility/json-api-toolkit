@@ -141,6 +141,7 @@ public class JsonApiControllerTests
 
         Assert.Single(errorResponse.Errors);
         Assert.Equal("404", errorResponse.Errors[0].Status);
+        Assert.Equal(JsonApiErrorCodes.ResourceNotFound, errorResponse.Errors[0].Code);
         Assert.Equal("Not Found", errorResponse.Errors[0].Title);
         Assert.Equal("Test entity not found", errorResponse.Errors[0].Detail);
     }
