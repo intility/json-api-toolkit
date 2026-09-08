@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/intility/json-api-toolkit/compare/v2.3.0...v2.3.1) (2026-09-08)
+
+
+### Build System
+
+* Bump the backend group with 1 update ([#218](https://github.com/intility/json-api-toolkit/issues/218)) ([16bdd56](https://github.com/intility/json-api-toolkit/commit/16bdd565fcd07ea96f75f6febf9634d62d6164ae))
+
 ## [2.3.0](https://github.com/intility/json-api-toolkit/compare/v2.2.0...v2.3.0) (2026-09-07)
 
 
