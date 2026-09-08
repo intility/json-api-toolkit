@@ -72,6 +72,9 @@ export const Article: JsonApiResourceDescriptor<Article> = {
 };
 ```
 
+> [!TIP]
+> Ignore this generated file in your lint and formatting rules.
+
 Nullability follows the C# nullable annotations honestly on attributes.
 Relationships are always `T | null` or `T[]`, regardless of the C#
 annotation, matching what hydration fills in when the wire omits a
@@ -101,6 +104,17 @@ There are no separate per-field name constants: the descriptor's
 - A property type the toolkit doesn't otherwise map (outside
   string/bool/numeric/`DateTime`/`Guid`/enum/primitive arrays) is skipped
   with a warning instead of guessed at.
+- An enum property is always emitted as a string literal union, matching
+  `System.Text.Json`'s `JsonStringEnumConverter`. That converter is opt-in;
+  with none registered, enums serialize as numbers by default, and the
+  generated type would be wrong. The tool can only confirm the converter
+  statically when it's applied via `[JsonConverter]` on the enum type or the
+  property, a converter registered globally (e.g. `AddJsonOptions` in your
+  own `Program.cs`) is invisible to reflection over the compiled assembly.
+  So it warns rather than skips when it can't confirm this, which may be a
+  false positive if you register the converter globally. Add
+  `[JsonConverter(typeof(JsonStringEnumConverter))]` to the enum or the
+  property to silence the warning, or verify against a real response.
 
 ## CI
 

@@ -161,6 +161,9 @@ public static class TypeScriptEmitter
             return elementTs is null ? null : ($"{elementTs}[]", false);
         }
 
+        if (effective.IsEnum)
+            WarnIfEnumStringConversionUnconfirmed(prop, effective);
+
         bool nullableRefType =
             !effective.IsValueType
             && nullability.Create(prop).ReadState == NullabilityState.Nullable;
@@ -184,6 +187,45 @@ public static class TypeScriptEmitter
 
         return null;
     }
+
+    /// <summary>
+    /// An enum is emitted as a string literal union, matching
+    /// <c>JsonStringEnumConverter</c>. That converter is opt-in; with none
+    /// registered, System.Text.Json serializes an enum as its numeric value
+    /// instead, and the generated type would be wrong. This is only checkable
+    /// when the converter is applied via <c>[JsonConverter]</c> on the enum
+    /// type or the property; a converter registered globally is invisible
+    /// to reflection over the compiled assembly.
+    /// </summary>
+    private static void WarnIfEnumStringConversionUnconfirmed(PropertyInfo prop, Type enumType)
+    {
+        if (HasJsonStringEnumConverter(prop) || HasJsonStringEnumConverter(enumType))
+            return;
+
+        Console.Error.WriteLine(
+            $"warning: {prop.DeclaringType?.Name}.{prop.Name} is enum {enumType.Name}, "
+                + "emitted as a string literal union. This assumes JsonStringEnumConverter "
+                + "is registered (globally, e.g. AddJsonOptions, or via [JsonConverter] on "
+                + $"the enum/property). System.Text.Json serializes {enumType.Name} as a "
+                + "number by default; verify against a real response, or add "
+                + "[JsonConverter(typeof(JsonStringEnumConverter))] to silence this warning."
+        );
+    }
+
+    // Matched by attribute-type name, not typeof(...): a [JsonConverter]
+    // constructor argument's Type may come from a different load context
+    // than this tool's own System.Text.Json reference (see PluginLoadContext).
+    private static bool HasJsonStringEnumConverter(MemberInfo member) =>
+        member
+            .GetCustomAttributesData()
+            .Any(a =>
+                a.AttributeType.Name == "JsonConverterAttribute"
+                && a.ConstructorArguments is [{ Value: Type converterType }]
+                && converterType.Name.StartsWith(
+                    "JsonStringEnumConverter",
+                    StringComparison.Ordinal
+                )
+            );
 
     private static bool IsNumeric(Type t) =>
         t == typeof(byte)

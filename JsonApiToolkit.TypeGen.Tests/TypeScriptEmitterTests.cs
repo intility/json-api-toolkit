@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using JsonApiToolkit.Attributes;
 
 namespace JsonApiToolkit.TypeGen.Tests;
@@ -39,6 +40,36 @@ public class UnmappedThing
     public int Id { get; set; }
 }
 
+public enum PlainStatus
+{
+    Active,
+    Archived,
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ConfirmedStatus
+{
+    Active,
+    Archived,
+}
+
+[JsonApiResource("gadgets")]
+public class Gadget
+{
+    public int Id { get; set; }
+    public required string Name { get; set; }
+
+    // No converter anywhere: string conversion is unconfirmed, should warn.
+    public PlainStatus Status { get; set; }
+
+    // Converter on the enum type itself: confirmed, no warning.
+    public ConfirmedStatus TypeConfirmedStatus { get; set; }
+
+    // Converter on the property itself: confirmed, no warning.
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public PlainStatus PropertyConfirmedStatus { get; set; }
+}
+
 public class TypeScriptEmitterTests
 {
     [Fact]
@@ -76,5 +107,34 @@ public class TypeScriptEmitterTests
         // UnmappedThing has no [JsonApiResource]: the property is dropped, not guessed at.
         Assert.DoesNotContain("extra", ts);
         Assert.DoesNotContain("UnmappedThing", ts);
+    }
+
+    [Fact]
+    public void Generate_maps_enums_to_string_unions_and_warns_when_unconfirmed()
+    {
+        var resources = new (Type Type, string WireType)[] { (typeof(Gadget), "gadgets") };
+
+        var originalError = Console.Error;
+        var captured = new StringWriter();
+        Console.SetError(captured);
+        string ts;
+        try
+        {
+            ts = TypeScriptEmitter.Generate(resources, "@intility/json-api-client");
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+
+        // All three enum properties map the same way regardless of confirmation.
+        Assert.Contains("status: \"Active\" | \"Archived\";", ts);
+        Assert.Contains("typeConfirmedStatus: \"Active\" | \"Archived\";", ts);
+        Assert.Contains("propertyConfirmedStatus: \"Active\" | \"Archived\";", ts);
+
+        string warnings = captured.ToString();
+        Assert.Contains("Gadget.Status is enum PlainStatus", warnings);
+        Assert.DoesNotContain("TypeConfirmedStatus", warnings);
+        Assert.DoesNotContain("PropertyConfirmedStatus", warnings);
     }
 }
