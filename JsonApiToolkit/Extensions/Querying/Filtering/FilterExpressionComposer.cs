@@ -345,6 +345,21 @@ public sealed class FilterExpressionComposer
             return null;
         }
 
+        // A date-only value (no time component, e.g. "2026-09-14") used with
+        // Le against a DateTime property means "up to and including that
+        // whole day" to callers — but it parses to that day's midnight, so
+        // an unadjusted <= would only match the exact midnight instant and
+        // silently exclude the rest of the day. Bump it to the last tick of
+        // the day so Le behaves as "on or before this date".
+        if (
+            filter.Operator == FilterOperator.Le
+            && filterValue is DateTime dateOnlyBoundary
+            && IsDateOnlyValue(filter.Value)
+        )
+        {
+            filterValue = dateOnlyBoundary.Date.AddDays(1).AddTicks(-1);
+        }
+
         ConstantExpression constant = Expression.Constant(filterValue, targetType);
 
         return filter.Operator switch
@@ -604,4 +619,14 @@ public sealed class FilterExpressionComposer
             }
         );
     }
+
+    /// <summary>
+    /// True if the raw filter value string carries no time-of-day component
+    /// (e.g. "2026-09-14"), as opposed to a full timestamp (e.g.
+    /// "2026-09-14T10:00:00"). ISO 8601 date-times always separate the time
+    /// with 'T' and represent time-of-day with ':', so the absence of both
+    /// is a reliable signal the caller only specified a calendar date.
+    /// </summary>
+    private static bool IsDateOnlyValue(string value) =>
+        !value.Contains('T') && !value.Contains(':');
 }
