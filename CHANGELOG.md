@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.3.1](https://github.com/intility/json-api-toolkit/compare/v2.3.0...v2.3.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* apply date-only filters as a whole-day range ([#225](https://github.com/intility/json-api-toolkit/issues/225)) ([7556f15](https://github.com/intility/json-api-toolkit/commit/7556f15702a8a70da273d8ffca4301cf5a7f901f))
+* extend date-only Le filters to end of day ([#224](https://github.com/intility/json-api-toolkit/issues/224)) ([2908d92](https://github.com/intility/json-api-toolkit/commit/2908d922951bba711a1bd6c88518d1c7ad188ead))
+
+
+### Build System
+
+* Bump the backend group with 1 update ([#218](https://github.com/intility/json-api-toolkit/issues/218)) ([16bdd56](https://github.com/intility/json-api-toolkit/commit/16bdd565fcd07ea96f75f6febf9634d62d6164ae))
+* Bump the backend group with 4 updates ([#221](https://github.com/intility/json-api-toolkit/issues/221)) ([95cf78b](https://github.com/intility/json-api-toolkit/commit/95cf78bf64430b29115220afc6629cda202ff35a))
+
+
+### CI
+
+* **deps:** Bump actions/deploy-pages from 5.0.0 to 5.0.1 in the github-actions group ([#222](https://github.com/intility/json-api-toolkit/issues/222)) ([aa95a14](https://github.com/intility/json-api-toolkit/commit/aa95a14629f4a70c0b8104f0177f9e73c1e1051c))
+* **deps:** Bump actions/deploy-pages in the github-actions group ([aa95a14](https://github.com/intility/json-api-toolkit/commit/aa95a14629f4a70c0b8104f0177f9e73c1e1051c))
+
 ## [2.3.0](https://github.com/intility/json-api-toolkit/compare/v2.2.0...v2.3.0) (2026-09-07)
 
 
