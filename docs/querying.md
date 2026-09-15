@@ -16,6 +16,8 @@ JsonApiToolkit parses standard JSON:API query parameters and applies them to you
 | `in` / `nin` | (not) in list | `filter[genre][in]=fiction,fantasy` |
 | `isnull` / `isnotnull` | null check | `filter[description][isnull]=true` |
 
+A bare date such as `2026-09-14` on a `DateTime` field covers the whole day. `le` includes every moment of that day, `gt` starts at the next day, and `eq` matches the day. A value with a time component, such as `2026-09-14T12:00:00`, is compared exactly.
+
 ### Logical groups
 
 Combine filters with AND, OR, NOT blocks:

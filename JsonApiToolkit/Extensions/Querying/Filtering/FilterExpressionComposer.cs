@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using JsonApiToolkit.Helpers;
@@ -345,19 +346,16 @@ public sealed class FilterExpressionComposer
             return null;
         }
 
-        // A date-only value (no time component, e.g. "2026-09-14") used with
-        // Le against a DateTime property means "up to and including that
-        // whole day" to callers — but it parses to that day's midnight, so
-        // an unadjusted <= would only match the exact midnight instant and
-        // silently exclude the rest of the day. Bump it to the last tick of
-        // the day so Le behaves as "on or before this date".
-        if (
-            filter.Operator == FilterOperator.Le
-            && filterValue is DateTime dateOnlyBoundary
-            && IsDateOnlyValue(filter.Value)
-        )
+        if (filterValue is DateTime day && IsDateOnlyValue(filter.Value))
         {
-            filterValue = dateOnlyBoundary.Date.AddDays(1).AddTicks(-1);
+            Expression? wholeDay = BuildWholeDayLeaf(
+                propertyAccess,
+                filter.Operator,
+                day,
+                targetType
+            );
+            if (wholeDay != null)
+                return wholeDay;
         }
 
         ConstantExpression constant = Expression.Constant(filterValue, targetType);
@@ -621,12 +619,45 @@ public sealed class FilterExpressionComposer
     }
 
     /// <summary>
-    /// True if the raw filter value string carries no time-of-day component
-    /// (e.g. "2026-09-14"), as opposed to a full timestamp (e.g.
-    /// "2026-09-14T10:00:00"). ISO 8601 date-times always separate the time
-    /// with 'T' and represent time-of-day with ':', so the absence of both
-    /// is a reliable signal the caller only specified a calendar date.
+    /// True when the raw filter value is a bare ISO calendar date such as "2026-09-14".
     /// </summary>
     private static bool IsDateOnlyValue(string value) =>
-        !value.Contains('T') && !value.Contains(':');
+        DateOnly.TryParseExact(
+            value,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out _
+        );
+
+    /// <summary>
+    /// Treats a bare date as the whole day, the half-open range [day, day + 1).
+    /// Lt and Ge already split at midnight and fall through unchanged, as does the max date.
+    /// </summary>
+    private static Expression? BuildWholeDayLeaf(
+        Expression propertyAccess,
+        FilterOperator op,
+        DateTime day,
+        Type targetType
+    )
+    {
+        if (day.Date == DateTime.MaxValue.Date)
+            return null;
+
+        ConstantExpression start = Expression.Constant(day, targetType);
+        ConstantExpression next = Expression.Constant(day.AddDays(1), targetType);
+        Expression onDay = Expression.AndAlso(
+            Expression.GreaterThanOrEqual(propertyAccess, start),
+            Expression.LessThan(propertyAccess, next)
+        );
+
+        return op switch
+        {
+            FilterOperator.Eq => onDay,
+            FilterOperator.Ne => Expression.Not(onDay),
+            FilterOperator.Gt => Expression.GreaterThanOrEqual(propertyAccess, next),
+            FilterOperator.Le => Expression.LessThan(propertyAccess, next),
+            _ => null,
+        };
+    }
 }
