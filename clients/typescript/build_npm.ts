@@ -3,24 +3,30 @@ import { build, emptyDir } from '@deno/dnt';
 await emptyDir('./dist');
 
 await build({
-  entryPoints: ['./src/index.ts'],
+  entryPoints: [
+    './src/index.ts',
+    { name: './tanstack-query', path: './src/tanstack-query.ts' },
+  ],
   outDir: './dist',
   shims: {
     deno: true,
   },
   test: false,
   package: {
-    name: '@intility/jsonapi-ts-tools',
-    version: Deno.args[0] || '0.0.0',
+    name: '@intility/json-api-client',
+    version: Deno.args[0] || '0.1.0',
+    publishConfig: {
+      access: 'public',
+    },
     description:
-      'jsonapi-ts-tools is a TypeScript library for working with JSON:API.',
+      'json-api-client is a TypeScript library for working with JSON:API.',
     license: 'MIT',
     repository: {
       type: 'git',
-      url: 'git+https://github.com/intility/jsonapi-ts-tools.git',
+      url: 'git+https://github.com/intility/json-api-toolkit.git',
     },
     bugs: {
-      url: 'https://github.com/intility/jsonapi-ts-tools/issues',
+      url: 'https://github.com/intility/json-api-toolkit/issues',
     },
   },
   postBuild() {

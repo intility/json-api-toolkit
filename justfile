@@ -126,7 +126,8 @@ typegen *args:
     dotnet build {{sample}} --configuration Release
     dotnet run --project JsonApiToolkit.TypeGen --configuration Release --no-build -- \
         --assembly {{sample}}/bin/Release/net10.0/ContractApi.dll \
-        --out {{sample}}/api-types.gen.ts {{args}}
+        --out {{sample}}/api-types.gen.ts \
+        --client-import ../../clients/typescript/src/index.ts {{args}}
 
 # Everything CI runs: format check, unit tests, the contract suite, and typegen drift
 [group('quality')]

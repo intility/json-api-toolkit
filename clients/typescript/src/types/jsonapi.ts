@@ -1,5 +1,6 @@
-// deno-lint-ignore-file no-explicit-any
-export interface JsonApiResource<T = any> {
+export type JsonApiAttributes = Record<string, unknown>;
+
+export interface JsonApiResource<T = JsonApiAttributes> {
   id: string;
   type: string;
   attributes: T;
@@ -12,21 +13,25 @@ export type JsonApiRelationship =
   | { data: Array<{ id: string; type: string }> }
   | { data: null };
 
-export interface JsonApiSingleResponse<T = any> {
+export type JsonApiMeta = Record<string, unknown> & {
+  pagination?: JsonApiPaginationMeta;
+};
+
+export interface JsonApiSingleResponse<T = JsonApiAttributes> {
   data: JsonApiResource<T>;
   included?: JsonApiResource[];
-  meta?: { pagination?: JsonApiPaginationMeta };
+  meta?: JsonApiMeta;
   links?: JsonApiLinks;
 }
 
-export interface JsonApiArrayResponse<T = any> {
+export interface JsonApiArrayResponse<T = JsonApiAttributes> {
   data: JsonApiResource<T>[];
   included?: JsonApiResource[];
-  meta?: { pagination?: JsonApiPaginationMeta };
+  meta?: JsonApiMeta;
   links?: JsonApiLinks;
 }
 
-export type JsonApiResponse<T = any> =
+export type JsonApiResponse<T = JsonApiAttributes> =
   | JsonApiSingleResponse<T>
   | JsonApiArrayResponse<T>;
 
@@ -47,26 +52,40 @@ export interface JsonApiLinks {
 }
 
 /**
- * Type for hydrated single resource result.
+ * Runtime shape of one resource, emitted by `dotnet jsonapi-typegen` next to
+ * the interface it describes. Lets hydration be honest about what the wire
+ * omits: null-stripped attributes become `null`, un-included relationships
+ * become `null` (to-one) or `[]` (to-many). Names are checked against `T`,
+ * so a stale generated file fails to compile.
  */
-export interface HydratedSingleResult<T> {
+export interface JsonApiResourceDescriptor<T>
+  extends JsonApiResourceDescriptorBase {
+  readonly attributes: readonly (keyof T & string)[];
+  readonly toOne: readonly (keyof T & string)[];
+  readonly toMany: readonly (keyof T & string)[];
+}
+
+/** Untyped form of {@link JsonApiResourceDescriptor}, for registries. */
+export interface JsonApiResourceDescriptorBase {
+  /** Wire `type`, also the default collection path. */
+  readonly type: string;
+  readonly attributes: readonly string[];
+  readonly toOne: readonly string[];
+  readonly toMany: readonly string[];
+}
+
+/** Descriptors keyed by wire type, for resolving included resources. */
+export type JsonApiResourceDescriptors = Record<
+  string,
+  JsonApiResourceDescriptorBase
+>;
+
+export interface HydratedSingle<T> {
   data: T;
-  meta?: { pagination?: JsonApiPaginationMeta };
-  links?: JsonApiLinks;
 }
 
-/**
- * Type for hydrated array resource result.
- */
-export interface HydratedArrayResult<T> {
+export interface HydratedList<T> {
   data: T[];
-  meta?: { pagination?: JsonApiPaginationMeta };
-  links?: JsonApiLinks;
+  /** Present only when the request was paginated (any `page[...]` param). */
+  pagination?: JsonApiPaginationMeta;
 }
-
-/**
- * Union type for hydrated query result.
- */
-export type HydratedQueryResult<T> =
-  | HydratedSingleResult<T>
-  | HydratedArrayResult<T>;
