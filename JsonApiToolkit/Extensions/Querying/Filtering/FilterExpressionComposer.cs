@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using JsonApiToolkit.Helpers;
@@ -357,6 +358,18 @@ public sealed class FilterExpressionComposer(
             return null;
         }
 
+        if (filterValue is DateTime day && IsDateOnlyValue(filter.Value))
+        {
+            Expression? wholeDay = BuildWholeDayLeaf(
+                propertyAccess,
+                filter.Operator,
+                day,
+                targetType
+            );
+            if (wholeDay != null)
+                return wholeDay;
+        }
+
         ConstantExpression constant = Expression.Constant(filterValue, targetType);
 
         return filter.Operator switch
@@ -615,5 +628,48 @@ public sealed class FilterExpressionComposer(
                 ["actualDepth"] = depth,
             }
         );
+    }
+
+    /// <summary>
+    /// True when the raw filter value is a bare ISO calendar date such as "2026-09-14".
+    /// </summary>
+    private static bool IsDateOnlyValue(string value) =>
+        DateOnly.TryParseExact(
+            value,
+            "yyyy-MM-dd",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out _
+        );
+
+    /// <summary>
+    /// Treats a bare date as the whole day, the half-open range [day, day + 1).
+    /// Lt and Ge already split at midnight and fall through unchanged, as does the max date.
+    /// </summary>
+    private static Expression? BuildWholeDayLeaf(
+        Expression propertyAccess,
+        FilterOperator op,
+        DateTime day,
+        Type targetType
+    )
+    {
+        if (day.Date == DateTime.MaxValue.Date)
+            return null;
+
+        ConstantExpression start = Expression.Constant(day, targetType);
+        ConstantExpression next = Expression.Constant(day.AddDays(1), targetType);
+        Expression onDay = Expression.AndAlso(
+            Expression.GreaterThanOrEqual(propertyAccess, start),
+            Expression.LessThan(propertyAccess, next)
+        );
+
+        return op switch
+        {
+            FilterOperator.Eq => onDay,
+            FilterOperator.Ne => Expression.Not(onDay),
+            FilterOperator.Gt => Expression.GreaterThanOrEqual(propertyAccess, next),
+            FilterOperator.Le => Expression.LessThan(propertyAccess, next),
+            _ => null,
+        };
     }
 }

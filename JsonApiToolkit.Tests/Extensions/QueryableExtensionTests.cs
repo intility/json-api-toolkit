@@ -108,6 +108,128 @@ public class QueryableExtensionsTests
     }
 
     [Fact]
+    public void ApplyFilters_WithLessThanOrEqualDateOnlyFilter_IncludesWholeDay()
+    {
+        // A date-only Le value (no time component) must include every moment
+        // of that day, not just its exact midnight instant.
+        var testData = new List<TestEntity>
+        {
+            new TestEntity { Id = 1, CreatedAt = new DateTime(2026, 9, 14, 0, 0, 0) },
+            new TestEntity { Id = 2, CreatedAt = new DateTime(2026, 9, 14, 15, 30, 0) },
+            new TestEntity { Id = 3, CreatedAt = new DateTime(2026, 9, 14, 23, 59, 59) },
+            new TestEntity { Id = 4, CreatedAt = new DateTime(2026, 9, 15, 0, 0, 0) },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "CreatedAt",
+                    Operator = FilterOperator.Le,
+                    Value = "2026-09-14",
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).ToList();
+
+        Assert.Equal(3, result.Count);
+        Assert.DoesNotContain(result, e => e.Id == 4);
+    }
+
+    [Fact]
+    public void ApplyFilters_WithLessThanOrEqualFullTimestampFilter_DoesNotExtendToEndOfDay()
+    {
+        // A full timestamp is compared exactly. Only a bare date covers the whole day.
+        var testData = new List<TestEntity>
+        {
+            new TestEntity { Id = 1, CreatedAt = new DateTime(2026, 9, 14, 9, 0, 0) },
+            new TestEntity { Id = 2, CreatedAt = new DateTime(2026, 9, 14, 15, 30, 0) },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "CreatedAt",
+                    Operator = FilterOperator.Le,
+                    Value = "2026-09-14T12:00:00",
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].Id);
+    }
+
+    [Theory]
+    [InlineData(FilterOperator.Gt, new[] { 4 })]
+    [InlineData(FilterOperator.Eq, new[] { 1, 2, 3 })]
+    [InlineData(FilterOperator.Ne, new[] { 4 })]
+    [InlineData(FilterOperator.Lt, new int[0])]
+    [InlineData(FilterOperator.Ge, new[] { 1, 2, 3, 4 })]
+    public void ApplyFilters_WithDateOnlyFilter_TreatsValueAsWholeDay(
+        FilterOperator op,
+        int[] expectedIds
+    )
+    {
+        var testData = new List<TestEntity>
+        {
+            new TestEntity { Id = 1, CreatedAt = new DateTime(2026, 9, 14, 0, 0, 0) },
+            new TestEntity { Id = 2, CreatedAt = new DateTime(2026, 9, 14, 15, 30, 0) },
+            new TestEntity { Id = 3, CreatedAt = new DateTime(2026, 9, 14, 23, 59, 59) },
+            new TestEntity { Id = 4, CreatedAt = new DateTime(2026, 9, 15, 0, 0, 0) },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "CreatedAt",
+                    Operator = op,
+                    Value = "2026-09-14",
+                },
+            },
+        };
+
+        var result = testData.ApplyFilters(filterGroup).Select(e => e.Id).ToList();
+
+        Assert.Equal(expectedIds, result);
+    }
+
+    [Fact]
+    public void ApplyFilters_WithMaxDateOnlyFilter_DoesNotThrow()
+    {
+        var testData = new List<TestEntity>
+        {
+            new TestEntity { Id = 1, CreatedAt = new DateTime(2026, 9, 14) },
+        }.AsQueryable();
+
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "CreatedAt",
+                    Operator = FilterOperator.Le,
+                    Value = "9999-12-31",
+                },
+            },
+        };
+
+        Assert.Single(testData.ApplyFilters(filterGroup).ToList());
+    }
+
+    [Fact]
     public void ApplyFilters_WithLikeFilter_FiltersCorrectly()
     {
         var query = GetTestData();
