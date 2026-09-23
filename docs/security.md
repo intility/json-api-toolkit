@@ -109,6 +109,25 @@ With strict query validation on, the first invalid parameter fails the request:
 Without the flag, unconvertible filter values on non-string properties surface
 as 500 Internal Server Error; strict mode turns them into descriptive 400s.
 
+### Custom filter keys
+
+Some actions parse a filter key themselves, for example a `filter[search][like]=x`
+search box that spans several columns. Strict mode rejects that key with
+`INVALID_FILTER_FIELD` because it is not a property. List it in
+`AllowedCustomFilterKeys` to allow it:
+
+```csharp
+builder.Services.AddJsonApiToolkit(options =>
+{
+    options.StrictQueryValidation = true;
+    options.AllowedCustomFilterKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "search" };
+});
+```
+
+The toolkit builds no filter clause for these keys. Your action still reads
+and applies them. Prefer a real `filter[field][op]` or an `or` group when the
+query can be expressed that way.
+
 ## Strict pagination
 
 By default, invalid pagination is silently clamped to valid ranges (page 0 → 1, page 99999 → last page, oversized page → `MaxPageSize`). Enable `StrictPagination` to return errors instead:

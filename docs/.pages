@@ -2,10 +2,12 @@ nav:
   - Home:
       - Welcome: index.md
       - getting-started.md
+      - end-to-end.md
   - Guides:
       - querying.md
       - build-query.md
       - typegen.md
+      - typescript-client.md
       - error-handling.md
       - security.md
       - performance.md

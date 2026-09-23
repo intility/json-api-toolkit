@@ -1,9 +1,9 @@
 # TypeScript type generation
 
-`dotnet jsonapi-typegen` generates TypeScript resource types from your
+`jsonapi-typegen` generates TypeScript resource types from your
 `[JsonApiResource]`-attributed C# models. It reuses JsonApiToolkit's own
-attribute/relationship classification, so the generated types cannot drift
-from what your API serializes on the wire.
+attribute and relationship classification, so the generated types match what
+your API sends.
 
 ## Installation
 
@@ -28,10 +28,9 @@ public class Article
 }
 ```
 
-`[JsonApiResource("articles")]` sets the wire `type` string. It also fixes
-the `fields[]`/included-type naming asymmetry: set
+`[JsonApiResource("articles")]` sets the wire `type`. Set
 `JsonApiOptions.UseResourceAttributeTypeNames` so included resources carry
-the same type name as their descriptor (see [Querying](querying.md)).
+the same name as their descriptor (see [Querying](querying.md#sparse-fieldsets)).
 
 ## Generate
 
@@ -41,15 +40,10 @@ Build your API project first, then point the tool at the compiled assembly:
 jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
 ```
 
-Use `--check` to fail CI on drift instead of writing:
-
-```bash
-jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts --check
-```
-
-`--client-import <specifier>` points the generated `import type` at a
-different module than the default `@intility/json-api-client` (for example
-a relative path inside a monorepo).
+| Flag | Effect |
+|------|--------|
+| `--check` | Do not write. Exit non-zero when the file is stale. Use it as a CI gate. |
+| `--client-import <specifier>` | Import the descriptor type from another module than `@intility/json-api-client`, for example a relative path in a monorepo. |
 
 ## Output
 
@@ -73,56 +67,26 @@ export const Article: JsonApiResourceDescriptor<Article> = {
 ```
 
 > [!TIP]
-> Ignore this generated file in your lint and formatting rules.
+> Exclude the generated file from your lint and format rules.
 
-Nullability follows the C# nullable annotations honestly on attributes.
-Relationships are always `T | null` or `T[]`, regardless of the C#
-annotation, matching what hydration fills in when the wire omits a
+Attribute nullability follows the C# annotations. Relationships are always
+`T | null` or `T[]`, because hydration fills those in when the wire omits a
 relationship.
 
-Pass the descriptor to `@intility/json-api-client`:
-
-```ts
-import { createJsonApiClient } from "@intility/json-api-client";
-import { Article } from "./api-types.gen.ts";
-
-const client = createJsonApiClient({ baseUrl: "/api" });
-const articles = client.resource(Article);
-
-articles.list((q) => q.include("author").fields(Article, ["title"]));
-```
-
-`client.resource(Article)` reads the wire type and relationship names off
-the descriptor, so the path and hydration can't drift from the interface.
-There are no separate per-field name constants: the descriptor's
-`attributes` array is what `fields()` types against.
+Pass the descriptor to `client.resource()` in
+[`@intility/json-api-client`](typescript-client.md). The client reads the
+path, wire type, and relationship names from it. The `attributes` array is
+what `fields()` types against.
 
 ## Limits
 
-- A relationship to a type without `[JsonApiResource]` is dropped, with a
-  stderr warning, rather than guessed at.
-- A property type the toolkit doesn't otherwise map (outside
-  string/bool/numeric/`DateTime`/`Guid`/enum/primitive arrays) is skipped
-  with a warning instead of guessed at.
-- An enum property is always emitted as a string literal union, matching
-  `System.Text.Json`'s `JsonStringEnumConverter`. That converter is opt-in;
-  with none registered, enums serialize as numbers by default, and the
-  generated type would be wrong. The tool can only confirm the converter
-  statically when it's applied via `[JsonConverter]` on the enum type or the
-  property, a converter registered globally (e.g. `AddJsonOptions` in your
-  own `Program.cs`) is invisible to reflection over the compiled assembly.
-  So it warns rather than skips when it can't confirm this, which may be a
-  false positive if you register the converter globally. Add
-  `[JsonConverter(typeof(JsonStringEnumConverter))]` to the enum or the
-  property to silence the warning, or verify against a real response.
-
-## CI
-
-Regenerate as part of build, and gate on drift:
-
-```bash
-dotnet jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts --check
-```
-
-A nonzero exit means the checked-in file no longer matches the assembly;
-regenerate and commit.
+- A relationship to a type without `[JsonApiResource]` is dropped with a
+  warning.
+- A property type the toolkit does not map (outside string, bool, numeric,
+  `DateTime`, `Guid`, enum, and primitive arrays) is skipped with a warning.
+- An enum is emitted as a string literal union, which assumes
+  `JsonStringEnumConverter`. The tool can only see the converter when it is
+  applied with `[JsonConverter]` on the enum or the property. A converter
+  registered globally in `Program.cs` is not visible, so the tool warns.
+  Add the attribute to silence the warning, or verify against a real
+  response.

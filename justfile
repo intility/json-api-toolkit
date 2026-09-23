@@ -32,6 +32,22 @@ hooks:
     lefthook install
 
 # ---------------------------------------------------------------------------
+# Docs
+# ---------------------------------------------------------------------------
+
+# Serve the docs locally with live reload (generates the API reference, installs deps first)
+[group('docs')]
+docs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dotnet tool restore
+    dotnet build JsonApiToolkit/JsonApiToolkit.csproj -c Release -o JsonApiToolkit/bin/docs
+    dotnet dotnet-api-docs --input JsonApiToolkit/bin/docs --output docs/api --strict
+    uv venv --allow-existing
+    uv pip install -r docs/requirements.txt
+    uv run zensical serve
+
+# ---------------------------------------------------------------------------
 # Quality
 # ---------------------------------------------------------------------------
 
