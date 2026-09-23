@@ -45,7 +45,8 @@ It's a less opinionated alternative to [JsonApiDotNetCore](https://github.com/js
 
 ## Where to start
 
-- New here? [Getting Started](getting-started.md) walks you through installing and registering the toolkit.
-- Building queries? [Querying](querying.md) covers the supported parameters, [Building Custom Queries](build-query.md) covers exports and aggregations.
+- New here? [Getting Started](getting-started.md) installs and registers the toolkit.
+- Building a TypeScript frontend? [End to end](end-to-end.md) goes from the API through [type generation](typegen.md) to the [TypeScript client](typescript-client.md).
+- Building queries? [Querying](querying.md) covers the parameters, [Building Custom Queries](build-query.md) covers exports and aggregations.
 - Locking it down? [Security](security.md) covers `[AllowedIncludes]` and query complexity limits.
 - Stuck? [Troubleshooting](troubleshooting.md) covers logging and common pitfalls.
