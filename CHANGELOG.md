@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.2](https://github.com/intility/json-api-toolkit/compare/v2.3.1...v2.3.2) (2026-09-28)
+
+
+### Build System
+
+* Bump the backend group with 1 update ([#230](https://github.com/intility/json-api-toolkit/issues/230)) ([ad62198](https://github.com/intility/json-api-toolkit/commit/ad621987b6eb70f58d8fa1c7695410c5d3ed257c))
+
+
+### CI
+
+* **deps:** Bump the github-actions group with 3 updates ([#228](https://github.com/intility/json-api-toolkit/issues/228)) ([8c6d660](https://github.com/intility/json-api-toolkit/commit/8c6d66096eaa9f54397b493941e51b16b91ad927))
+
 ## [2.3.1](https://github.com/intility/json-api-toolkit/compare/v2.3.0...v2.3.1) (2026-09-15)
 
 
