@@ -1,1 +1,1 @@
-intility-bifrost-mkdocs==0.9.0
+intility-bifrost-mkdocs==0.10.0
