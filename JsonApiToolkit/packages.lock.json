@@ -4,14 +4,14 @@
     "net10.0": {
       "Intility.Logging.AspNetCore": {
         "type": "Direct",
-        "requested": "[3.1.7, )",
-        "resolved": "3.1.7",
-        "contentHash": "uVNl/D+HAVh6A9AIaFT5QxQwrFG5BypwUfMQ3GFZ5pHoILAsCAqY3Z/YDkksN4mfUkGc20pVqLlyc8rOeO6j4w==",
+        "requested": "[3.1.8, )",
+        "resolved": "3.1.8",
+        "contentHash": "pKf5lnrMBU4G+KnANfvc9jbcfeR/y0HdJBEdZblSDZXYbMoG4vMmOdB0K8kUIyVZAjeKQgqbvv1awU+MvKdYzg==",
         "dependencies": {
-          "Intility.Extensions.Logging": "3.1.7",
+          "Intility.Extensions.Logging": "3.1.8",
           "Serilog.AspNetCore": "10.0.0",
           "Serilog.Enrichers.AssemblyName": "2.0.0",
-          "Serilog.Enrichers.AzureClaims": "1.2.9",
+          "Serilog.Enrichers.AzureClaims": "1.2.10",
           "Serilog.Enrichers.Environment": "3.0.1",
           "Serilog.Enrichers.Memory": "1.0.4"
         }
@@ -73,8 +73,8 @@
       },
       "Intility.Extensions.Logging": {
         "type": "Transitive",
-        "resolved": "3.1.7",
-        "contentHash": "slDca7FHqWrV53U+B7rkKZJXlcORFxn7Ux/Ku37XuJdZxfAc3SyD/yP3Gj/G1Ji8qvcnqo/+wQ2ZTG8TFo4Jew==",
+        "resolved": "3.1.8",
+        "contentHash": "ENvBZ1CXZhFlK4xqKeeFIOxUHKBvvzF6wDEnB+xjiCxTlScG/DVqM8Vi9j6xcdANfX3bdw0naw0TOg8Gt15XsQ==",
         "dependencies": {
           "Serilog": "4.4.0"
         }
@@ -321,8 +321,8 @@
       },
       "Serilog.Enrichers.AzureClaims": {
         "type": "Transitive",
-        "resolved": "1.2.9",
-        "contentHash": "fOH4gdLQuE+rZQEsTBt+QqwT1ajVqzz5QZoBULXwn5UXXh76qDysu6ulR6E4GVlFWYYmGe0RD+FuBVds+ANdKA==",
+        "resolved": "1.2.10",
+        "contentHash": "PWJIa9SfHC3ji0QsjnYsMY4QhSY8j5QxGIboMICkNuYM7KSqxZj3GBNRrbOE07MyhE45YfHzoZFK0NH+NZXICQ==",
         "dependencies": {
           "Microsoft.Identity.Web": "4.14.2",
           "Serilog": "4.4.0"
