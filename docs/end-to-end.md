@@ -75,7 +75,7 @@ rest of the server side.
 ```bash
 dotnet tool install Intility.JsonApiToolkit.TypeGen --prerelease
 dotnet build -c Release
-jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
+dotnet jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
 ```
 
 The output has one interface and one descriptor per resource:

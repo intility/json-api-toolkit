@@ -48,7 +48,6 @@ builder.Services.AddJsonApiToolkit(options =>
 {
     options.MaxFilters = 50;             // max filter conditions
     options.MaxFilterGroups = 10;        // max OR/NOT blocks
-    options.MaxFilterDepth = 3;          // max group nesting
     options.MaxFilterValueLength = 1000; // max value string length
     options.MaxIncludeDepth = 3;         // max include path depth
     options.MaxPageSize = 100;           // max items per page
@@ -62,7 +61,6 @@ builder.Services.AddJsonApiToolkit(options =>
 |-------|---------|------------------------|
 | `MaxFilters` | 50 | 400 Bad Request |
 | `MaxFilterGroups` | 10 | 400 Bad Request |
-| `MaxFilterDepth` | 3 | 400 Bad Request |
 | `MaxFilterValueLength` | 1000 | 400 Bad Request |
 | `MaxIncludeDepth` | 3 | 400 Bad Request |
 | `MaxPageSize` | 100 | Clamped, or 400 if `StrictPagination` |

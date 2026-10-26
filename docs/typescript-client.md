@@ -60,8 +60,11 @@ const qs = new JsonApiQueryBuilder<Article>()
   .build();
 ```
 
+`build()` returns the string without a leading `?`, percent-encoded by
+`URLSearchParams`. Decoded, the result is:
+
 ```
-?filter[published]=true&filter[author.name][like]=Berg&sort=-publishedAt&include=author,comments.author&fields[articles]=title,publishedAt&page[number]=1&page[size]=10
+filter[published]=true&filter[author.name][like]=Berg&sort=-publishedAt&include=author,comments.author&fields[articles]=title,publishedAt&page[number]=1&page[size]=10
 ```
 
 Rules to know:

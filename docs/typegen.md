@@ -37,13 +37,18 @@ the same name as their descriptor (see [Querying](querying.md#sparse-fieldsets))
 Build your API project first, then point the tool at the compiled assembly:
 
 ```bash
-jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
+dotnet jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
 ```
 
 | Flag | Effect |
 |------|--------|
+| `--assembly <path>` | Required. The compiled API assembly to read. |
+| `--out <path>` | Required. The TypeScript file to write. |
 | `--check` | Do not write. Exit non-zero when the file is stale. Use it as a CI gate. |
 | `--client-import <specifier>` | Import the descriptor type from another module than `@intility/json-api-client`, for example a relative path in a monorepo. |
+| `--help`, `-h` | Print usage and exit. |
+
+An unknown argument or a missing required flag exits with code 1.
 
 ## Output
 
