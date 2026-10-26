@@ -21,6 +21,9 @@ public class JsonApiOptions
     /// Maximum nesting depth for filter groups.
     /// Default: 3. Set to int.MaxValue to disable.
     /// </summary>
+    [Obsolete(
+        "Nested filter groups are not parsed, so query strings cannot reach this limit. The option will be removed in the next major version."
+    )]
     public int MaxFilterDepth { get; set; } = 3;
 
     /// <summary>
