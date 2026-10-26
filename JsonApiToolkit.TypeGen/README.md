@@ -16,7 +16,7 @@ dotnet tool install Intility.JsonApiToolkit.TypeGen --prerelease
 Build your API project, then point the tool at the compiled assembly:
 
 ```bash
-jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
+dotnet jsonapi-typegen --assembly bin/Release/net10.0/MyApi.dll --out api-types.gen.ts
 ```
 
 Add `--check` in CI. It exits non-zero when the checked-in file is stale.
