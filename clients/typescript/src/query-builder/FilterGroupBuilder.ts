@@ -1,68 +1,55 @@
-// deno-lint-ignore-file no-explicit-any
-import type { AttributeKeys, FilterOp } from '../types/query-builder.ts';
-import type { FilterGroup } from '../types/filters.ts';
+import type {
+  AttributeKeys,
+  FilterOp,
+  IncludedAttributeKeys,
+  RelationshipKeys,
+} from '../types/query-builder.ts';
+import type { GroupFilterItem } from '../types/filters.ts';
 
 /**
- * Builder for logical filter groups (or, and, not).
- * Alows for chaining and nesting of filter groups.
+ * Builder for the flat filter list inside an `or()`/`not()` group.
+ * No nesting: the backend only parses one flat level of a logical group.
  */
 export class FilterGroupBuilder<T> {
-  private groups: FilterGroup<T>[] = [];
+  private filters: GroupFilterItem<T>[] = [];
 
   /**
    * Add a simple filter to this group.
    */
-  filter<K extends AttributeKeys<T>>(field: K, op: FilterOp, value: any) {
-    this.groups.push({
-      type: 'simple',
-      filter: { field, op, value },
+  filter<K extends AttributeKeys<T>>(
+    field: K,
+    op: FilterOp,
+    value: unknown,
+  ): this {
+    this.filters.push({ field, op, value });
+    return this;
+  }
+
+  /**
+   * Filter an included relationship within this group:
+   * `filter[or][0][relationship][field][op]=value`. Mirrors
+   * `JsonApiQueryBuilder#filterIncluded`; requires the relationship to
+   * also be passed to `.include()`, or the backend drops the filter.
+   */
+  filterIncluded<R extends RelationshipKeys<T>>(
+    relationship: R,
+    field: IncludedAttributeKeys<T, R>,
+    op: FilterOp,
+    value: unknown,
+  ): this {
+    this.filters.push({
+      relationship: String(relationship),
+      field: String(field),
+      op,
+      value,
     });
     return this;
   }
 
   /**
-   * Add an "or" logical group to this group.
+   * Returns the built flat filter list.
    */
-  or(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.groups.push({
-      type: 'or',
-      filters: builder.groups,
-    });
-    return this;
-  }
-
-  /**
-   * Add an "and" logical group to this group.
-   */
-  and(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.groups.push({
-      type: 'and',
-      filters: builder.groups,
-    });
-    return this;
-  }
-
-  /**
-   * Add a "not" logical group to this group.
-   */
-  not(cb: (b: FilterGroupBuilder<T>) => void) {
-    const builder = new FilterGroupBuilder<T>();
-    cb(builder);
-    this.groups.push({
-      type: 'not',
-      filters: builder.groups,
-    });
-    return this;
-  }
-
-  /**
-   * Returns the built filter group array.
-   */
-  build(): FilterGroup<T>[] {
-    return this.groups;
+  build(): GroupFilterItem<T>[] {
+    return this.filters;
   }
 }

@@ -48,7 +48,6 @@ builder.Services.AddJsonApiToolkit(options =>
 {
     options.MaxFilters = 50;             // max filter conditions
     options.MaxFilterGroups = 10;        // max OR/NOT blocks
-    options.MaxFilterDepth = 3;          // max group nesting
     options.MaxFilterValueLength = 1000; // max value string length
     options.MaxIncludeDepth = 3;         // max include path depth
     options.MaxPageSize = 100;           // max items per page
@@ -62,7 +61,6 @@ builder.Services.AddJsonApiToolkit(options =>
 |-------|---------|------------------------|
 | `MaxFilters` | 50 | 400 Bad Request |
 | `MaxFilterGroups` | 10 | 400 Bad Request |
-| `MaxFilterDepth` | 3 | 400 Bad Request |
 | `MaxFilterValueLength` | 1000 | 400 Bad Request |
 | `MaxIncludeDepth` | 3 | 400 Bad Request |
 | `MaxPageSize` | 100 | Clamped, or 400 if `StrictPagination` |
@@ -108,6 +106,25 @@ With strict query validation on, the first invalid parameter fails the request:
 
 Without the flag, unconvertible filter values on non-string properties surface
 as 500 Internal Server Error; strict mode turns them into descriptive 400s.
+
+### Custom filter keys
+
+Some actions parse a filter key themselves, for example a `filter[search][like]=x`
+search box that spans several columns. Strict mode rejects that key with
+`INVALID_FILTER_FIELD` because it is not a property. List it in
+`AllowedCustomFilterKeys` to allow it:
+
+```csharp
+builder.Services.AddJsonApiToolkit(options =>
+{
+    options.StrictQueryValidation = true;
+    options.AllowedCustomFilterKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "search" };
+});
+```
+
+The toolkit builds no filter clause for these keys. Your action still reads
+and applies them. Prefer a real `filter[field][op]` or an `or` group when the
+query can be expressed that way.
 
 ## Strict pagination
 

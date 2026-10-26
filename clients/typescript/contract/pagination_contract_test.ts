@@ -5,7 +5,9 @@
 import { assert, assertEquals, assertFalse } from '@std/assert';
 import {
   BASE_URL,
+  type Errors,
   getDoc,
+  type List,
   PUBLISHED_ARTICLES,
   STRICT_BASE_URL,
   total,
@@ -16,19 +18,19 @@ Deno.test('default pagination', async (t) => {
   await t.step(
     'WART: no page params returns the entire collection, unpaginated',
     async () => {
-      const { doc } = await getDoc('articles');
+      const { doc } = await getDoc<List>('articles');
       assertEquals(doc.data.length, TOTAL_ARTICLES);
       assertEquals(doc.meta, undefined); // no pagination meta at all
-      assertEquals(Object.keys(doc.links), ['self']); // no first/last/next
+      assertEquals(Object.keys(doc.links ?? {}), ['self']); // no first/last/next
     },
   );
 
   await t.step(
     'any page param triggers pagination with DefaultPageSize 10',
     async () => {
-      const { doc } = await getDoc('articles?page%5Bnumber%5D=1');
+      const { doc } = await getDoc<List>('articles?page%5Bnumber%5D=1');
       assertEquals(doc.data.length, 10);
-      assertEquals(doc.meta.pagination, {
+      assertEquals(doc.meta?.pagination, {
         totalResources: TOTAL_ARTICLES,
         totalPages: 3,
         currentPage: 1,
@@ -38,18 +40,20 @@ Deno.test('default pagination', async (t) => {
   );
 
   await t.step('WART: page 0 and negative pages clamp to page 1', async () => {
-    const { doc } = await getDoc('articles?page%5Bnumber%5D=0');
-    assertEquals(doc.meta.pagination.currentPage, 1);
-    const { doc: neg } = await getDoc('articles?page%5Bnumber%5D=-5');
-    assertEquals(neg.meta.pagination.currentPage, 1);
+    const { doc } = await getDoc<List>('articles?page%5Bnumber%5D=0');
+    assertEquals(doc.meta?.pagination?.currentPage, 1);
+    const { doc: neg } = await getDoc<List>('articles?page%5Bnumber%5D=-5');
+    assertEquals(neg.meta?.pagination?.currentPage, 1);
   });
 
   await t.step(
     'WART: overflowing page numbers clamp to the last page',
     async () => {
-      const { doc, status } = await getDoc('articles?page%5Bnumber%5D=999');
+      const { doc, status } = await getDoc<List>(
+        'articles?page%5Bnumber%5D=999',
+      );
       assertEquals(status, 200);
-      assertEquals(doc.meta.pagination.currentPage, 3);
+      assertEquals(doc.meta?.pagination?.currentPage, 3);
       assertEquals(doc.data[0].id, '21');
     },
   );
@@ -57,8 +61,8 @@ Deno.test('default pagination', async (t) => {
   await t.step(
     'WART: oversized page size clamps to MaxPageSize (100)',
     async () => {
-      const { doc } = await getDoc('articles?page%5Bsize%5D=1000');
-      assertEquals(doc.meta.pagination.pageSize, 100);
+      const { doc } = await getDoc<List>('articles?page%5Bsize%5D=1000');
+      assertEquals(doc.meta?.pagination?.pageSize, 100);
     },
   );
 });
@@ -66,30 +70,30 @@ Deno.test('default pagination', async (t) => {
 Deno.test('pagination links', async (t) => {
   await t.step('self link preserves the full query string', async () => {
     const path = 'articles?filter%5Bpublished%5D=true&page%5Bsize%5D=2';
-    const { doc } = await getDoc(path);
-    assertEquals(doc.links.self, `${BASE_URL}/${path}`);
+    const { doc } = await getDoc<List>(path);
+    assertEquals(doc.links?.self, `${BASE_URL}/${path}`);
   });
 
   await t.step(
     'WART: first/last/prev/next drop filter, sort, include and fields',
     async () => {
-      const { doc } = await getDoc(
+      const { doc } = await getDoc<List>(
         'articles?filter%5Bpublished%5D=true&sort=-viewCount&page%5Bsize%5D=2',
       );
       // links are rebuilt from the bare path with unencoded brackets
       assertEquals(
-        doc.links.next,
+        doc.links?.next,
         `${BASE_URL}/articles?page[number]=2&page[size]=2`,
       );
       assertEquals(
-        doc.links.last,
+        doc.links?.last,
         `${BASE_URL}/articles?page[number]=7&page[size]=2`,
       );
-      assertFalse(doc.links.next.includes('filter'));
+      assertFalse(doc.links?.next?.includes('filter'));
 
       // following next therefore returns UNFILTERED, UNSORTED data
-      const next = new URL(doc.links.next);
-      const { doc: page2 } = await getDoc(`articles${next.search}`);
+      const next = new URL(doc.links?.next ?? '');
+      const { doc: page2 } = await getDoc<List>(`articles${next.search}`);
       assertEquals(total(page2), TOTAL_ARTICLES);
     },
   );
@@ -97,18 +101,18 @@ Deno.test('pagination links', async (t) => {
 
 Deno.test('strict pagination (StrictPagination = true)', async (t) => {
   await t.step('valid pages behave like default mode', async () => {
-    const { doc, status } = await getDoc(
+    const { doc, status } = await getDoc<List>(
       'articles?page%5Bnumber%5D=2',
       STRICT_BASE_URL,
     );
     assertEquals(status, 200);
-    assertEquals(doc.meta.pagination.currentPage, 2);
+    assertEquals(doc.meta?.pagination?.currentPage, 2);
   });
 
   await t.step(
     'overflowing page number is 404 INVALID_PAGE_NUMBER',
     async () => {
-      const { doc, status } = await getDoc(
+      const { doc, status } = await getDoc<Errors>(
         'articles?page%5Bnumber%5D=999',
         STRICT_BASE_URL,
       );
@@ -124,7 +128,7 @@ Deno.test('strict pagination (StrictPagination = true)', async (t) => {
   );
 
   await t.step('page 0 is 400 INVALID_PAGE_NUMBER (not clamped)', async () => {
-    const { doc, status } = await getDoc(
+    const { doc, status } = await getDoc<Errors>(
       'articles?page%5Bnumber%5D=0',
       STRICT_BASE_URL,
     );
@@ -135,13 +139,13 @@ Deno.test('strict pagination (StrictPagination = true)', async (t) => {
   await t.step(
     'oversized page size is 400 PAGE_SIZE_EXCEEDED (not clamped)',
     async () => {
-      const { doc, status } = await getDoc(
+      const { doc, status } = await getDoc<Errors>(
         'articles?page%5Bsize%5D=1000',
         STRICT_BASE_URL,
       );
       assertEquals(status, 400);
       assertEquals(doc.errors[0].code, 'PAGE_SIZE_EXCEEDED');
-      assert(doc.errors[0].meta.max === 100);
+      assert(doc.errors[0].meta?.max === 100);
     },
   );
 });
@@ -150,20 +154,20 @@ Deno.test(
   'pagination links with PreserveQueryInPaginationLinks (opt-in, strict instance)',
   async (t) => {
     await t.step('links keep the query, only page params change', async () => {
-      const { doc } = await getDoc(
+      const { doc } = await getDoc<List>(
         'articles?filter%5Bpublished%5D=true&sort=-viewCount&page%5Bsize%5D=2',
         STRICT_BASE_URL,
       );
       // keys are re-encoded by the link builder (%5B/%5D)
       assertEquals(
-        doc.links.next,
+        doc.links?.next,
         `${STRICT_BASE_URL}/articles` +
           '?filter%5Bpublished%5D=true&sort=-viewCount&page%5Bnumber%5D=2&page%5Bsize%5D=2',
       );
 
       // following next keeps the filtered, sorted result set
-      const next = new URL(doc.links.next);
-      const { doc: page2 } = await getDoc(
+      const next = new URL(doc.links?.next ?? '');
+      const { doc: page2 } = await getDoc<List>(
         `articles${next.search}`,
         STRICT_BASE_URL,
       );

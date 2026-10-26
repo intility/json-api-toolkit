@@ -49,6 +49,7 @@ public static class QueryComplexityAnalyzer
         }
 
         // Check filter depth
+#pragma warning disable CS0618
         int maxDepth = GetMaxDepth(filterGroup);
         if (maxDepth > options.MaxFilterDepth)
         {
@@ -59,6 +60,7 @@ public static class QueryComplexityAnalyzer
                 "JsonApiOptions.MaxFilterDepth"
             );
         }
+#pragma warning restore CS0618
 
         // Check filter value lengths
         ValidateFilterValueLengths(filterGroup, options.MaxFilterValueLength);

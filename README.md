@@ -64,16 +64,15 @@ Then call the endpoint with JSON:API query parameters:
 GET /api/books?filter[title]=javascript&include=author&fields[book]=title,published&page[size]=10&sort=-published
 ```
 
-## What it provides
+## Packages
 
-- **JSON:API documents** - compliant `data` / `included` / `meta` / `links` / `errors` envelope on every response
-- **Filtering** - `filter[field]=value` with operators, nested paths, and filtering on included resources
-- **Sorting** - `sort=field,-other` with multi-field and descending support
-- **Pagination** - `page[number]` / `page[size]` with link generation, total counts, and clamping
-- **Sparse fieldsets** - `fields[type]=a,b` to limit returned attributes per resource type
-- **Included resources** - `include=author,publisher.country` with allowlisting via `[AllowedIncludes]`
-- **EF Core integration** - query operators translate directly to SQL via `IQueryable`
-- **Strict mode** - return 404 for out-of-range pages and validate filter paths against allowed includes
+| Package | Purpose |
+|---------|---------|
+| [`Intility.JsonApiToolkit`](https://www.nuget.org/packages/Intility.JsonApiToolkit) | ASP.NET Core library: filtering, sorting, pagination, includes, sparse fieldsets, errors. |
+| [`Intility.JsonApiToolkit.TypeGen`](https://www.nuget.org/packages/Intility.JsonApiToolkit.TypeGen) | .NET tool that generates TypeScript types from your C# models. |
+| [`@intility/json-api-client`](https://jsr.io/@intility/json-api-client) | Typed TypeScript client, query builder, and TanStack Query adapter. |
+
+See [End to end](https://intility.github.io/json-api-toolkit/end-to-end/) for how the three fit together.
 
 ## Documentation
 

@@ -99,37 +99,8 @@ public async Task<IActionResult> GetBookSummary(int id)
 
 The resource type (second argument) is whatever string you want clients to see; it doesn't have to match the entity name. Define a separate `const` when an action returns a different resource type than the controller's default.
 
-## Restrict which relationships clients can include
+## See also
 
-```csharp
-[HttpGet]
-[AllowedIncludes("author", "reviews")]
-public async Task<IActionResult> GetAllAsync()
-{
-    return await JsonApiQueryAsync(_db.Books, ResourceType);
-}
-```
-
-Without the attribute, every relationship is includable. See [Security](security.md) for wildcard patterns and filter-path validation.
-
-## Filter included resources
-
-```
-GET /api/books?include=reviews&filter[reviews][status][eq]=approved
-```
-
-This returns all books, but each book's `reviews` collection only contains approved reviews. Up to two levels of nesting is supported (`parent.child`). See [Querying](querying.md) for the full filter syntax.
-
-## Export all matching results (no pagination)
-
-```csharp
-[HttpGet("export")]
-public async Task<IActionResult> ExportBooks()
-{
-    var result = await BuildJsonApiQueryAsync(_db.Books.AsNoTracking(), ResourceType);
-    var books = await result.Query.ToListAsync();
-    // serialize to CSV / Excel / etc.
-}
-```
-
-`BuildJsonApiQueryAsync` applies filters, includes, and sorting but skips pagination, so you get the full filtered set. See [Building Custom Queries](build-query.md) for projections and aggregations.
+- Restrict includes with `[AllowedIncludes]`: [Security](security.md#allowedincludes).
+- Filter included resources: [Querying](querying.md#filtering-across-relationships).
+- Export without pagination, projections, aggregations: [Building Custom Queries](build-query.md).

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using JsonApiToolkit.Extensions.Querying;
+using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying.Filtering;
 using JsonApiToolkit.Tests.Models;
 
@@ -368,6 +369,65 @@ public class FilterExpressionComposerTests
             },
         };
 
+        var lambda = composer.Compose<TestEntity>(filterGroup);
+
+        Assert.NotNull(lambda);
+        var result = GetTestData().Where(lambda.Compile()).ToList();
+
+        Assert.Single(result);
+        Assert.Equal("Alpha", result[0].Name);
+    }
+
+    [Fact]
+    public void Compose_StrictWithUnknownField_Throws()
+    {
+        var composer = new FilterExpressionComposer(strictValidation: true);
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "search",
+                    Operator = FilterOperator.Like,
+                    Value = "a",
+                },
+            },
+        };
+
+        Assert.Throws<JsonApiBadRequestException>(() => composer.Compose<TestEntity>(filterGroup));
+    }
+
+    [Fact]
+    public void Compose_StrictWithAllowedCustomFilterKey_DropsTheFilterInsteadOfThrowing()
+    {
+        var composer = new FilterExpressionComposer(
+            strictValidation: true,
+            allowedCustomFilterKeys: new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "search",
+            }
+        );
+        var filterGroup = new FilterGroup
+        {
+            Filters = new List<FilterParameter>
+            {
+                new FilterParameter
+                {
+                    Field = "search",
+                    Operator = FilterOperator.Like,
+                    Value = "a",
+                },
+                new FilterParameter
+                {
+                    Field = "Name",
+                    Operator = FilterOperator.Eq,
+                    Value = "Alpha",
+                },
+            },
+        };
+
+        // "search" is dropped silently; the real "Name" filter still applies.
         var lambda = composer.Compose<TestEntity>(filterGroup);
 
         Assert.NotNull(lambda);

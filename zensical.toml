@@ -1,0 +1,62 @@
+[project]
+site_name = "Intility JsonApiToolkit"
+site_description = "Documentation for Intility JsonApiToolkit"
+site_url = "https://intility.github.io/json-api-toolkit/"
+
+[project.extra]
+version = "2.3.1" # x-release-please-version
+
+[project.theme]
+name = "intility-bifrost"
+language = "en"
+
+[[project.theme.palette]]
+scheme = "default"
+primary = "teal"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+primary = "teal"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to light mode"
+
+[project.plugins]
+search.lang = "en"
+awesome-nav.filename = ".pages"
+
+# Copied from the Bifrost Zensical Quick Start. This list replaces Zensical's
+# defaults, so keep it complete.
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+github-callouts = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+toc.permalink = true
+pymdownx.arithmatex.generic = true
+pymdownx.betterem.smart_enable = "all"
+pymdownx.caret = {}
+pymdownx.details = {}
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.magiclink = {}
+pymdownx.mark = {}
+pymdownx.smartsymbols = {}
+pymdownx.snippets = {}
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+pymdownx.tabbed.combine_header_slug = true
+pymdownx.tasklist.custom_checkbox = true
+pymdownx.tilde = {}
+"intility_bifrost_zensical.table_ext" = {}

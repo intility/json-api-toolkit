@@ -53,14 +53,6 @@ Owned entities stored as JSON columns (EF Core 7+) are particularly expensive be
 entire JSON blob is always deserialized. With projection, if the blob's properties are not in
 `fields[type]`, the column is excluded from the `SELECT` entirely.
 
-### Performance expectations
-
-| Scenario | Without projection | With projection |
-|----------|--------------------|-----------------|
-| Entity with 50 columns, client needs 5 | Load all 50 | Load 5 |
-| Entity with JSON blob, blob not in fields | Deserialize blob | Skip blob column |
-| Include not requested | JOIN still executed | JOIN skipped |
-
 ### Fallback behavior
 
 If projection fails for any reason (e.g., unsupported EF Core provider behavior), the toolkit
@@ -77,8 +69,3 @@ logs a warning and falls back to loading the full entity. No error is returned t
   SQLite, etc.). The in-memory provider evaluates projections in memory, so there is no SQL
   benefit in unit tests, but behavior is identical.
 
-### Caching
-
-Projection types are generated once per unique (source type, field set) combination and cached
-for the lifetime of the application. Subsequent requests with the same `fields[type]` reuse the
-cached type and expression with no additional overhead.

@@ -20,10 +20,9 @@ A bare date such as `2026-09-14` on a `DateTime` field covers the whole day. `le
 
 ### Logical groups
 
-Combine filters with AND, OR, NOT blocks:
+Top-level filters combine with AND. Use OR and NOT blocks for other logic:
 
 ```
-filter[and][0][price][gt]=10&filter[and][1][genre]=fiction
 filter[or][0][title][like]=Hobbit&filter[or][1][author]=Tolkien
 filter[not][0][status]=archived
 ```

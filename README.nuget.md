@@ -41,6 +41,7 @@ Filtering, sorting, includes, sparse fieldsets, and pagination all work without 
 
 ## Links
 
+- **TypeScript types and client**: <https://intility.github.io/json-api-toolkit/end-to-end/>
 - **Documentation**: <https://intility.github.io/json-api-toolkit/>
 - **Source**: <https://github.com/intility/json-api-toolkit>
 - **Issues**: <https://github.com/intility/json-api-toolkit/issues>

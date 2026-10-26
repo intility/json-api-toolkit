@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "docs/**"
-      - "mkdocs.yaml"
+      - "zensical.toml"
       - "JsonApiToolkit/**"
       - ".github/workflows/docs.yml"
   pull_request:
@@ -40,7 +40,7 @@ jobs:
           filters: |
             docs:
               - 'docs/**'
-              - 'mkdocs.yaml'
+              - 'zensical.toml'
               - 'CHANGELOG.md'
               - 'JsonApiToolkit/**'
               - '.github/workflows/docs.yml'
@@ -85,7 +85,7 @@ jobs:
         run: uv venv && uv pip install -r docs/requirements.txt
 
       - name: Build Documentation
-        run: uv run mkdocs build --strict
+        run: uv run zensical build --strict
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'
