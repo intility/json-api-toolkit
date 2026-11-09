@@ -23,7 +23,7 @@
           "path": "JsonApiToolkit/JsonApiToolkit.csproj",
           "xpath": "//Project/PropertyGroup/Version"
         },
-        "mkdocs.yaml"
+        "zensical.toml"
       ]
     }
   }

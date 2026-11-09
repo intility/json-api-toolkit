@@ -1,3 +1,5 @@
+#pragma warning disable CS0618
+
 using JsonApiToolkit.Configuration;
 using JsonApiToolkit.Models.Errors;
 using JsonApiToolkit.Models.Querying;

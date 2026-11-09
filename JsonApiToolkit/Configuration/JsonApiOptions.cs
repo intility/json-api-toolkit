@@ -21,6 +21,9 @@ public class JsonApiOptions
     /// Maximum nesting depth for filter groups.
     /// Default: 3. Set to int.MaxValue to disable.
     /// </summary>
+    [Obsolete(
+        "Nested filter groups are not parsed, so query strings cannot reach this limit. The option will be removed in the next major version."
+    )]
     public int MaxFilterDepth { get; set; } = 3;
 
     /// <summary>
@@ -62,6 +65,17 @@ public class JsonApiOptions
     /// relationship is not included. Default: false (log and skip for backwards compatibility).
     /// </summary>
     public bool StrictQueryValidation { get; set; }
+
+    /// <summary>
+    /// Filter keys that <see cref="StrictQueryValidation"/> should not reject even though
+    /// they are not a property on the entity being queried. Use this for filter keys a
+    /// controller reads and applies itself (e.g. <c>filter[search][like]=x</c> backing a
+    /// hand-rolled search box) instead of adding a real property. Case-insensitive. The
+    /// toolkit still does not apply any filter for these keys; it only stops rejecting
+    /// their presence, the same as it would in non-strict mode. Default: empty.
+    /// </summary>
+    public HashSet<string> AllowedCustomFilterKeys { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// When true, pagination links (first/last/prev/next) preserve the request's full

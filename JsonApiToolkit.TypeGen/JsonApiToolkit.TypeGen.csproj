@@ -9,12 +9,22 @@
     <ToolCommandName>jsonapi-typegen</ToolCommandName>
     <PackageId>Intility.JsonApiToolkit.TypeGen</PackageId>
     <Title>JsonApiToolkit TypeGen</Title>
-    <Version>2.1.8</Version>
+    <Version>0.1.0</Version>
     <Authors>Intility</Authors>
     <Company>Intility</Company>
     <Description>Generates TypeScript resource types from [JsonApiResource]-attributed C# models.</Description>
+    <PackageTags>jsonapi;json-api;typescript;codegen;dotnet-tool</PackageTags>
+    <RepositoryUrl>https://github.com/intility/json-api-toolkit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/intility/json-api-toolkit</PackageProjectUrl>
+    <PackageIcon>intility-logo.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
+    <None Include="..\assets\intility-logo.png" Pack="true" Visible="false" PackagePath="\"/>
+  </ItemGroup>
   <ItemGroup>
     <!-- Reuses EntityMapper's attribute/relationship classification so the
          generated types can never drift from what the toolkit actually

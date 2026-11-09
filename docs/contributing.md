@@ -42,12 +42,12 @@ cd clients/typescript && deno task test
 
 ## Docs
 
-The site is built with mkdocs (Material) and served from GitHub Pages.
+The site is built with [Zensical](https://zensical.org) and served from GitHub Pages.
 
 ```bash
 uv venv
 uv pip install -r docs/requirements.txt
-uv run mkdocs serve         
+uv run zensical serve
 ```
 
 If you change C# XML doc comments, regenerate the API reference first:
@@ -89,7 +89,7 @@ Branch names: `feat/`, `fix/`, `refactor/`, `docs/`, `test/`, `chore/`, etc.
 
 ## Releases
 
-Handled by [Release Please](https://github.com/googleapis/release-please). Merging to `main` updates a release PR that accumulates changes. Merging the release PR cuts a GitHub Release, publishes to NuGet, and bumps the version in `JsonApiToolkit.csproj` and `mkdocs.yaml`.
+Handled by [Release Please](https://github.com/googleapis/release-please). Merging to `main` updates a release PR that accumulates changes. Merging the release PR cuts a GitHub Release, publishes to NuGet, and bumps the version in `JsonApiToolkit.csproj` and `zensical.toml`.
 
 ## Questions
 

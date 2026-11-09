@@ -92,3 +92,5 @@ if (string.IsNullOrWhiteSpace(request.Title))
 ```
 
 The full list of factory methods (and the standard error codes they emit) is in the [API reference for `JsonApiErrors`](api/JsonApiToolkit.Models.Errors/JsonApiErrors.md) and [`JsonApiErrorCodes`](api/JsonApiToolkit.Models.Errors/JsonApiErrorCodes.md). Use those codes in client code to handle errors programmatically.
+
+`JsonApiController.JsonApiNotFound(detail)` returns the same 404 with `RESOURCE_NOT_FOUND` as a result instead of an exception.

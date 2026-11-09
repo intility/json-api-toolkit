@@ -1,23 +1,16 @@
-// utils/hydrate.ts
-
 import type {
-  HydratedArrayResult,
-  HydratedSingleResult,
+  HydratedList,
+  HydratedSingle,
   JsonApiArrayResponse,
   JsonApiResource,
-  JsonApiResponse,
+  JsonApiResourceDescriptors,
   JsonApiSingleResponse,
 } from './types/jsonapi.ts';
 
-type ResourceMap = Record<string, Record<string, JsonApiResource>>;
+type IncludedMap = Record<string, Record<string, JsonApiResource>>;
 
-/**
- * Builds a lookup map for included resources.
- */
-function buildResourceMap(
-  included: JsonApiResource[] = [],
-): ResourceMap {
-  const map: ResourceMap = {};
+function buildIncludedMap(included: JsonApiResource[] = []): IncludedMap {
+  const map: IncludedMap = {};
   for (const res of included) {
     (map[res.type] ??= {})[res.id] = res;
   }
@@ -25,101 +18,80 @@ function buildResourceMap(
 }
 
 /**
- * Hydrates a single resource, resolving relationships.
+ * Flattens one resource: `{ id, ...attributes, ...relationships }`.
+ * Relationships resolve from `included`; a linked resource that is not
+ * included resolves to `null` (to-one) or is dropped (to-many). A cycle
+ * back to a resource already on the current path resolves to `null`.
+ *
+ * With a descriptor for the resource's wire type, what the wire omits is
+ * filled in: null-stripped attributes as `null`, un-included relationships
+ * as `null` (to-one) or `[]` (to-many).
  */
-function hydrateOne<T = unknown>(
+function hydrateOne<T>(
   resource: JsonApiResource,
-  map: ResourceMap,
-  deep: boolean,
-  visited: Set<string>,
+  map: IncludedMap,
+  descriptors: JsonApiResourceDescriptors,
+  path: Set<string>,
 ): T {
   const key = `${resource.type}:${resource.id}`;
-  if (visited.has(key)) {
-    // Prevent infinite recursion
-    return { id: resource.id, type: resource.type, circular: true } as T;
-  }
-  visited.add(key);
-
   const out: Record<string, unknown> = {
     id: resource.id,
-    type: resource.type,
     ...resource.attributes,
   };
+  const nextPath = new Set(path).add(key);
 
-  if (resource.relationships) {
-    for (const [relName, rel] of Object.entries(resource.relationships)) {
-      const relData = rel.data;
-      if (Array.isArray(relData)) {
-        out[relName] = relData
-          .map((ref) => {
-            const related = map[ref.type]?.[ref.id];
-            if (!related) return null;
-            return deep
-              ? hydrateOne(related, map, true, new Set(visited))
-              : { id: related.id, type: related.type, ...related.attributes };
-          })
-          .filter(Boolean);
-      } else if (relData) {
-        const related = map[relData.type]?.[relData.id];
-        out[relName] = related
-          ? (deep
-            ? hydrateOne(related, map, true, new Set(visited))
-            : { id: related.id, type: related.type, ...related.attributes })
-          : null;
-      } else {
-        out[relName] = null;
-      }
+  const resolve = (ref: { id: string; type: string }): unknown => {
+    const related = map[ref.type]?.[ref.id];
+    if (!related || nextPath.has(`${ref.type}:${ref.id}`)) return null;
+    return hydrateOne(related, map, descriptors, nextPath);
+  };
+
+  for (const [name, rel] of Object.entries(resource.relationships ?? {})) {
+    out[name] = Array.isArray(rel.data)
+      ? rel.data.map(resolve).filter((r) => r !== null)
+      : rel.data
+      ? resolve(rel.data)
+      : null;
+  }
+
+  const descriptor = descriptors[resource.type];
+  if (descriptor) {
+    for (const name of [...descriptor.attributes, ...descriptor.toOne]) {
+      out[name] ??= null;
+    }
+    for (const name of descriptor.toMany) {
+      out[name] ??= [];
     }
   }
   return out as T;
 }
 
 /**
- * Hydrates a JSON:API response, returning { data, meta, links }.
- * Preserves single vs array structure from input.
+ * Hydrates a JSON:API document into plain objects. Lists return
+ * `{ data, pagination }`; single resources return `{ data }`.
+ *
+ * Runtime validation is out of scope: the caller's `T` is trusted.
  */
-export function hydrateResponse<T = unknown>(
+export function hydrateResponse<T>(
   response: JsonApiSingleResponse,
-): HydratedSingleResult<T>;
-export function hydrateResponse<T = unknown>(
+  descriptors?: JsonApiResourceDescriptors,
+): HydratedSingle<T>;
+export function hydrateResponse<T>(
   response: JsonApiArrayResponse,
-): HydratedArrayResult<T>;
-export function hydrateResponse<T = unknown>(
-  response: JsonApiResponse | null | undefined,
-): HydratedSingleResult<T> | HydratedArrayResult<T> | null;
-export function hydrateResponse<T = unknown>(
-  response: JsonApiResponse | null | undefined,
-): HydratedSingleResult<T> | HydratedArrayResult<T> | null {
-  // Handle null/undefined input (e.g., from 204 No Content)
-  if (response === null || response === undefined) {
-    return null;
-  }
-
-  const { data, included, meta, links } = response;
-
-  // Preserve null for single resource responses (e.g., 204 No Content)
-  if (data === null) {
-    return { data: null, meta, links } as HydratedSingleResult<T>;
-  }
-
-  // Handle undefined/missing data as empty array
-  if (data === undefined) {
-    return { data: [] as T[], meta, links };
-  }
-
-  const map = buildResourceMap(included);
-
-  if (Array.isArray(data)) {
+  descriptors?: JsonApiResourceDescriptors,
+): HydratedList<T>;
+export function hydrateResponse<T>(
+  response: JsonApiSingleResponse | JsonApiArrayResponse,
+  descriptors: JsonApiResourceDescriptors = {},
+): HydratedSingle<T> | HydratedList<T> {
+  const map = buildIncludedMap(response.included);
+  if (Array.isArray(response.data)) {
     return {
-      data: data.map((res) => hydrateOne<T>(res, map, true, new Set())),
-      meta,
-      links,
+      data: response.data.map((res) =>
+        hydrateOne<T>(res, map, descriptors, new Set())
+      ),
+      pagination: response.meta?.pagination,
     };
   }
-
-  return {
-    data: hydrateOne<T>(data, map, true, new Set()),
-    meta,
-    links,
-  };
+  return { data: hydrateOne<T>(response.data, map, descriptors, new Set()) };
 }

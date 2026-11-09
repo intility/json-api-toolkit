@@ -16,7 +16,8 @@ public static class FilterHandler
         this IQueryable<T> query,
         FilterGroup filterGroup,
         ILogger? logger = null,
-        bool strictValidation = false
+        bool strictValidation = false,
+        IReadOnlySet<string>? allowedCustomFilterKeys = null
     )
     {
         if (
@@ -27,7 +28,8 @@ public static class FilterHandler
 
         Expression<Func<T, bool>>? lambda = new FilterExpressionComposer(
             logger,
-            strictValidation: strictValidation
+            strictValidation: strictValidation,
+            allowedCustomFilterKeys: allowedCustomFilterKeys
         ).Compose<T>(filterGroup);
 
         if (lambda != null)
